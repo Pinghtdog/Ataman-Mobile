@@ -1,37 +1,52 @@
 class UserModel {
-  final String uid;
+  final String id;
   final String email;
   final String fullName;
-  final String phoneNumber;
+  final String? phoneNumber;
+  final String? birthDate;
+  final String? barangay;
+  final String? philhealthId;
   final String? fcmToken;
+  final bool isProfileComplete;
 
   UserModel({
-    required this.uid,
+    required this.id,
     required this.email,
     required this.fullName,
-    required this.phoneNumber,
+    this.phoneNumber,
+    this.birthDate,
+    this.barangay,
+    this.philhealthId,
     this.fcmToken,
+    this.isProfileComplete = false,
   });
 
-  // for firestore document conversion
-  factory UserModel.fromMap(Map<String, dynamic> data, String documentId) {
+  factory UserModel.fromMap(Map<String, dynamic> map) {
     return UserModel(
-      uid: documentId,
-      email: data['email'] ?? '',
-      fullName: data['fullName'] ?? '',
-      phoneNumber: data['phoneNumber'] ?? '',
-      fcmToken: data['fcmToken'],
+      id: map['id'] ?? '',
+      email: map['email'] ?? '',
+      fullName: map['full_name'] ?? '',
+      phoneNumber: map['phone_number'],
+      birthDate: map['birth_date'],
+      barangay: map['barangay'],
+      philhealthId: map['philhealth_id'],
+      fcmToken: map['fcm_token'],
+      isProfileComplete: map['is_profile_complete'] ?? false,
     );
   }
-  // to firestore document conversion
+
   Map<String, dynamic> toMap() {
     return {
+      'id': id,
       'email': email,
-      'fullName': fullName,
-      'phoneNumber': phoneNumber,
-      'fcmToken': fcmToken,
-      'userType': 'patient',
-      'createdAt': DateTime.now().toIso8601String(),
+      'full_name': fullName,
+      'phone_number': phoneNumber,
+      'birth_date': birthDate,
+      'barangay': barangay,
+      'philhealth_id': philhealthId,
+      'fcm_token': fcmToken,
+      'is_profile_complete': isProfileComplete,
+      'updated_at': DateTime.now().toIso8601String(),
     };
   }
 }

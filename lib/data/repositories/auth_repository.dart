@@ -1,58 +1,49 @@
-import 'package:firebase_auth/firebase_auth.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
-import '../models/user_model.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
+import '../../services/auth_service.dart';
 
 class AuthRepository {
-  final FirebaseAuth _firebaseAuth = FirebaseAuth.instance;
-  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+  final AuthService _authService;
 
-  // Get current user (for auto-login)
-  User? get currentUser => _firebaseAuth.currentUser;
+  AuthRepository({AuthService? authService}) 
+      : _authService = authService ?? AuthService();
 
-  // Stream to listen to auth state changes
-  Stream<User?> get authStateChanges => _firebaseAuth.authStateChanges();
+  // Stream session changes (returns Supabase's AuthState)
+  Stream<AuthState> get authStateChanges => _authService.authStateChanges;
+
+  User? get currentUser => _authService.currentUser;
 
   // Sign Up
-  Future<void> signUp({
+  Future<AuthResponse> signUp({
     required String email,
     required String password,
     required String fullName,
-    required String phoneNumber
+    String? phoneNumber,
+    Map<String, dynamic>? additionalData,
   }) async {
-    try {
-      // 1. Create Auth User
-      UserCredential cred = await _firebaseAuth.createUserWithEmailAndPassword(
-          email: email,
-          password: password
-      );
-
-      // 2. Create User Model
-      UserModel newUser = UserModel(
-          uid: cred.user!.uid,
-          email: email,
-          fullName: fullName,
-          phoneNumber: phoneNumber
-      );
-
-      // 3. Save to Firestore (The "users" collection)
-      await _firestore.collection('users').doc(cred.user!.uid).set(newUser.toMap());
-
-    } catch (e) {
-      throw Exception(e.toString());
-    }
+    return await _authService.signUp(
+      email: email,
+      password: password,
+      fullName: fullName,
+      phoneNumber: phoneNumber,
+      additionalData: additionalData,
+    );
   }
 
-  // Sign In
-  Future<void> signIn({required String email, required String password}) async {
-    try {
-      await _firebaseAuth.signInWithEmailAndPassword(email: email, password: password);
-    } catch (e) {
-      throw Exception('Login Failed: ${e.toString()}');
-    }
+  // Sign In (Supports Email or Phone)
+  Future<AuthResponse> signIn({
+    String? email,
+    String? phone,
+    required String password,
+  }) async {
+    return await _authService.signIn(
+      email: email,
+      phone: phone,
+      password: password,
+    );
   }
 
   // Sign Out
   Future<void> signOut() async {
-    await _firebaseAuth.signOut();
+    await _authService.signOut();
   }
 }
