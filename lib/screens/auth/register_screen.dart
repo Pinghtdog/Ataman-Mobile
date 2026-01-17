@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
 import '../../constants/app_colors.dart';
 import '../../widgets/ataman_button.dart';
+import '../../widgets/ataman_text_field.dart';
 
 class RegisterScreen extends StatefulWidget {
   const RegisterScreen({super.key});
@@ -14,6 +16,44 @@ class _RegisterScreenState extends State<RegisterScreen> {
   final _birthdateController = TextEditingController();
   final _barangayController = TextEditingController();
   final _philhealthController = TextEditingController();
+  DateTime? _selectedDate;
+
+  //for the mock data
+  final List<String> _nagaBarangays = [
+    "Abella", "Bagumbayan Norte", "Bagumbayan Sur", "Balatas", "Calauag", 
+    "Cararayan", "Carolina", "Concepcion Grande", "Concepcion Pequeña", 
+    "Dayangdang", "Del Rosario", "Dinaga", "Igualdad Interior", "Lerma", 
+    "Liboton", "Mabolo", "Pacol", "Panicuason", "Peñafrancia", "Sabang", 
+    "San Felipe", "San Francisco", "San Isidro", "Santa Cruz", "Tabuco", 
+    "Tinago", "Triangulo"
+  ];
+
+  Future<void> _selectDate(BuildContext context) async {
+    final DateTime? picked = await showDatePicker(
+      context: context,
+      initialDate: DateTime(2000),
+      firstDate: DateTime(1900),
+      lastDate: DateTime.now(),
+      builder: (context, child) {
+        return Theme(
+          data: Theme.of(context).copyWith(
+            colorScheme: const ColorScheme.light(
+              primary: AppColors.primary,
+              onPrimary: Colors.white,
+              onSurface: Colors.black,
+            ),
+          ),
+          child: child!,
+        );
+      },
+    );
+    if (picked != null && picked != _selectedDate) {
+      setState(() {
+        _selectedDate = picked;
+        _birthdateController.text = DateFormat('MM / dd / yyyy').format(picked);
+      });
+    }
+  }
 
   void _onContinue() {
     if (_nameController.text.isNotEmpty &&
@@ -69,43 +109,56 @@ class _RegisterScreenState extends State<RegisterScreen> {
             const SizedBox(height: 32),
             
             _buildLabel("FULL NAME"),
-            TextField(
+            AtamanTextField(
+              label: "",
               controller: _nameController,
-              decoration: const InputDecoration(
-                hintText: "Juan Dela Cruz",
-                border: UnderlineInputBorder(),
-              ),
+              prefixIcon: Icons.person_outline,
             ),
             const SizedBox(height: 24),
 
             _buildLabel("BIRTHDATE"),
-            TextField(
-              controller: _birthdateController,
-              decoration: const InputDecoration(
-                hintText: "12 / 05 / 1989",
-                border: UnderlineInputBorder(),
+            InkWell(
+              onTap: () => _selectDate(context),
+              child: IgnorePointer(
+                child: AtamanTextField(
+                  label: "",
+                  controller: _birthdateController,
+                  prefixIcon: Icons.calendar_today_outlined,
+                ),
               ),
-              keyboardType: TextInputType.datetime,
             ),
             const SizedBox(height: 24),
 
             _buildLabel("BARANGAY"),
-            TextField(
-              controller: _barangayController,
-              decoration: const InputDecoration(
-                hintText: "Concepcion Pequeña",
-                border: UnderlineInputBorder(),
+            DropdownButtonFormField<String>(
+              decoration: InputDecoration(
+                prefixIcon: const Icon(Icons.location_on_outlined, color: Color(0xB300695C)),
+                border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                enabledBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: BorderSide(color: Colors.grey.shade300),
+                ),
               ),
+              hint: const Text("Select Barangay"),
+              items: _nagaBarangays.map((String value) {
+                return DropdownMenuItem<String>(
+                  value: value,
+                  child: Text(value),
+                );
+              }).toList(),
+              onChanged: (newValue) {
+                setState(() {
+                  _barangayController.text = newValue!;
+                });
+              },
             ),
             const SizedBox(height: 24),
 
             _buildLabel("PHILHEALTH ID (OPTIONAL)"),
-            TextField(
+            AtamanTextField(
+              label: "00-000000000-0",
               controller: _philhealthController,
-              decoration: const InputDecoration(
-                hintText: "00-000000000-0",
-                border: UnderlineInputBorder(),
-              ),
+              prefixIcon: Icons.badge_outlined,
             ),
             const SizedBox(height: 48),
 
@@ -120,13 +173,16 @@ class _RegisterScreenState extends State<RegisterScreen> {
   }
 
   Widget _buildLabel(String text) {
-    return Text(
-      text,
-      style: const TextStyle(
-        fontSize: 12,
-        fontWeight: FontWeight.bold,
-        color: Colors.grey,
-        letterSpacing: 1.2,
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8.0, left: 4.0),
+      child: Text(
+        text,
+        style: const TextStyle(
+          fontSize: 12,
+          fontWeight: FontWeight.bold,
+          color: Colors.grey,
+          letterSpacing: 1.2,
+        ),
       ),
     );
   }

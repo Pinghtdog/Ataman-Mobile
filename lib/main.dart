@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -17,6 +18,7 @@ import 'logic/auth/auth_cubit.dart';
 import 'data/repositories/auth_repository.dart';
 import 'data/repositories/user_repository.dart';
 import 'utils/injector.dart';
+import 'services/notification_service.dart';
 
 class MyHttpOverrides extends HttpOverrides {
   @override
@@ -43,10 +45,14 @@ void main() async {
     }
 
     HttpOverrides.global = MyHttpOverrides();
+    
     await Supabase.initialize(
       url: supabaseUrl,
       anonKey: supabaseAnonKey,
     );
+
+    await Firebase.initializeApp();
+    await NotificationService.initialize();
     
     await initInjector();
     isInitialized = true;

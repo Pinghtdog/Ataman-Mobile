@@ -29,6 +29,7 @@ class AuthService {
     return await _supabase.auth.signUp(
       email: email,
       password: password,
+      emailRedirectTo: 'io.supabase.ataman://login-callback',
       data: {
         'full_name': fullName,
         if (phoneNumber != null) 'phone': phoneNumber,

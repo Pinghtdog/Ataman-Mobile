@@ -1,9 +1,9 @@
 import 'package:ataman/constants/constants.dart';
 import 'package:flutter/material.dart';
 import 'home/home_screen.dart';
+import 'profile/profile_screen.dart';
 // import 'package:ataman/screens/booking_screen.dart';
 // import 'package:ataman/screens/telemedicine_screen.dart';
-// import 'package:ataman/screens/profile_screen.dart';
 
 class AtamanBaseScreen extends StatefulWidget {
   const AtamanBaseScreen({super.key});
@@ -19,7 +19,7 @@ class _AtamanBaseScreenState extends State<AtamanBaseScreen> {
     const HomeScreen(),
     const Center(child: Text("Booking Screen")),
     const Center(child: Text("Telemedicine Screen")),
-    const Center(child: Text("Profile Screen")),
+    const ProfileScreen(),
   ];
 
   @override

@@ -1,8 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import '../../constants/app_colors.dart';
+import '../../constants/constants.dart';
 import '../../logic/auth/auth_cubit.dart';
 import '../../widgets/ataman_button.dart';
+import '../../widgets/ataman_text_field.dart';
+import '../../widgets/auth/check_email_dialog.dart';
+import '../../widgets/auth/email_confirmed_dialog.dart';
 
 class RegisterEmailScreen extends StatefulWidget {
   const RegisterEmailScreen({super.key});
@@ -15,6 +18,7 @@ class _RegisterEmailScreenState extends State<RegisterEmailScreen> {
   final _emailController = TextEditingController();
   final _passController = TextEditingController();
   late Map<String, dynamic> fullProfileData;
+  bool _isVerificationHandled = false;
 
   @override
   void didChangeDependencies() {
@@ -38,11 +42,39 @@ class _RegisterEmailScreenState extends State<RegisterEmailScreen> {
             barangay: fullProfileData['barangay'],
             philhealthId: fullProfileData['philhealthId'],
           );
-    } else {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Please enter both email and password")),
-      );
     }
+  }
+
+  void _showCheckEmailDialog() {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => CheckEmailDialog(
+        email: _emailController.text.trim(),
+        onContinue: () {
+          Navigator.pushNamedAndRemoveUntil(context, AppRoutes.login, (route) => false);
+        },
+      ),
+    );
+  }
+
+  void _showEmailConfirmedDialog() {
+    if (_isVerificationHandled) return;
+    _isVerificationHandled = true;
+
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => EmailConfirmedDialog(
+        onContinue: () async {
+          // Log out first so they can sign in manually as requested
+          await context.read<AuthCubit>().logout();
+          if (mounted) {
+            Navigator.pushNamedAndRemoveUntil(context, AppRoutes.login, (route) => false);
+          }
+        },
+      ),
+    );
   }
 
   @override
@@ -58,10 +90,13 @@ class _RegisterEmailScreenState extends State<RegisterEmailScreen> {
       body: BlocListener<AuthCubit, AuthState>(
         listener: (context, state) {
           if (state is Authenticated) {
-            Navigator.pushNamedAndRemoveUntil(context, '/home', (route) => false);
+            // User was automatically logged in by clicking the email link
+            _showEmailConfirmedDialog();
           }
           if (state is AuthError) {
-            ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(state.message)));
+            if (state.message.contains("check your email")) {
+              _showCheckEmailDialog();
+            }
           }
         },
         child: Padding(
@@ -80,26 +115,51 @@ class _RegisterEmailScreenState extends State<RegisterEmailScreen> {
               const SizedBox(height: 8),
               const Text("Set up your login credentials."),
               const SizedBox(height: 32),
-              TextField(
+              
+              AtamanTextField(
+                label: "Email Address",
+                hintText: "example@email.com",
                 controller: _emailController,
+                prefixIcon: Icons.email_outlined,
                 keyboardType: TextInputType.emailAddress,
-                decoration: const InputDecoration(
-                  labelText: "Email Address",
-                  border: OutlineInputBorder(),
-                  prefixIcon: Icon(Icons.email_outlined),
-                ),
               ),
-              const SizedBox(height: 16),
-              TextField(
+              const SizedBox(height: 24),
+              
+              AtamanTextField(
+                label: "Password",
+                hintText: "••••••••",
                 controller: _passController,
-                obscureText: true,
-                decoration: const InputDecoration(
-                  labelText: "Password",
-                  border: OutlineInputBorder(),
-                  prefixIcon: Icon(Icons.lock_outline),
-                ),
+                prefixIcon: Icons.lock_outline,
+                isPassword: true,
               ),
+
+              const SizedBox(height: 16),
+
+              BlocBuilder<AuthCubit, AuthState>(
+                builder: (context, state) {
+                  if (state is AuthError && !state.message.contains("check your email")) {
+                    return Padding(
+                      padding: const EdgeInsets.only(top: 8.0, left: 4.0),
+                      child: Row(
+                        children: [
+                          const Icon(Icons.error_outline, color: Colors.red, size: 16),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Text(
+                              state.message,
+                              style: const TextStyle(color: Colors.red, fontSize: 12),
+                            ),
+                          ),
+                        ],
+                      ),
+                    );
+                  }
+                  return const SizedBox.shrink();
+                },
+              ),
+              
               const Spacer(),
+              
               BlocBuilder<AuthCubit, AuthState>(
                 builder: (context, state) {
                   return AtamanButton(

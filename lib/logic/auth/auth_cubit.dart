@@ -6,6 +6,7 @@ import 'package:supabase_flutter/supabase_flutter.dart' as sb;
 import '../../data/models/user_model.dart';
 import '../../data/repositories/auth_repository.dart';
 import '../../data/repositories/user_repository.dart';
+import '../../services/notification_service.dart';
 
 abstract class AuthState extends Equatable {
   @override
@@ -23,6 +24,13 @@ class Authenticated extends AuthState {
 
   @override
   List<Object?> get props => [user, profile];
+}
+
+class AuthEmailVerified extends AuthState {
+  final sb.User user;
+  AuthEmailVerified(this.user);
+  @override
+  List<Object?> get props => [user];
 }
 
 class Unauthenticated extends AuthState {}
@@ -52,41 +60,85 @@ class AuthCubit extends Cubit<AuthState> {
   void _init() {
     _authStateSubscription = _authRepository.authStateChanges.listen((data) async {
       final sb.User? user = data.session?.user;
+      final sb.AuthChangeEvent event = data.event;
+
+      debugPrint('Auth State Change Event: $event');
       
       if (user != null) {
-        if (state is! Authenticated) {
-          final profile = await _userRepository.getUserProfile(user.id);
-          emit(Authenticated(user, profile: profile));
+        // Detect if this was a deep-link sign-in
+        if (event == sb.AuthChangeEvent.signedIn && state is! AuthLoading && state is! Authenticated) {
+          emit(AuthEmailVerified(user));
+          return;
         }
+
+        final profile = await _userRepository.getUserProfile(user.id);
+        
+        // Update FCM Token on successful authentication
+        try {
+          final fcmToken = await NotificationService.getFCMToken();
+          if (fcmToken != null) {
+            await _userRepository.updateFCMToken(user.id, fcmToken);
+          }
+        } catch (e) {
+          debugPrint('Error updating FCM token during init: $e');
+        }
+
+        emit(Authenticated(user, profile: profile));
       } else {
-        if (state is! AuthLoading) {
+        if (state is! AuthLoading && state is! AuthError) {
           emit(Unauthenticated());
         }
       }
     });
   }
 
+  String _handleAuthError(dynamic e) {
+    if (e is sb.AuthWeakPasswordException) {
+      return "Password is too weak. It must include uppercase, lowercase, numbers, and special characters.";
+    }
+    
+    final String errorString = e.toString().toLowerCase();
+    
+    if (errorString.contains('invalid login credentials')) {
+      return "The email or password you entered is incorrect.";
+    } else if (errorString.contains('user already exists')) {
+      return "This email is already registered. Please try logging in.";
+    } else if (errorString.contains('network') || errorString.contains('socketexception')) {
+      return "Connection failed. Please check your internet and try again.";
+    } else if (errorString.contains('email not confirmed')) {
+      return "Please check your email to confirm your account.";
+    } else if (errorString.contains('password should be') || errorString.contains('characters')) {
+      return "Password is too weak. It must include uppercase, lowercase, numbers, and special characters.";
+    } else if (errorString.contains('violates row level security')) {
+      return "Unable to save profile. Please contact support.";
+    }
+    
+    return "Something went wrong. Please try again later.";
+  }
+
   Future<void> login(String identity, String password, {bool isPhoneLogin = false}) async {
     emit(AuthLoading());
     try {
-      debugPrint('Attempting login for: $identity (isPhone: $isPhoneLogin)');
       final response = await _authRepository.signIn(
         email: isPhoneLogin ? null : identity,
         phone: isPhoneLogin ? identity : null,
         password: password,
       );
-      
+
       if (response.user != null) {
-        debugPrint('Login success for user: ${response.user!.id}');
-        final profile = await _userRepository.getUserProfile(response.user!.id);
-        emit(Authenticated(response.user!, profile: profile));
-      } else {
-        emit(AuthError("Login failed: User not found."));
-        emit(Unauthenticated());
+        // Update FCM token on successful login
+        try {
+          final fcmToken = await NotificationService.getFCMToken();
+          if (fcmToken != null) {
+            await _userRepository.updateFCMToken(response.user!.id, fcmToken);
+          }
+        } catch (e) {
+          debugPrint('Error updating FCM token on login: $e');
+        }
       }
     } catch (e) {
       debugPrint('Login error: $e');
-      emit(AuthError(e.toString().replaceAll('Exception: ', '')));
+      emit(AuthError(_handleAuthError(e)));
       emit(Unauthenticated());
     }
   }
@@ -123,20 +175,16 @@ class AuthCubit extends Cubit<AuthState> {
         },
       );
 
-      if (response.session != null && response.user != null) {
-        final profile = await _userRepository.getUserProfile(response.user!.id);
-        emit(Authenticated(response.user!, profile: profile));
-      } else if (response.user != null) {
+      if (response.session == null && response.user != null) {
         emit(AuthError("Please check your email to confirm your account."));
-        emit(Unauthenticated());
-      } else {
-        emit(AuthError("Registration failed."));
+      } else if (response.session == null) {
+        emit(AuthError("Registration failed. Please try again."));
         emit(Unauthenticated());
       }
       
     } catch (e) {
       debugPrint('Registration error: $e');
-      emit(AuthError(e.toString()));
+      emit(AuthError(_handleAuthError(e)));
       emit(Unauthenticated());
     }
   }

@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import '../constants/app_colors.dart';
 
-class AtamanTextField extends StatelessWidget {
+class AtamanTextField extends StatefulWidget {
   final String label;
   final String? hintText;
   final IconData? prefixIcon;
@@ -22,18 +22,44 @@ class AtamanTextField extends StatelessWidget {
   });
 
   @override
+  State<AtamanTextField> createState() => _AtamanTextFieldState();
+}
+
+class _AtamanTextFieldState extends State<AtamanTextField> {
+  bool _obscureText = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _obscureText = widget.isPassword;
+  }
+
+  @override
   Widget build(BuildContext context) {
     return TextFormField(
-      controller: controller,
-      obscureText: isPassword,
-      keyboardType: keyboardType,
-      validator: validator,
+      controller: widget.controller,
+      obscureText: widget.isPassword ? _obscureText : false,
+      keyboardType: widget.keyboardType,
+      validator: widget.validator,
       decoration: InputDecoration(
-        labelText: label,
-        hintText: hintText,
+        labelText: widget.label,
+        hintText: widget.hintText,
         alignLabelWithHint: true,
-        prefixIcon: prefixIcon != null
-            ? Icon(prefixIcon, color: AppColors.primary.withOpacity(0.7))
+        prefixIcon: widget.prefixIcon != null
+            ? Icon(widget.prefixIcon, color: AppColors.primary.withOpacity(0.7))
+            : null,
+        suffixIcon: widget.isPassword
+            ? IconButton(
+                icon: Icon(
+                  _obscureText ? Icons.visibility_off_outlined : Icons.visibility_outlined,
+                  color: Colors.grey,
+                ),
+                onPressed: () {
+                  setState(() {
+                    _obscureText = !_obscureText;
+                  });
+                },
+              )
             : null,
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),

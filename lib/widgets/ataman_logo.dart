@@ -7,7 +7,6 @@ class AtamanLogoFull extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // Corrected path to logo.png
     return Image.asset(
       'assets/icon/logo.png',
       height: height,
