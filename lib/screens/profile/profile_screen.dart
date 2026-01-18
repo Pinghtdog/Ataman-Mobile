@@ -93,7 +93,6 @@ class ProfileScreen extends StatelessWidget {
                     ),
                   ),
 
-                  //
                   Padding(
                     padding: const EdgeInsets.symmetric(horizontal: AppSizes.p20),
                     child: Column(

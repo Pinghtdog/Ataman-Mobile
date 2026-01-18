@@ -4,8 +4,12 @@ import '../../constants/constants.dart';
 import '../../widgets/ataman_button.dart';
 import '../../widgets/ataman_text_field.dart';
 import '../../widgets/ataman_logo.dart';
+import '../../widgets/ataman_header.dart';
+import '../../widgets/ataman_label.dart';
 import '../../logic/auth/auth_cubit.dart';
 import '../../utils/ui_utils.dart';
+import '../../utils/validator_utils.dart';
+import '../../widgets/auth/account_not_found_dialog.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -44,113 +48,139 @@ class _LoginScreenState extends State<LoginScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return BlocListener<AuthCubit, AuthState>(
-      listener: (context, state) {
-        if (state is AuthError) {
-          UiUtils.showError(context, state.message);
-        } else if (state is Authenticated) {
-          UiUtils.showSuccess(context, "Welcome back!");
-          Navigator.pushNamedAndRemoveUntil(context, AppRoutes.home, (route) => false);
-        }
-      },
-      child: Scaffold(
-        backgroundColor: AppColors.background,
-        appBar: AppBar(
-          backgroundColor: Colors.transparent,
-          elevation: 0,
-          leading: IconButton(
-            icon: const Icon(Icons.arrow_back_ios_new, color: AppColors.textPrimary),
-            onPressed: () => Navigator.pop(context),
-          ),
+    return Scaffold(
+      backgroundColor: AppColors.background,
+      appBar: AppBar(
+        elevation: 0,
+        backgroundColor: Colors.transparent,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back_ios_new, color: AppColors.textPrimary),
+          onPressed: () => Navigator.pop(context),
         ),
-        body: SafeArea(
-          child: SingleChildScrollView(
-            padding: const EdgeInsets.symmetric(horizontal: AppSizes.p24),
-            child: Form(
-              key: _formKey,
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  const SizedBox(height: AppSizes.p20),
-                  // const Center(child: AtamanLogoFull(height: 100)),
-                  // const SizedBox(height: AppSizes.p32),s
+      ),
+      body: BlocListener<AuthCubit, AuthState>(
+        listener: (context, state) {
+          if (state is Authenticated) {
+            final bool isComplete = state.profile?.isProfileComplete ?? false;
+            
+            if (isComplete) {
+              Navigator.pushNamedAndRemoveUntil(context, AppRoutes.home, (route) => false);
+            } else {
+              Navigator.pushNamed(context, AppRoutes.register);
+            }
+          }
+          if (state is AuthError) {
+            if (state.message.contains("incorrect") || state.message.contains("not found")) {
+              showDialog(
+                context: context,
+                builder: (context) => AccountNotFoundDialog(
+                  isEmail: true,
+                  onCreateAccount: () {
+                    Navigator.pushReplacementNamed(context, AppRoutes.register);
+                  },
+                  onRetry: () {
+                    _identityController.clear();
+                    _passwordController.clear();
+                  },
+                ),
+              );
+            } else {
+              UiUtils.showError(context, state.message);
+            }
+          }
+        },
+        child: SingleChildScrollView(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Padding(
+                padding: const EdgeInsets.all(AppSizes.p24),
+                child: Form(
+                  key: _formKey,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        "Sign In",
+                        style: AppTextStyles.h1.copyWith(color: AppColors.primary),
+                      ),
+                      const SizedBox(height: AppSizes.p8),
+                      const Text(
+                        "Access your records with email or mobile number.",
+                        style: AppTextStyles.bodyMedium,
+                      ),
+                      const SizedBox(height: AppSizes.p32),
 
-                  Text(
-                    "Welcome Back",
-                    style: AppTextStyles.h1.copyWith(color: AppColors.primary),
-                    textAlign: TextAlign.left,
-                  ),
-                  const SizedBox(height: AppSizes.p8),
-                  const Text(
-                    "Sign in with your email or mobile number.",
-                    style: AppTextStyles.bodyLarge,
-                    textAlign: TextAlign.left,
-                  ),
-                  const SizedBox(height: AppSizes.p48),
+                      const AtamanLabel(text: "EMAIL OR MOBILE NUMBER"),
+                      AtamanTextField(
+                        label: "",
+                        hintText: "Enter email or phone",
+                        controller: _identityController,
+                        prefixIcon: Icons.person_outline,
+                        keyboardType: TextInputType.emailAddress,
+                        validator: (val) => (val == null || val.isEmpty) ? "This field is required" : null,
+                      ),
+                      const SizedBox(height: AppSizes.p24),
 
-                  AtamanTextField(
-                    label: "Email or Mobile Number",
-                    hintText: "Enter email or phone",
-                    controller: _identityController,
-                    prefixIcon: Icons.person_outline,
-                    validator: (val) {
-                      if (val == null || val.isEmpty) return "This field is required";
-                      return null;
-                    },
-                  ),
-                  const SizedBox(height: AppSizes.p24),
+                      const AtamanLabel(text: "PASSWORD"),
+                      AtamanTextField(
+                        label: "",
+                        hintText: "••••••••",
+                        controller: _passwordController,
+                        prefixIcon: Icons.lock_outline,
+                        isPassword: true,
+                        validator: ValidatorUtils.validatePassword,
+                      ),
 
-                  AtamanTextField(
-                    label: AppStrings.passwordLabel,
-                    hintText: "••••••••",
-                    controller: _passwordController,
-                    prefixIcon: Icons.lock_outline,
-                    isPassword: true,
-                    validator: (val) =>
-                        val != null && val.isEmpty ? "Please enter your password" : null,
-                  ),
-
-                  Align(
-                    alignment: Alignment.centerRight,
-                    child: TextButton(
-                      onPressed: () {},
-                      child: Text(
-                        AppStrings.forgotPassword,
-                        style: AppTextStyles.caption.copyWith(
-                          color: AppColors.primary,
-                          fontWeight: FontWeight.bold,
+                      Align(
+                        alignment: Alignment.centerRight,
+                        child: TextButton(
+                          onPressed: () {},
+                          child: Text(
+                            AppStrings.forgotPassword,
+                            style: AppTextStyles.caption.copyWith(
+                              color: AppColors.primary,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
                         ),
                       ),
-                    ),
-                  ),
-                  
-                  const SizedBox(height: AppSizes.p32),
+                      
+                      const SizedBox(height: AppSizes.p32),
 
-                  BlocBuilder<AuthCubit, AuthState>(
-                    builder: (context, state) {
-                      return AtamanButton(
-                        text: "Log In",
-                        isLoading: state is AuthLoading,
-                        onPressed: _handleLogin,
-                      );
-                    },
-                  ),
+                      BlocBuilder<AuthCubit, AuthState>(
+                        builder: (context, state) {
+                          return AtamanButton(
+                            text: "Log In",
+                            isLoading: state is AuthLoading,
+                            onPressed: _handleLogin,
+                          );
+                        },
+                      ),
 
-                  const SizedBox(height: AppSizes.p32),
+                      const SizedBox(height: AppSizes.p32),
 
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      const Text("Don't have an account?", style: AppTextStyles.bodyMedium),
-                      TextButton(
-                        onPressed: () => Navigator.pushNamed(context, AppRoutes.register),
-                        child: const Text("Create Account", style: TextStyle(fontWeight: FontWeight.bold)),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          const Text("Don't have an account?", style: AppTextStyles.bodyMedium),
+                          TextButton(
+                            onPressed: () => Navigator.pushNamed(context, AppRoutes.register),
+                            child: Text(
+                              "Create Account", 
+                              style: AppTextStyles.bodyMedium.copyWith(
+                                color: AppColors.primary,
+                                fontWeight: FontWeight.bold
+                              )
+                            ),
+                          ),
+                        ],
                       ),
                     ],
                   ),
-                ],
+                ),
               ),
-            ),
+            ],
           ),
         ),
       ),

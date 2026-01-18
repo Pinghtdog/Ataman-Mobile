@@ -1,8 +1,10 @@
 import 'package:ataman/constants/constants.dart';
+import 'package:ataman/utils/network_utils.dart';
 import 'package:flutter/material.dart';
 import 'home/home_screen.dart';
 import 'profile/profile_screen.dart';
 import 'booking/booking_screen.dart';
+
 class AtamanBaseScreen extends StatefulWidget {
   const AtamanBaseScreen({super.key});
 
@@ -19,6 +21,20 @@ class _AtamanBaseScreenState extends State<AtamanBaseScreen> {
     const Center(child: Text("Telemedicine Screen")),
     const ProfileScreen(),
   ];
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      NetworkUtils.initialize(context);
+    });
+  }
+
+  @override
+  void dispose() {
+    NetworkUtils.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {

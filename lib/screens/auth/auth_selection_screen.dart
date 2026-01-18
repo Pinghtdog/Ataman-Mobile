@@ -90,7 +90,7 @@ class AuthSelectionScreen extends StatelessWidget {
                   const SizedBox(height: AppSizes.p24),
                   
                   AtamanButton(
-                    text: "Use Mobile Number",
+                    text: "Use Email/Mobile Number",
                     isOutlined: true,
                     onPressed: () {
                       Navigator.pushNamed(context, AppRoutes.login);

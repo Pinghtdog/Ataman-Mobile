@@ -21,29 +21,25 @@ class AtamanNoInternet extends StatelessWidget {
             Container(
               padding: const EdgeInsets.all(24),
               decoration: BoxDecoration(
-                color: Colors.blue.shade50,
+                color: AppColors.primary.withOpacity(0.1),
                 shape: BoxShape.circle,
               ),
-              child: Icon(
+              child: const Icon(
                 Icons.wifi_off_rounded,
-                color: Colors.blue.shade700,
+                color: AppColors.primary,
                 size: 80,
               ),
             ),
             const SizedBox(height: AppSizes.p32),
-            const Text(
+            Text(
               "No Connection",
-              style: TextStyle(
-                fontSize: 24,
-                fontWeight: FontWeight.bold,
-                color: AppColors.textPrimary,
-              ),
+              style: AppTextStyles.h2.copyWith(color: AppColors.textPrimary),
             ),
             const SizedBox(height: AppSizes.p16),
             const Text(
               "It looks like you're offline. Please check your internet connection and try again.",
               textAlign: TextAlign.center,
-              style: TextStyle(color: AppColors.textSecondary),
+              style: AppTextStyles.bodyMedium,
             ),
             const SizedBox(height: AppSizes.p48),
             AtamanButton(

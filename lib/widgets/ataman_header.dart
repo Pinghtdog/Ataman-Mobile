@@ -18,11 +18,11 @@ class AtamanHeader extends StatelessWidget {
     return Container(
       width: double.infinity,
       height: height,
-      padding: padding ?? const EdgeInsets.only(
-        top: 60, 
-        left: AppSizes.p24, 
-        right: AppSizes.p24, 
-        bottom: 40,
+      padding: padding ?? const EdgeInsets.fromLTRB(
+        AppSizes.p24,
+        20,
+        AppSizes.p24,
+        40,
       ),
       decoration: const BoxDecoration(
         color: AppColors.primary,

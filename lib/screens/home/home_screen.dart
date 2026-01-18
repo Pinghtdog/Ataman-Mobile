@@ -5,6 +5,7 @@ import '../../logic/auth/auth_cubit.dart';
 import '../../widgets/ataman_header.dart';
 import '../../widgets/ataman_service_grid.dart';
 import '../../widgets/emergency/emergency_help_card.dart';
+import '../../widgets/home/smart_triage_card.dart';
 
 class HomeScreen extends StatelessWidget {
   const HomeScreen({super.key});
@@ -24,71 +25,106 @@ class HomeScreen extends StatelessWidget {
             physics: const BouncingScrollPhysics(),
             child: Column(
               children: [
-                AtamanHeader(
-                  child: SafeArea(
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Column(
-                          mainAxisSize: MainAxisSize.min,
-                          crossAxisAlignment: CrossAxisAlignment.start,
+                Stack(
+                  clipBehavior: Clip.none,
+                  children: [
+                    AtamanHeader(
+                      height: 220,
+                      child: SafeArea(
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
-                            Text(
-                              "Hello,",
-                              style: AppTextStyles.bodySmall.copyWith(
-                                color: Colors.white70,
-                              ),
+                            Column(
+                              // mainAxisSize: MainAxisSize.min,
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  "Maogmang Aga,",
+                                  style: AppTextStyles.bodySmall.copyWith(
+                                    color: Colors.white70,
+                                  ),
+                                ),
+                                Text(
+                                  userName,
+                                  style: AppTextStyles.h2.copyWith(
+                                    color: Colors.white,
+                                  ),
+                                ),
+                              ],
                             ),
-                            Text(
-                              userName,
-                              style: AppTextStyles.h2.copyWith(
-                                color: Colors.white,
+                            Align(
+                              alignment: Alignment.topRight,
+                              child: Container(
+                                padding: const EdgeInsets.all(AppSizes.p8),
+                                decoration: BoxDecoration(
+                                  color: Colors.white.withOpacity(0.2),
+                                  shape: BoxShape.circle,
+                                ),
+                                child: const Icon(
+                                  Icons.notifications_none_rounded,
+                                  color: Colors.white,
+                                  size: AppSizes.iconMedium,
+                                ),
                               ),
                             ),
                           ],
                         ),
-                        Container(
-                          padding: const EdgeInsets.all(AppSizes.p8),
-                          decoration: BoxDecoration(
-                            color: Colors.white.withOpacity(0.2),
-                            shape: BoxShape.circle,
-                          ),
-                          child: const Icon(
-                            Icons.notifications_none_rounded,
-                            color: Colors.white,
-                            size: AppSizes.iconMedium,
-                          ),
-                        ),
-                      ],
+                      ),
                     ),
-                  ),
+
+                    Positioned(
+                      bottom: -110,
+                      left: 0,
+                      right: 0,
+                      child: SmartTriageCard(
+                        onTap: () {
+                          // TODO: Navigate to AI Triage
+                        },
+                      ),
+                    ),
+                  ],
                 ),
 
+                const SizedBox(height: 130),
+
                 Padding(
-                  padding: const EdgeInsets.all(AppSizes.p24),
+                  padding: const EdgeInsets.symmetric(horizontal: AppSizes.p24),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      EmergencyHelpCard(
-                        onTap: () {
-                          // TODO: Navigate to emergency screen
-                        },
-                      ),
-                      const SizedBox(height: AppSizes.p32),
                       Text(
-                        "Our Services",
+                        "Quick Services",
                         style: AppTextStyles.h3.copyWith(color: AppColors.textPrimary),
                       ),
                       const SizedBox(height: AppSizes.p16),
                       AtamanServiceGrid(
                         services: const [
-                          {'title': 'Triage', 'icon': Icons.medical_services_rounded, 'color': Color(0xFF2196F3)},
-                          {'title': 'Booking', 'icon': Icons.calendar_month_rounded, 'color': Color(0xFFFF9800)},
-                          {'title': 'Telemed', 'icon': Icons.video_camera_front_rounded, 'color': Color(0xFF4CAF50)},
-                          {'title': 'Records', 'icon': Icons.history_rounded, 'color': Color(0xFF9C27B0)},
+                          {'title': 'Medicine Access',
+                            'icon': Icons.medical_services_rounded,
+                            'color': Color(0xFF6A1B9A),
+                          },
+                          {'title': 'Health Alerts',
+                            'icon': Icons.warning_amber_rounded,
+                            'color': Color(0xFFF57C00),
+                          },
+                          {'title': 'Reproductive',
+                            'icon': Icons.favorite_outline_rounded,
+                            'color': Color(0xFFAD1457),
+                          },
+                          {'title': 'Vaccines',
+                            'icon': Icons.vaccines_rounded,
+                            'color': Color(0xFF1976D2),
+                          },
                         ],
                         onServiceTap: (index) {
                           // TODO: Handle service navigation
+                        },
+                      ),
+                      const SizedBox(height: AppSizes.p32),
+                      
+                      EmergencyHelpCard(
+                        onTap: () {
+                          // TODO: Navigate to emergency screen
                         },
                       ),
                       const SizedBox(height: AppSizes.p32),

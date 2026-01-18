@@ -4,8 +4,11 @@ import '../../constants/constants.dart';
 import '../../logic/auth/auth_cubit.dart';
 import '../../widgets/ataman_button.dart';
 import '../../widgets/ataman_text_field.dart';
+import '../../widgets/ataman_label.dart';
 import '../../widgets/auth/check_email_dialog.dart';
 import '../../widgets/auth/email_confirmed_dialog.dart';
+import '../../utils/ui_utils.dart';
+import '../../utils/validator_utils.dart';
 
 class RegisterEmailScreen extends StatefulWidget {
   const RegisterEmailScreen({super.key});
@@ -15,6 +18,7 @@ class RegisterEmailScreen extends StatefulWidget {
 }
 
 class _RegisterEmailScreenState extends State<RegisterEmailScreen> {
+  final _formKey = GlobalKey<FormState>();
   final _emailController = TextEditingController();
   final _passController = TextEditingController();
   late Map<String, dynamic> fullProfileData;
@@ -29,14 +33,20 @@ class _RegisterEmailScreenState extends State<RegisterEmailScreen> {
     }
   }
 
-  void _onCompleteRegistration() {
-    final email = _emailController.text.trim();
-    final pass = _passController.text.trim();
+  @override
+  void dispose() {
+    _emailController.dispose();
+    _passController.dispose();
+    super.dispose();
+  }
 
-    if (email.isNotEmpty && pass.isNotEmpty) {
+  void _onCompleteRegistration() {
+    UiUtils.hideKeyboard(context);
+    
+    if (_formKey.currentState!.validate()) {
       context.read<AuthCubit>().register(
-            email: email,
-            password: pass,
+            email: _emailController.text.trim(),
+            password: _passController.text.trim(),
             fullName: fullProfileData['fullName'],
             birthDate: fullProfileData['birthDate'],
             barangay: fullProfileData['barangay'],
@@ -67,7 +77,7 @@ class _RegisterEmailScreenState extends State<RegisterEmailScreen> {
       barrierDismissible: false,
       builder: (context) => EmailConfirmedDialog(
         onContinue: () async {
-          await context.read<AuthCubit>().logout();//logout then they will log in hahahaa
+          await context.read<AuthCubit>().logout();
           if (mounted) {
             Navigator.pushNamedAndRemoveUntil(context, AppRoutes.login, (route) => false);
           }
@@ -79,95 +89,109 @@ class _RegisterEmailScreenState extends State<RegisterEmailScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: AppColors.background,
       appBar: AppBar(
-        title: const Text("Secure Account"),
         elevation: 0,
-        backgroundColor: Colors.white,
-        foregroundColor: Colors.black,
+        backgroundColor: Colors.transparent,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back_ios_new, color: AppColors.textPrimary),
+          onPressed: () => Navigator.pop(context),
+        ),
       ),
       body: BlocListener<AuthCubit, AuthState>(
         listener: (context, state) {
-          if (state is Authenticated) {
-            _showEmailConfirmedDialog(); //looged in after clicking emial link
+          if (state is AuthEmailVerified) {
+            _showEmailConfirmedDialog();
           }
           if (state is AuthError) {
             if (state.message.contains("check your email")) {
               _showCheckEmailDialog();
+            } else {
             }
           }
         },
-        child: Padding(
-          padding: const EdgeInsets.all(24.0),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const Text(
-                "Final Step",
-                style: TextStyle(
-                  fontSize: 24,
-                  fontWeight: FontWeight.bold,
-                  color: AppColors.primary,
-                ),
-              ),
-              const SizedBox(height: 8),
-              const Text("Set up your login credentials."),
-              const SizedBox(height: 32),
-              
-              AtamanTextField(
-                label: "Email Address",
-                hintText: "example@email.com",
-                controller: _emailController,
-                prefixIcon: Icons.email_outlined,
-                keyboardType: TextInputType.emailAddress,
-              ),
-              const SizedBox(height: 24),
-              
-              AtamanTextField(
-                label: "Password",
-                hintText: "••••••••",
-                controller: _passController,
-                prefixIcon: Icons.lock_outline,
-                isPassword: true,
-              ),
-
-              const SizedBox(height: 16),
-
-              BlocBuilder<AuthCubit, AuthState>(
-                builder: (context, state) {
-                  if (state is AuthError && !state.message.contains("check your email")) {
-                    return Padding(
-                      padding: const EdgeInsets.only(top: 8.0, left: 4.0),
-                      child: Row(
-                        children: [
-                          const Icon(Icons.error_outline, color: Colors.red, size: 16),
-                          const SizedBox(width: 8),
-                          Expanded(
-                            child: Text(
-                              state.message,
-                              style: const TextStyle(color: Colors.red, fontSize: 12),
-                            ),
+        child: SafeArea(
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.symmetric(horizontal: AppSizes.p24),
+            child: Form(
+              key: _formKey,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const SizedBox(height: AppSizes.p8),
+                  Text(
+                    "Final Step",
+                    style: AppTextStyles.h1.copyWith(color: AppColors.primary),
+                  ),
+                  const SizedBox(height: AppSizes.p8),
+                  const Text(
+                    "Set up your login credentials.",
+                    style: AppTextStyles.bodyMedium,
+                  ),
+                  const SizedBox(height: AppSizes.p32),
+                  
+                  const AtamanLabel(text: "EMAIL ADDRESS"),
+                  AtamanTextField(
+                    label: "",
+                    hintText: "example@email.com",
+                    controller: _emailController,
+                    prefixIcon: Icons.email_outlined,
+                    keyboardType: TextInputType.emailAddress,
+                    validator: ValidatorUtils.validateEmail,
+                  ),
+                  const SizedBox(height: AppSizes.p24),
+                  
+                  const AtamanLabel(text: "PASSWORD"),
+                  AtamanTextField(
+                    label: "",
+                    hintText: "••••••••",
+                    controller: _passController,
+                    prefixIcon: Icons.lock_outline,
+                    isPassword: true,
+                    validator: ValidatorUtils.validatePassword,
+                  ),
+    
+                  const SizedBox(height: AppSizes.p16),
+    
+                  // Inline Error display
+                  BlocBuilder<AuthCubit, AuthState>(
+                    builder: (context, state) {
+                      if (state is AuthError && !state.message.contains("check your email")) {
+                        return Padding(
+                          padding: const EdgeInsets.only(left: AppSizes.p4),
+                          child: Row(
+                            children: [
+                              const Icon(Icons.error_outline, color: AppColors.danger, size: 16),
+                              const SizedBox(width: AppSizes.p8),
+                              Expanded(
+                                child: Text(
+                                  state.message,
+                                  style: AppTextStyles.error,
+                                ),
+                              ),
+                            ],
                           ),
-                        ],
-                      ),
-                    );
-                  }
-                  return const SizedBox.shrink();
-                },
+                        );
+                      }
+                      return const SizedBox.shrink();
+                    },
+                  ),
+                  
+                  const SizedBox(height: AppSizes.p48),
+                  
+                  BlocBuilder<AuthCubit, AuthState>(
+                    builder: (context, state) {
+                      return AtamanButton(
+                        text: "Create Account",
+                        isLoading: state is AuthLoading,
+                        onPressed: _onCompleteRegistration,
+                      );
+                    },
+                  ),
+                  const SizedBox(height: AppSizes.p32),
+                ],
               ),
-              
-              const Spacer(),
-              
-              BlocBuilder<AuthCubit, AuthState>(
-                builder: (context, state) {
-                  return AtamanButton(
-                    text: "Create Account",
-                    isLoading: state is AuthLoading,
-                    onPressed: _onCompleteRegistration,
-                  );
-                },
-              ),
-            ],
+            ),
           ),
         ),
       ),
