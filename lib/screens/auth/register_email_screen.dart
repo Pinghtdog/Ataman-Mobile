@@ -67,8 +67,7 @@ class _RegisterEmailScreenState extends State<RegisterEmailScreen> {
       barrierDismissible: false,
       builder: (context) => EmailConfirmedDialog(
         onContinue: () async {
-          // Log out first so they can sign in manually as requested
-          await context.read<AuthCubit>().logout();
+          await context.read<AuthCubit>().logout();//logout then they will log in hahahaa
           if (mounted) {
             Navigator.pushNamedAndRemoveUntil(context, AppRoutes.login, (route) => false);
           }
@@ -90,8 +89,7 @@ class _RegisterEmailScreenState extends State<RegisterEmailScreen> {
       body: BlocListener<AuthCubit, AuthState>(
         listener: (context, state) {
           if (state is Authenticated) {
-            // User was automatically logged in by clicking the email link
-            _showEmailConfirmedDialog();
+            _showEmailConfirmedDialog(); //looged in after clicking emial link
           }
           if (state is AuthError) {
             if (state.message.contains("check your email")) {

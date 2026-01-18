@@ -2,9 +2,7 @@ import 'package:ataman/constants/constants.dart';
 import 'package:flutter/material.dart';
 import 'home/home_screen.dart';
 import 'profile/profile_screen.dart';
-// import 'package:ataman/screens/booking_screen.dart';
-// import 'package:ataman/screens/telemedicine_screen.dart';
-
+import 'booking/booking_screen.dart';
 class AtamanBaseScreen extends StatefulWidget {
   const AtamanBaseScreen({super.key});
 
@@ -17,7 +15,7 @@ class _AtamanBaseScreenState extends State<AtamanBaseScreen> {
 
   final List<Widget> _screens = [
     const HomeScreen(),
-    const Center(child: Text("Booking Screen")),
+    const BookingScreen(),
     const Center(child: Text("Telemedicine Screen")),
     const ProfileScreen(),
   ];
@@ -25,12 +23,11 @@ class _AtamanBaseScreenState extends State<AtamanBaseScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: AppColors.background,
       body: IndexedStack(
         index: _currentIndex,
         children: _screens,
       ),
-
       bottomNavigationBar: Container(
         decoration: BoxDecoration(
           boxShadow: [
@@ -49,12 +46,18 @@ class _AtamanBaseScreenState extends State<AtamanBaseScreen> {
             });
           },
           type: BottomNavigationBarType.fixed,
-          backgroundColor: Colors.white,
+          backgroundColor: AppColors.surface,
           selectedItemColor: AppColors.primary,
-          unselectedItemColor: Colors.grey.shade400,
+          unselectedItemColor: AppColors.textSecondary.withOpacity(0.5),
           showUnselectedLabels: true,
-          selectedLabelStyle: const TextStyle(fontWeight: FontWeight.w600, fontSize: 12),
-          unselectedLabelStyle: const TextStyle(fontWeight: FontWeight.w400, fontSize: 12),
+          selectedLabelStyle: AppTextStyles.caption.copyWith(
+            fontWeight: FontWeight.w600,
+            fontSize: 12,
+          ),
+          unselectedLabelStyle: AppTextStyles.caption.copyWith(
+            fontWeight: FontWeight.w400,
+            fontSize: 12,
+          ),
           elevation: 0,
           items: const [
             BottomNavigationBarItem(

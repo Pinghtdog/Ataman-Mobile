@@ -118,7 +118,7 @@ static void my_application_init(MyApplication* self) {}
 
 MyApplication* my_application_new() {
   // Set the program name to the application ID, which helps various systems
-  // like GTK and desktop environments map this running application to its
+  // like GTK and desktop environments booking this running application to its
   // corresponding .desktop file. This ensures better integration by allowing
   // the application to be recognized beyond its binary name.
   g_set_prgname(APPLICATION_ID);

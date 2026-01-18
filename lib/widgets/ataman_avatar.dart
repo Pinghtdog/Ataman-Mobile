@@ -11,7 +11,7 @@ class AtamanAvatar extends StatelessWidget {
   const AtamanAvatar({
     super.key,
     this.imageUrl,
-    this.initials = "U",
+    this.initials = "A",
     this.radius = 24.0,
     this.isActive = false,
   });

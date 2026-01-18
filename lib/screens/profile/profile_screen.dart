@@ -3,6 +3,10 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../constants/constants.dart';
 import '../../logic/auth/auth_cubit.dart';
 import '../../widgets/ataman_avatar.dart';
+import '../../widgets/ataman_header.dart';
+import '../../widgets/profile/profile_feature_card.dart';
+import '../../widgets/profile/profile_list_tile.dart';
+import '../../widgets/profile/profile_square_card.dart';
 import '../../widgets/ataman_logout_dialog.dart';
 
 class ProfileScreen extends StatelessWidget {
@@ -22,12 +26,19 @@ class ProfileScreen extends StatelessWidget {
       },
       child: BlocBuilder<AuthCubit, AuthState>(
         builder: (context, state) {
-          String fullName = "User Name";
-          String email = "email@example.com";
+          String fullName = "Guest";
+          String address = "Naga City Resident";
+          String idStatus = "UNVERIFIED";
+          Color statusColor = Colors.grey;
 
           if (state is Authenticated && state.user != null) {
-            fullName = state.profile?.fullName ?? "User Name";
-            email = state.user!.email ?? "email@example.com";
+            fullName = state.profile?.fullName ?? state.user!.userMetadata?['full_name'] ?? "User";
+            address = state.profile?.barangay != null ? "${state.profile!.barangay}, Naga City" : "Naga City Resident";
+            
+            if (state.profile?.isProfileComplete ?? false) {
+              idStatus = "VERIFIED";
+              statusColor = AppColors.success;
+            }
           }
 
           return Scaffold(
@@ -35,169 +46,160 @@ class ProfileScreen extends StatelessWidget {
             body: SingleChildScrollView(
               child: Column(
                 children: [
-                  // Header Section
-                  Container(
-                    width: double.infinity,
-                    padding: const EdgeInsets.only(top: 60, bottom: 50),
-                    decoration: const BoxDecoration(
-                      color: AppColors.primary,
-                      borderRadius: BorderRadius.only(
-                        bottomLeft: Radius.circular(AppSizes.p24),
-                        bottomRight: Radius.circular(AppSizes.p24),
-                      ),
-                    ),
-                    child: Column(
+                  AtamanHeader(
+                    height: 200,
+                    padding: const EdgeInsets.only(top: 60, left: 24, right: 24, bottom: 40),
+                    child: Row(
                       children: [
                         Container(
-                          padding: const EdgeInsets.all(4),
+                          padding: const EdgeInsets.all(3),
                           decoration: BoxDecoration(
+                            color: Colors.white.withOpacity(0.2),
                             shape: BoxShape.circle,
-                            border: Border.all(
-                              color: AppColors.primaryLight.withOpacity(0.5),
-                              width: 2,
-                            ),
+                            border: Border.all(color: Colors.white30, width: 2),
                           ),
-                          child: const AtamanAvatar(radius: 40),
+                          child: const AtamanAvatar(radius: 35),
                         ),
-                        const SizedBox(height: AppSizes.p12),
-                        Text(
-                          fullName,
-                          style: AppTextStyles.h2.copyWith(color: Colors.white),
-                        ),
-                        const SizedBox(height: AppSizes.p4),
-                        Text(
-                          email,
-                          style: AppTextStyles.bodyMedium.copyWith(
-                            color: Colors.white.withOpacity(0.8),
-                          ),
-                        ),
-                        const SizedBox(height: AppSizes.p12),
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: AppSizes.p16,
-                            vertical: AppSizes.p4,
-                          ),
-                          decoration: BoxDecoration(
-                            color: Colors.white.withOpacity(0.15),
-                            borderRadius: BorderRadius.circular(AppSizes.p20),
-                          ),
-                          child: Text(
-                            "Naga City Resident",
-                            style: AppTextStyles.caption.copyWith(
-                              color: Colors.white,
-                              fontWeight: FontWeight.bold,
-                            ),
+                        const SizedBox(width: AppSizes.p20),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                fullName,
+                                style: AppTextStyles.h2.copyWith(color: Colors.white),
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                              const SizedBox(height: 4),
+                              Row(
+                                children: [
+                                  Icon(Icons.location_on, color: Colors.white.withOpacity(0.8), size: 14),
+                                  const SizedBox(width: 4),
+                                  Expanded(
+                                    child: Text(
+                                      address,
+                                      style: AppTextStyles.bodyMedium.copyWith(
+                                        color: Colors.white.withOpacity(0.9),
+                                      ),
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ],
                           ),
                         ),
                       ],
                     ),
                   ),
 
-                  // Menu Section
-                  Transform.translate(
-                    offset: const Offset(0, -30),
-                    child: Container(
-                      margin: const EdgeInsets.symmetric(horizontal: AppSizes.p20),
-                      padding: EdgeInsets.symmetric(vertical: AppSizes.p12),
-                      decoration: BoxDecoration(
-                        color: AppColors.surface,
-                        borderRadius: BorderRadius.circular(AppSizes.p24),
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.black.withOpacity(0.05),
-                            blurRadius: 20,
-                            offset: const Offset(0, 10),
+                  //
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: AppSizes.p20),
+                    child: Column(
+                      children: [
+                        const SizedBox(height: AppSizes.p20),
+
+                        ProfileFeatureCard(
+                          title: "Digital Medical ID",
+                          subtitle: "QR Code for Hospital/BHC",
+                          icon: Icons.qr_code_scanner_rounded,
+                          iconColor: AppColors.primary,
+                          iconBg: AppColors.primary.withOpacity(0.1),
+                          onTap: () {},
+                        ),
+
+                        const SizedBox(height: AppSizes.p16),
+
+                        Row(
+                          children: [
+                            Expanded(
+                              child: ProfileSquareCard(
+                                title: "Medical History",
+                                subtitle: "Records & Labs",
+                                icon: Icons.history_edu_rounded,
+                                iconColor: Colors.orange[800]!,
+                                iconBg: Colors.orange[50]!,
+                                onTap: () {},
+                              ),
+                            ),
+                            const SizedBox(width: AppSizes.p16),
+                            Expanded(
+                              child: ProfileSquareCard(
+                                title: "Family Members",
+                                subtitle: "Manage Dependents",
+                                icon: Icons.diversity_1_rounded,
+                                iconColor: Colors.blue[800]!,
+                                iconBg: Colors.blue[50]!,
+                                onTap: () {},
+                              ),
+                            ),
+                          ],
+                        ),
+
+                        const SizedBox(height: AppSizes.p16),
+
+                        Container(
+                          decoration: BoxDecoration(
+                            color: AppColors.surface,
+                            borderRadius: BorderRadius.circular(AppSizes.radiusLarge),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black.withOpacity(0.04),
+                                blurRadius: 10,
+                                offset: const Offset(0, 4),
+                              ),
+                            ],
                           ),
-                        ],
-                      ),
-                      child: Column(
-                        children: [
-                          _buildMenuItem(
-                            icon: Icons.badge_outlined,
-                            title: "My Naga ID",
-                            onTap: () {},
+                          child: Column(
+                            children: [
+                              ProfileListTile(
+                                title: "Indigency Verification",
+                                icon: Icons.verified_user_outlined,
+                                trailing: Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                                  decoration: BoxDecoration(
+                                      color: statusColor.withOpacity(0.1),
+                                      borderRadius: BorderRadius.circular(AppSizes.radiusSmall)
+                                  ),
+                                  child: Text(
+                                    idStatus,
+                                    style: TextStyle(
+                                      color: statusColor,
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 12,
+                                    ),
+                                  ),
+                                ),
+                                onTap: () {},
+                              ),
+                              const Divider(height: 1, indent: 60, endIndent: 20),
+                              ProfileListTile(
+                                title: "Settings",
+                                icon: Icons.settings_outlined,
+                                onTap: () {},
+                              ),
+                              const Divider(height: 1, indent: 60, endIndent: 20),
+                              ProfileListTile(
+                                title: "Log Out",
+                                icon: Icons.logout_rounded,
+                                iconColor: AppColors.danger,
+                                titleColor: AppColors.danger,
+                                onTap: () => _showLogoutDialog(context),
+                              ),
+                            ],
                           ),
-                          _buildDivider(),
-                          _buildMenuItem(
-                            icon: Icons.folder_shared_outlined,
-                            title: "Medical History",
-                            onTap: () {},
-                          ),
-                          _buildDivider(),
-                          _buildMenuItem(
-                            icon: Icons.assignment_outlined,
-                            title: "Triage Results",
-                            onTap: () {},
-                          ),
-                          _buildDivider(),
-                          _buildMenuItem(
-                            icon: Icons.logout_rounded,
-                            title: "Logout",
-                            onTap: () => _showLogoutDialog(context),
-                            isDestructive: true,
-                          ),
-                        ],
-                      ),
+                        ),
+                        const SizedBox(height: 40),
+                      ],
                     ),
                   ),
-                  const SizedBox(height: AppSizes.p20),
                 ],
               ),
             ),
           );
         },
       ),
-    );
-  }
-
-  Widget _buildMenuItem({
-    required IconData icon,
-    required String title,
-    required VoidCallback onTap,
-    bool isDestructive = false,
-  }) {
-    return ListTile(
-      onTap: onTap,
-      contentPadding: const EdgeInsets.symmetric(
-        horizontal: AppSizes.p24,
-        vertical: AppSizes.p4,
-      ),
-      leading: Container(
-        padding: const EdgeInsets.all(10),
-        decoration: BoxDecoration(
-          color: isDestructive
-              ? AppColors.danger.withOpacity(0.1)
-              : AppColors.primary.withOpacity(0.1),
-          shape: BoxShape.circle,
-        ),
-        child: Icon(
-          icon,
-          color: isDestructive ? AppColors.danger : AppColors.primary,
-          size: 22,
-        ),
-      ),
-      title: Text(
-        title,
-        style: AppTextStyles.bodyLarge.copyWith(
-          fontWeight: FontWeight.w600,
-          color: isDestructive ? AppColors.danger : AppColors.textPrimary,
-        ),
-      ),
-      trailing: Icon(
-        Icons.arrow_forward_ios_rounded,
-        size: 16,
-        color: AppColors.textSecondary.withOpacity(0.5),
-      ),
-    );
-  }
-
-  Widget _buildDivider() {
-    return Divider(
-      height: 1,
-      thickness: 1,
-      color: Colors.grey.shade100,
-      indent: 80,
-      endIndent: 24,
     );
   }
 

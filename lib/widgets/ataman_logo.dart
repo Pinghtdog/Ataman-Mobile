@@ -8,10 +8,10 @@ class AtamanLogoFull extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Image.asset(
-      'assets/icon/logo.png',
+      'assets/icon/icon.png',
       height: height,
       fit: BoxFit.contain,
-      errorBuilder: (context, error, stackTrace) { //fallbakk
+      errorBuilder: (context, error, stackTrace) {
         debugPrint("Asset Error: $error");
         return Icon(
           Icons.medical_services_rounded,

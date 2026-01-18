@@ -13,6 +13,7 @@ class SplashScreen extends StatefulWidget {
 
 class _SplashScreenState extends State<SplashScreen> {
   bool _isNavigated = false;
+  bool _timerFinished = false;
 
   @override
   void initState() {
@@ -24,11 +25,15 @@ class _SplashScreenState extends State<SplashScreen> {
     await Future.delayed(const Duration(milliseconds: 2500));
     if (!mounted) return;
     
+    setState(() {
+      _timerFinished = true;
+    });
+    
     _checkAndNavigate(context.read<AuthCubit>().state);
   }
 
   void _checkAndNavigate(AuthState state) {
-    if (_isNavigated || !mounted) return;
+    if (_isNavigated || !mounted || !_timerFinished) return;
 
     if (state is Authenticated) {
       _isNavigated = true;
@@ -43,29 +48,40 @@ class _SplashScreenState extends State<SplashScreen> {
   Widget build(BuildContext context) {
     return BlocListener<AuthCubit, AuthState>(
       listener: (context, state) {
+        if (_timerFinished) {
+          _checkAndNavigate(state);
+        }
       },
       child: Scaffold(
-        backgroundColor: AppColors.background,
+        backgroundColor: AppColors.primary,
         body: Center(
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              const AtamanLogoFull(height: 180),
+              const Hero(
+                tag: 'logo',
+                child: AtamanLogoFull(height: 180),
+              ),
               const SizedBox(height: AppSizes.p32),
               Text(
                 AppStrings.appName,
                 style: AppTextStyles.h1.copyWith(
-                  color: AppColors.primary,
+                  color: Colors.white,
                   letterSpacing: 2.0,
                 ),
               ),
               const SizedBox(height: AppSizes.p8),
-              const Text(
+              Text(
                 AppStrings.tagLine,
-                style: AppTextStyles.bodyMedium,
+                style: AppTextStyles.bodyMedium.copyWith(
+                  color: Colors.white.withOpacity(0.8),
+                ),
               ),
               const SizedBox(height: AppSizes.p48),
-              const CircularProgressIndicator(color: AppColors.primary),
+              const CircularProgressIndicator(
+                color: Colors.white,
+                strokeWidth: 3,
+              ),
             ],
           ),
         ),

@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
-import '../../constants/app_colors.dart';
+import '../../constants/constants.dart';
 import '../../widgets/ataman_button.dart';
 import '../../widgets/ataman_text_field.dart';
+import '../../widgets/ataman_label.dart';
+import '../../services/address_service.dart';
 
 class RegisterScreen extends StatefulWidget {
   const RegisterScreen({super.key});
@@ -17,16 +19,26 @@ class _RegisterScreenState extends State<RegisterScreen> {
   final _barangayController = TextEditingController();
   final _philhealthController = TextEditingController();
   DateTime? _selectedDate;
+  
+  final AddressService _addressService = AddressService();
+  List<String> _barangays = [];
+  bool _isLoadingBarangays = true;
 
-  //for the mock data
-  final List<String> _nagaBarangays = [
-    "Abella", "Bagumbayan Norte", "Bagumbayan Sur", "Balatas", "Calauag", 
-    "Cararayan", "Carolina", "Concepcion Grande", "Concepcion Pequeña", 
-    "Dayangdang", "Del Rosario", "Dinaga", "Igualdad Interior", "Lerma", 
-    "Liboton", "Mabolo", "Pacol", "Panicuason", "Peñafrancia", "Sabang", 
-    "San Felipe", "San Francisco", "San Isidro", "Santa Cruz", "Tabuco", 
-    "Tinago", "Triangulo"
-  ];
+  @override
+  void initState() {
+    super.initState();
+    _loadBarangays();
+  }
+
+  Future<void> _loadBarangays() async {
+    final list = await _addressService.getNagaBarangays();
+    if (mounted) {
+      setState(() {
+        _barangays = list;
+        _isLoadingBarangays = false;
+      });
+    }
+  }
 
   Future<void> _selectDate(BuildContext context) async {
     final DateTime? picked = await showDatePicker(
@@ -69,7 +81,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
       Navigator.pushNamed(
         context,
-        '/verify-id',
+        AppRoutes.verifyId,
         arguments: profileData,
       );
     } else {
@@ -82,106 +94,93 @@ class _RegisterScreenState extends State<RegisterScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: AppColors.background,
       appBar: AppBar(
         elevation: 0,
         backgroundColor: Colors.white,
         foregroundColor: Colors.black,
       ),
       body: SingleChildScrollView(
-        padding: const EdgeInsets.all(24.0),
+        padding: const EdgeInsets.all(AppSizes.p24),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text(
+            Text(
               "Create Profile",
-              style: TextStyle(
-                fontSize: 28,
-                fontWeight: FontWeight.bold,
-                color: AppColors.primary,
-              ),
+              style: AppTextStyles.h1.copyWith(color: AppColors.primary),
             ),
-            const SizedBox(height: 8),
-            const Text(
+            const SizedBox(height: AppSizes.p8),
+            Text(
               "Please provide accurate information.",
-              style: TextStyle(color: Colors.grey, fontSize: 16),
+              style: AppTextStyles.bodyMedium.copyWith(color: AppColors.textSecondary),
             ),
-            const SizedBox(height: 32),
+            const SizedBox(height: AppSizes.p32),
             
-            _buildLabel("FULL NAME"),
+            const AtamanLabel(text: "FULL NAME"),
             AtamanTextField(
               label: "",
+              hintText: "Juan Dela Cruz",
               controller: _nameController,
               prefixIcon: Icons.person_outline,
             ),
-            const SizedBox(height: 24),
+            const SizedBox(height: AppSizes.p24),
 
-            _buildLabel("BIRTHDATE"),
+            const AtamanLabel(text: "BIRTHDATE"),
             InkWell(
               onTap: () => _selectDate(context),
               child: IgnorePointer(
                 child: AtamanTextField(
                   label: "",
+                  hintText: "MM / DD / YYYY",
                   controller: _birthdateController,
                   prefixIcon: Icons.calendar_today_outlined,
                 ),
               ),
             ),
-            const SizedBox(height: 24),
+            const SizedBox(height: AppSizes.p24),
 
-            _buildLabel("BARANGAY"),
-            DropdownButtonFormField<String>(
-              decoration: InputDecoration(
-                prefixIcon: const Icon(Icons.location_on_outlined, color: Color(0xB300695C)),
-                border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-                enabledBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                  borderSide: BorderSide(color: Colors.grey.shade300),
+            const AtamanLabel(text: "BARANGAY"),
+            _isLoadingBarangays 
+              ? const Center(child: CircularProgressIndicator())
+              : DropdownButtonFormField<String>(
+                  value: _barangayController.text.isEmpty ? null : _barangayController.text,
+                  decoration: InputDecoration(
+                    prefixIcon: const Icon(Icons.location_on_outlined, color: Color(0xB300695C)),
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(AppSizes.p12)),
+                    enabledBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(AppSizes.p12),
+                      borderSide: BorderSide(color: Colors.grey.shade300),
+                    ),
+                  ),
+                  hint: const Text("Select Barangay"),
+                  items: _barangays.map((String value) {
+                    return DropdownMenuItem<String>(
+                      value: value,
+                      child: Text(value),
+                    );
+                  }).toList(),
+                  onChanged: (newValue) {
+                    setState(() {
+                      _barangayController.text = newValue!;
+                    });
+                  },
                 ),
-              ),
-              hint: const Text("Select Barangay"),
-              items: _nagaBarangays.map((String value) {
-                return DropdownMenuItem<String>(
-                  value: value,
-                  child: Text(value),
-                );
-              }).toList(),
-              onChanged: (newValue) {
-                setState(() {
-                  _barangayController.text = newValue!;
-                });
-              },
-            ),
-            const SizedBox(height: 24),
+            const SizedBox(height: AppSizes.p24),
 
-            _buildLabel("PHILHEALTH ID (OPTIONAL)"),
+            const AtamanLabel(text: "PHILHEALTH ID (OPTIONAL)"),
             AtamanTextField(
-              label: "00-000000000-0",
+              label: "",
+              hintText: "00-000000000-0",
               controller: _philhealthController,
               prefixIcon: Icons.badge_outlined,
             ),
-            const SizedBox(height: 48),
+            const SizedBox(height: AppSizes.p48),
 
             AtamanButton(
               text: "Continue",
               onPressed: _onContinue,
             ),
           ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildLabel(String text) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 8.0, left: 4.0),
-      child: Text(
-        text,
-        style: const TextStyle(
-          fontSize: 12,
-          fontWeight: FontWeight.bold,
-          color: Colors.grey,
-          letterSpacing: 1.2,
         ),
       ),
     );

@@ -4,7 +4,6 @@ import '../../constants/constants.dart';
 import '../../widgets/ataman_button.dart';
 import '../../widgets/ataman_text_field.dart';
 import '../../widgets/ataman_logo.dart';
-import '../../widgets/auth/account_not_found_dialog.dart';
 import '../../logic/auth/auth_cubit.dart';
 import '../../utils/ui_utils.dart';
 
@@ -17,12 +16,12 @@ class LoginScreen extends StatefulWidget {
 
 class _LoginScreenState extends State<LoginScreen> {
   final _formKey = GlobalKey<FormState>();
-  final TextEditingController _emailController = TextEditingController();
+  final TextEditingController _identityController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
 
   @override
   void dispose() {
-    _emailController.dispose();
+    _identityController.dispose();
     _passwordController.dispose();
     super.dispose();
   }
@@ -31,38 +30,24 @@ class _LoginScreenState extends State<LoginScreen> {
     UiUtils.hideKeyboard(context);
     if (!_formKey.currentState!.validate()) return;
 
+    final identity = _identityController.text.trim();
+    final password = _passwordController.text.trim();
+    
+    final isPhone = RegExp(r'^\+?[0-9]+$').hasMatch(identity);
+
     context.read<AuthCubit>().login(
-      _emailController.text.trim(),
-      _passwordController.text.trim(),
-      isPhoneLogin: false,
+      identity, 
+      password,
+      isPhoneLogin: isPhone,
     );
   }
-
-  // void _showAccountNotFoundDialog() {
-  //   showDialog(
-  //     context: context,
-  //     builder: (context) => AccountNotFoundDialog(
-  //       onCreateAccount: () {
-  //         Navigator.pushNamed(context, AppRoutes.register);
-  //       },
-  //       onCheckAgain: () {
-  //         _emailController.clear();
-  //         _passwordController.clear();
-  //       },
-  //     ),
-  //   );
-  // }
 
   @override
   Widget build(BuildContext context) {
     return BlocListener<AuthCubit, AuthState>(
       listener: (context, state) {
         if (state is AuthError) {
-          if (state.message.contains('Invalid login credentials')) {
-            // _showAccountNotFoundDialog();
-          } else {
-            UiUtils.showError(context, state.message);
-          }
+          UiUtils.showError(context, state.message);
         } else if (state is Authenticated) {
           UiUtils.showSuccess(context, "Welcome back!");
           Navigator.pushNamedAndRemoveUntil(context, AppRoutes.home, (route) => false);
@@ -88,7 +73,7 @@ class _LoginScreenState extends State<LoginScreen> {
                 children: [
                   const SizedBox(height: AppSizes.p20),
                   // const Center(child: AtamanLogoFull(height: 100)),
-                  // const SizedBox(height: AppSizes.p48),
+                  // const SizedBox(height: AppSizes.p32),s
 
                   Text(
                     "Welcome Back",
@@ -97,21 +82,19 @@ class _LoginScreenState extends State<LoginScreen> {
                   ),
                   const SizedBox(height: AppSizes.p8),
                   const Text(
-                    "Sign in to access your records.",
+                    "Sign in with your email or mobile number.",
                     style: AppTextStyles.bodyLarge,
                     textAlign: TextAlign.left,
                   ),
                   const SizedBox(height: AppSizes.p48),
 
                   AtamanTextField(
-                    label: "Email Address",
-                    // hintText: "Enter your email",
-                    controller: _emailController,
-                    prefixIcon: Icons.email_outlined,
-                    keyboardType: TextInputType.emailAddress,
+                    label: "Email or Mobile Number",
+                    hintText: "Enter email or phone",
+                    controller: _identityController,
+                    prefixIcon: Icons.person_outline,
                     validator: (val) {
-                      if (val == null || val.isEmpty) return AppStrings.fieldRequired;
-                      if (!val.contains('@')) return AppStrings.invalidEmail;
+                      if (val == null || val.isEmpty) return "This field is required";
                       return null;
                     },
                   ),
@@ -119,20 +102,18 @@ class _LoginScreenState extends State<LoginScreen> {
 
                   AtamanTextField(
                     label: AppStrings.passwordLabel,
-                    // hintText: "••••••••",
+                    hintText: "••••••••",
                     controller: _passwordController,
                     prefixIcon: Icons.lock_outline,
                     isPassword: true,
                     validator: (val) =>
-                        val != null && val.isEmpty ? AppStrings.fieldRequired : null,
+                        val != null && val.isEmpty ? "Please enter your password" : null,
                   ),
 
                   Align(
                     alignment: Alignment.centerRight,
                     child: TextButton(
-                      onPressed: () {
-                        // TODO: Implement Forgot Password
-                      },
+                      onPressed: () {},
                       child: Text(
                         AppStrings.forgotPassword,
                         style: AppTextStyles.caption.copyWith(
@@ -142,7 +123,7 @@ class _LoginScreenState extends State<LoginScreen> {
                       ),
                     ),
                   ),
-
+                  
                   const SizedBox(height: AppSizes.p32),
 
                   BlocBuilder<AuthCubit, AuthState>(
@@ -157,22 +138,13 @@ class _LoginScreenState extends State<LoginScreen> {
 
                   const SizedBox(height: AppSizes.p32),
 
-                  // Alternative Login Section
                   Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                    mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      TextButton.icon(
-                        onPressed: () {},
-                        icon: const Icon(Icons.face_retouching_natural, color: AppColors.textSecondary),
-                        label: const Text("Face ID", style: AppTextStyles.bodyMedium),
-                      ),
-                      const SizedBox(width: AppSizes.p16),
-                      TextButton.icon(
-                        onPressed: () {
-                          Navigator.pushNamed(context, AppRoutes.register);
-                        },
-                        icon: const Icon(Icons.person_add_outlined, color: AppColors.textSecondary),
-                        label: const Text("Create Account", style: AppTextStyles.bodyMedium),
+                      const Text("Don't have an account?", style: AppTextStyles.bodyMedium),
+                      TextButton(
+                        onPressed: () => Navigator.pushNamed(context, AppRoutes.register),
+                        child: const Text("Create Account", style: TextStyle(fontWeight: FontWeight.bold)),
                       ),
                     ],
                   ),
