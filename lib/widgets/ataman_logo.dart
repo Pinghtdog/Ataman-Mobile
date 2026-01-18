@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 class AtamanLogoFull extends StatelessWidget {
   final double height;
 
-  const AtamanLogoFull({super.key, this.height = 200});
+  const AtamanLogoFull({super.key, this.height = 180});
 
   @override
   Widget build(BuildContext context) {
