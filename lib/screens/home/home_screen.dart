@@ -25,67 +25,69 @@ class HomeScreen extends StatelessWidget {
             physics: const BouncingScrollPhysics(),
             child: Column(
               children: [
-                Stack(
-                  clipBehavior: Clip.none,
-                  children: [
-                    AtamanHeader(
-                      height: 220,
-                      child: SafeArea(
-                        child: Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            Column(
-                              // mainAxisSize: MainAxisSize.min,
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  "Maogmang Aga,",
-                                  style: AppTextStyles.bodySmall.copyWith(
-                                    color: Colors.white70,
+                // Use a Container to define the hit-testable area for the header and card
+                SizedBox(
+                  height: 340, // Header (220) + overlap logic
+                  child: Stack(
+                    children: [
+                      AtamanHeader(
+                        height: 240,
+                        child: SafeArea(
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    "Maogmang Aga,",
+                                    style: AppTextStyles.bodySmall.copyWith(
+                                      color: Colors.white70,
+                                    ),
                                   ),
-                                ),
-                                Text(
-                                  userName,
-                                  style: AppTextStyles.h2.copyWith(
+                                  Text(
+                                    userName,
+                                    style: AppTextStyles.h2.copyWith(
+                                      color: Colors.white,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              Align(
+                                alignment: Alignment.topRight,
+                                child: Container(
+                                  padding: const EdgeInsets.all(AppSizes.p8),
+                                  decoration: BoxDecoration(
+                                    color: Colors.white.withOpacity(0.2),
+                                    shape: BoxShape.circle,
+                                  ),
+                                  child: const Icon(
+                                    Icons.notifications_none_rounded,
                                     color: Colors.white,
+                                    size: AppSizes.iconMedium,
                                   ),
-                                ),
-                              ],
-                            ),
-                            Align(
-                              alignment: Alignment.topRight,
-                              child: Container(
-                                padding: const EdgeInsets.all(AppSizes.p8),
-                                decoration: BoxDecoration(
-                                  color: Colors.white.withOpacity(0.2),
-                                  shape: BoxShape.circle,
-                                ),
-                                child: const Icon(
-                                  Icons.notifications_none_rounded,
-                                  color: Colors.white,
-                                  size: AppSizes.iconMedium,
                                 ),
                               ),
-                            ),
-                          ],
+                            ],
+                          ),
                         ),
                       ),
-                    ),
-
-                    Positioned(
-                      bottom: -110,
-                      left: 0,
-                      right: 0,
-                      child: SmartTriageCard(
-                        onTap: () {
-                          // TODO: Navigate to AI Triage
-                        },
+                      Positioned(
+                        bottom: 0, // This keeps it inside the 340px height area
+                        left: 0,
+                        right: 0,
+                        child: SmartTriageCard(
+                          onTap: () {
+                            debugPrint("Triage Card Tapped");
+                            Navigator.of(context, rootNavigator: true).pushNamed(AppRoutes.triage);
+                          },
+                        ),
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
 
-                const SizedBox(height: 130),
+                const SizedBox(height: AppSizes.p24),
 
                 Padding(
                   padding: const EdgeInsets.symmetric(horizontal: AppSizes.p24),

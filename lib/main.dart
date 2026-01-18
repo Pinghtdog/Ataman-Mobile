@@ -5,6 +5,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'package:flutter_gemini/flutter_gemini.dart';
 
 import 'constants/constants.dart';
 import 'screens/auth/login_screen.dart';
@@ -14,9 +15,24 @@ import 'screens/auth/id_verification_screen.dart';
 import 'screens/auth/register_email_screen.dart';
 import 'screens/ataman_base_screen.dart';
 import 'screens/splash_screen.dart';
+import 'screens/triage/triage_input_screen.dart';
+import 'screens/triage/triage_result_screen.dart';
+
 import 'logic/auth/auth_cubit.dart';
+import 'logic/triage/triage_cubit.dart';
+import 'logic/facility/facility_cubit.dart';
+import 'logic/booking/booking_cubit.dart';
+import 'logic/emergency/emergency_cubit.dart';
+import 'logic/profile/profile_cubit.dart';
+
+import 'data/models/triage_model.dart';
 import 'data/repositories/auth_repository.dart';
 import 'data/repositories/user_repository.dart';
+import 'data/repositories/triage_repository.dart';
+import 'data/repositories/facility_repository.dart';
+import 'data/repositories/booking_repository.dart';
+import 'data/repositories/emergency_repository.dart';
+
 import 'utils/injector.dart';
 import 'services/notification_service.dart';
 
@@ -39,6 +55,7 @@ void main() async {
 
     final supabaseUrl = dotenv.env['SUPABASE_URL'];
     final supabaseAnonKey = dotenv.env['SUPABASE_ANON_KEY'];
+    final geminiApiKey = dotenv.env['GEMINI_API_KEY'];
 
     if (supabaseUrl == null || supabaseAnonKey == null) {
       throw Exception("Missing Supabase credentials in .env file");
@@ -50,6 +67,10 @@ void main() async {
       url: supabaseUrl,
       anonKey: supabaseAnonKey,
     );
+
+    if (geminiApiKey != null) {
+      Gemini.init(apiKey: geminiApiKey);
+    }
 
     await Firebase.initializeApp();
     await NotificationService.initialize();
@@ -99,6 +120,31 @@ class AtamanApp extends StatelessWidget {
             userRepository: getIt<UserRepository>(),
           ),
         ),
+        BlocProvider<TriageCubit>(
+          create: (context) => TriageCubit(
+            triageRepository: getIt<TriageRepository>(),
+          ),
+        ),
+        BlocProvider<FacilityCubit>(
+          create: (context) => FacilityCubit(
+            facilityRepository: getIt<FacilityRepository>(),
+          ),
+        ),
+        BlocProvider<BookingCubit>(
+          create: (context) => BookingCubit(
+            bookingRepository: getIt<BookingRepository>(),
+          ),
+        ),
+        BlocProvider<EmergencyCubit>(
+          create: (context) => EmergencyCubit(
+            emergencyRepository: getIt<EmergencyRepository>(),
+          ),
+        ),
+        BlocProvider<ProfileCubit>(
+          create: (context) => ProfileCubit(
+            userRepository: getIt<UserRepository>(),
+          ),
+        ),
       ],
       child: MaterialApp(
         title: AppStrings.appName,
@@ -106,6 +152,15 @@ class AtamanApp extends StatelessWidget {
         theme: AppTheme.lightTheme,
 
         initialRoute: AppRoutes.splash,
+        onGenerateRoute: (settings) {
+          if (settings.name == AppRoutes.triageResult) {
+            final result = settings.arguments as TriageResult;
+            return MaterialPageRoute(
+              builder: (context) => TriageResultScreen(result: result),
+            );
+          }
+          return null;
+        },
         routes: {
           AppRoutes.splash: (context) => const SplashScreen(),
           AppRoutes.authSelection: (context) => const AuthSelectionScreen(),
@@ -114,6 +169,7 @@ class AtamanApp extends StatelessWidget {
           AppRoutes.verifyId: (context) => const IdVerificationScreen(),
           AppRoutes.registerEmail: (context) => const RegisterEmailScreen(),
           AppRoutes.home: (context) => const AtamanBaseScreen(),
+          AppRoutes.triage: (context) => const TriageInputScreen(),
         },
       ),
     );

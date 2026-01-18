@@ -1,13 +1,15 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:supabase_flutter/supabase_flutter.dart' as sb;
 import '../../constants/constants.dart';
 import '../../data/models/facility_model.dart';
 import '../../data/models/ambulance_model.dart';
+import '../../logic/facility/facility_cubit.dart';
+import '../../logic/facility/facility_state.dart';
 import '../../widgets/ataman_header.dart';
-import '../../widgets/booking/facility_card.dart';
 import '../../widgets/booking/facility_list_view.dart';
 import '../../widgets/booking/ataman_live_map.dart';
 import '../../widgets/ataman_shimmer.dart';
@@ -22,21 +24,19 @@ class BookingScreen extends StatefulWidget {
 
 class _BookingScreenState extends State<BookingScreen> {
   bool _isMapView = false;
-  bool _isLoading = true;
   final TextEditingController _searchController = TextEditingController();
   GoogleMapController? _mapController;
   Position? _currentPosition;
   
   StreamSubscription<List<Map<String, dynamic>>>? _ambulanceSubscription;
-  
-  List<Facility> _facilities = mockFacilities;
   List<Ambulance> _ambulances = [];
   Set<Marker> _markers = {};
 
   @override
   void initState() {
     super.initState();
-    _initLocationAndMarkers();
+    _initLocation();
+    context.read<FacilityCubit>().startWatchingFacilities();
     _setupAmbulanceRealtime();
   }
 
@@ -47,17 +47,12 @@ class _BookingScreenState extends State<BookingScreen> {
     super.dispose();
   }
 
-  Future<void> _initLocationAndMarkers() async {
+  Future<void> _initLocation() async {
     final pos = await LocationService.getCurrentLocation();
     if (pos != null && mounted) {
       setState(() {
         _currentPosition = pos;
-        _updateDistances(pos);
-        _refreshMarkers();
-        _isLoading = false;
       });
-    } else {
-      setState(() => _isLoading = false);
     }
   }
 
@@ -69,33 +64,18 @@ class _BookingScreenState extends State<BookingScreen> {
           if (mounted) {
             setState(() {
               _ambulances = data.map((json) => Ambulance.fromJson(json)).toList();
-              _refreshMarkers();
+              _refreshMarkers(context.read<FacilityCubit>().state);
             });
           }
         });
   }
 
-  void _updateDistances(Position pos) {
-    setState(() {
-      _facilities = _facilities.map((f) {
-        if (f.latitude != null && f.longitude != null) {
-          final double km = LocationService.calculateDistance(
-            pos.latitude,
-            pos.longitude,
-            f.latitude!,
-            f.longitude!,
-          );
-          return f.copyWith(distance: LocationService.formatDistance(km));
-        }
-        return f;
-      }).toList();
-    });
-  }
-
-  void _refreshMarkers() {
+  void _refreshMarkers(FacilityState state) {
+    if (state is! FacilityLoaded) return;
+    
     final Set<Marker> newMarkers = {};
 
-    for (var f in _facilities) {
+    for (var f in state.facilities) {
       if (f.latitude != null && f.longitude != null) {
         newMarkers.add(
           Marker(
@@ -103,7 +83,7 @@ class _BookingScreenState extends State<BookingScreen> {
             position: LatLng(f.latitude!, f.longitude!),
             infoWindow: InfoWindow(
               title: f.name, 
-              snippet: f.isDiversionActive ? "DIVERSION ACTIVE" : f.status.name,
+              snippet: f.isDiversionActive ? "DIVERSION ACTIVE" : _getFacilityStatusName(f.status),
             ),
             icon: BitmapDescriptor.defaultMarkerWithHue(
               f.isDiversionActive ? BitmapDescriptor.hueOrange :
@@ -133,105 +113,143 @@ class _BookingScreenState extends State<BookingScreen> {
     });
   }
 
+  String _getFacilityStatusName(FacilityStatus status) {
+    switch (status) {
+      case FacilityStatus.available: return "Available";
+      case FacilityStatus.congested: return "Congested";
+      case FacilityStatus.closed: return "Closed";
+    }
+  }
+
+  List<Facility> _processFacilities(List<Facility> facilities) {
+    if (_currentPosition == null) return facilities;
+    
+    return facilities.map((f) {
+      if (f.latitude != null && f.longitude != null) {
+        final double km = LocationService.calculateDistance(
+          _currentPosition!.latitude,
+          _currentPosition!.longitude,
+          f.latitude!,
+          f.longitude!,
+        );
+        return f.copyWith(distance: LocationService.formatDistance(km));
+      }
+      return f;
+    }).toList();
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppColors.background,
-      body: Stack(
-        children: [
-          Column(
+      body: BlocConsumer<FacilityCubit, FacilityState>(
+        listener: (context, state) {
+          if (state is FacilityLoaded) {
+            _refreshMarkers(state);
+          }
+        },
+        builder: (context, state) {
+          return Stack(
             children: [
-              AtamanHeader(
-                height: 220,
-                padding: const EdgeInsets.only(
-                  top: 60, 
-                  left: AppSizes.p24, 
-                  right: AppSizes.p24, 
-                  bottom: AppSizes.p20
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      "Book Appointment",
-                      style: AppTextStyles.h2.copyWith(color: Colors.white),
+              Column(
+                children: [
+                  AtamanHeader(
+                    height: 220,
+                    padding: const EdgeInsets.only(
+                      top: 60, 
+                      left: AppSizes.p24, 
+                      right: AppSizes.p24, 
+                      bottom: AppSizes.p20
                     ),
-                    const SizedBox(height: AppSizes.p8),
-                    Text(
-                      "Find the nearest medical facility",
-                      style: AppTextStyles.bodySmall.copyWith(color: Colors.white.withOpacity(0.8)),
-                    ),
-                    const SizedBox(height: AppSizes.p20),
-                    Container(
-                      width: double.infinity,
-                      height: 52,
-                      decoration: BoxDecoration(
-                        color: Colors.white.withOpacity(0.2),
-                        borderRadius: BorderRadius.circular(AppSizes.radiusMedium),
-                      ),
-                      child: TextField(
-                        controller: _searchController,
-                        style: AppTextStyles.bodyMedium.copyWith(color: AppColors.primary),
-                        cursorColor: Colors.white,
-                        textAlignVertical: TextAlignVertical.center,
-                        decoration: InputDecoration(
-                          isDense: true,
-                          border: InputBorder.none,
-                          hintText: "Search health centers, hospitals...",
-                          hintStyle: AppTextStyles.bodyMedium.copyWith(
-                            color: Colors.black45.withOpacity(0.6),
-                          ),
-                          prefixIcon: const Icon(
-                            Icons.search_rounded, 
-                            color: AppColors.primary,
-                            size: 22,
-                          ),
-                          contentPadding: const EdgeInsets.only(right: AppSizes.p16),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          "Book Appointment",
+                          style: AppTextStyles.h2.copyWith(color: Colors.white),
                         ),
-                      ),
+                        const SizedBox(height: AppSizes.p8),
+                        Text(
+                          "Find the nearest medical facility",
+                          style: AppTextStyles.bodySmall.copyWith(color: Colors.white.withOpacity(0.8)),
+                        ),
+                        const SizedBox(height: AppSizes.p20),
+                        Container(
+                          width: double.infinity,
+                          height: 52,
+                          decoration: BoxDecoration(
+                            color: Colors.white.withOpacity(0.2),
+                            borderRadius: BorderRadius.circular(AppSizes.radiusMedium),
+                          ),
+                          child: TextField(
+                            controller: _searchController,
+                            style: AppTextStyles.bodyMedium.copyWith(color: AppColors.primary),
+                            cursorColor: Colors.white,
+                            textAlignVertical: TextAlignVertical.center,
+                            decoration: InputDecoration(
+                              isDense: true,
+                              border: InputBorder.none,
+                              hintText: "Search health centers, hospitals...",
+                              hintStyle: AppTextStyles.bodyMedium.copyWith(
+                                color: Colors.black45.withOpacity(0.6),
+                              ),
+                              prefixIcon: const Icon(
+                                Icons.search_rounded, 
+                                color: AppColors.primary,
+                                size: 22,
+                              ),
+                              contentPadding: const EdgeInsets.only(right: AppSizes.p16),
+                            ),
+                          ),
+                        ),
+                      ],
                     ),
-                  ],
-                ),
-              ),
-              Expanded(
-                child: _isLoading 
-                  ? _buildShimmerList()
-                  : _isMapView 
-                    ? AtamanLiveMap(
-                        currentPosition: _currentPosition,
-                        markers: _markers,
-                        onMapCreated: (controller) => _mapController = controller,
-                      ) 
-                    : FacilityListView(
-                        facilities: _facilities,
-                        onFacilityTap: (facility) {
-                          // Handle navigation
-                        },
-                      ),
-              ),
-            ],
-          ),
-
-          if (!_isLoading)
-            Positioned(
-              bottom: AppSizes.p24,
-              left: 200,
-              right: 0,
-              child: Center(
-                child: FloatingActionButton.extended(
-                  onPressed: () => setState(() => _isMapView = !_isMapView),
-                  backgroundColor: AppColors.textPrimary,
-                  icon: Icon(_isMapView ? Icons.format_list_bulleted_rounded : Icons.map_outlined,
-                      color: Colors.white),
-                  label: Text(
-                    _isMapView ? "List View" : "Map View",
-                    style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
                   ),
-                  elevation: 4,
-                ),
+                  Expanded(
+                    child: state is FacilityLoading
+                      ? _buildShimmerList()
+                      : state is FacilityError
+                        ? Center(child: Text(state.message))
+                        : state is FacilityLoaded
+                          ? _isMapView 
+                            ? AtamanLiveMap(
+                                currentPosition: _currentPosition,
+                                markers: _markers,
+                                onMapCreated: (controller) => _mapController = controller,
+                              ) 
+                            : FacilityListView(
+                                facilities: _processFacilities(state.facilities),
+                                onFacilityTap: (facility) {
+                                  // Handle navigation to details/booking
+                                },
+                              )
+                          : const SizedBox.shrink(),
+                  ),
+                ],
               ),
-            ),
-        ],
+
+              if (state is FacilityLoaded)
+                Positioned(
+                  bottom: AppSizes.p24,
+                  left: 0,
+                  right: 0,
+                  child: Center(
+                    child: FloatingActionButton.extended(
+                      onPressed: () => setState(() => _isMapView = !_isMapView),
+                      backgroundColor: AppColors.textPrimary,
+                      icon: Icon(_isMapView ? Icons.format_list_bulleted_rounded : Icons.map_outlined,
+                          color: Colors.white),
+                      label: Text(
+                        _isMapView ? "List View" : "Map View",
+                        style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+                      ),
+                      elevation: 4,
+                    ),
+                  ),
+                ),
+            ],
+          );
+        },
       ),
     );
   }
@@ -245,15 +263,5 @@ class _BookingScreenState extends State<BookingScreen> {
         child: AtamanShimmer.rounded(height: 160),
       ),
     );
-  }
-}
-
-extension on FacilityStatus {
-  String get name {
-    switch (this) {
-      case FacilityStatus.available: return "Available";
-      case FacilityStatus.congested: return "Congested";
-      case FacilityStatus.closed: return "Closed";
-    }
   }
 }

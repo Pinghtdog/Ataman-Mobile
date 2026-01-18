@@ -7,31 +7,65 @@ enum TriageUrgency {
   nonUrgent, // Green - Standard care
 }
 
+enum TriageInputType {
+  buttons,
+  text,
+}
+
+class TriageStep {
+  final String question;
+  final List<String> options;
+  final TriageInputType inputType;
+  final bool isFinal;
+  final TriageResult? result;
+
+  TriageStep({
+    required this.question,
+    this.options = const [],
+    this.inputType = TriageInputType.buttons,
+    this.isFinal = false,
+    this.result,
+  });
+
+  factory TriageStep.fromJson(Map<String, dynamic> json) {
+    return TriageStep(
+      question: json['question'] ?? '',
+      options: List<String>.from(json['options'] ?? []),
+      inputType: json['input_type'] == 'TEXT' ? TriageInputType.text : TriageInputType.buttons,
+      isFinal: json['is_final'] ?? false,
+      result: json['result'] != null ? TriageResult.fromJson(json['result']) : null,
+    );
+  }
+}
+
 class TriageResult {
-  final String id;
-  final String userId;
+  final String? id;
+  final String? userId;
   final String rawSymptoms;
   final TriageUrgency urgency;
   final String specialty;
-  final DateTime createdAt;
+  final String? reason;
+  final DateTime? createdAt;
 
   TriageResult({
-    required this.id,
-    required this.userId,
+    this.id,
+    this.userId,
     required this.rawSymptoms,
     required this.urgency,
     required this.specialty,
-    required this.createdAt,
+    this.reason,
+    this.createdAt,
   });
 
   factory TriageResult.fromJson(Map<String, dynamic> json) {
     return TriageResult(
       id: json['id'],
       userId: json['user_id'],
-      rawSymptoms: json['raw_symptoms'],
+      rawSymptoms: json['raw_symptoms'] ?? '',
       urgency: _parseUrgency(json['urgency']),
       specialty: json['specialty'] ?? 'General Medicine',
-      createdAt: DateTime.parse(json['created_at']),
+      reason: json['reason'],
+      createdAt: json['created_at'] != null ? DateTime.parse(json['created_at']) : null,
     );
   }
 
