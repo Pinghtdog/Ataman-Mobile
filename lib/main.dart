@@ -40,6 +40,11 @@ import 'data/repositories/prescription_repository.dart';
 import 'utils/injector.dart';
 import 'services/notification_service.dart';
 
+
+//ako pa ni tarongon ang folders kay samok basin nice core(mga services, utiltie etc...)
+//then feature(inside feature folder kay ang mga features
+//e.g. telemed(inside telemed is the repo, data, logic, etc)
+
 class MyHttpOverrides extends HttpOverrides {
   @override
   HttpClient createHttpClient(SecurityContext? context) {
