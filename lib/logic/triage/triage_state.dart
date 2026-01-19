@@ -14,7 +14,7 @@ class TriageLoading extends TriageState {}
 
 class TriageStepLoaded extends TriageState {
   final TriageStep step;
-  final List<Map<String, String>> history; // history of questions and answers
+  final List<Map<String, String>> history;
 
   const TriageStepLoaded(this.step, {this.history = const []});
 
@@ -40,8 +40,10 @@ class TriageHistoryLoaded extends TriageState {
 
 class TriageError extends TriageState {
   final String message;
-  const TriageError(this.message);
+  final List<Map<String, String>> history;
+
+  const TriageError(this.message, {this.history = const []});
 
   @override
-  List<Object?> get props => [message];
+  List<Object?> get props => [message, history];
 }

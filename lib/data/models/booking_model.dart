@@ -10,6 +10,8 @@ class Booking {
   final String? triageResult;
   final String? triagePriority;
   final DateTime createdAt;
+  final String? serviceId;
+  final String? familyMemberId;
 
   Booking({
     required this.id,
@@ -21,6 +23,8 @@ class Booking {
     this.triageResult,
     this.triagePriority,
     required this.createdAt,
+    this.serviceId,
+    this.familyMemberId,
   });
 
   factory Booking.fromJson(Map<String, dynamic> json) {
@@ -34,6 +38,8 @@ class Booking {
       triageResult: json['triage_result'],
       triagePriority: json['triage_priority'],
       createdAt: DateTime.parse(json['created_at']),
+      serviceId: json['service_id']?.toString(),
+      familyMemberId: json['family_member_id']?.toString(),
     );
   }
 
@@ -45,6 +51,8 @@ class Booking {
       'status': status.name,
       'triage_result': triageResult,
       'triage_priority': triagePriority,
+      'service_id': serviceId,
+      'family_member_id': familyMemberId,
     };
   }
 

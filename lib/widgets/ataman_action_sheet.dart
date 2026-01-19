@@ -40,6 +40,9 @@ class AtamanActionSheet extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
+      constraints: BoxConstraints(
+        maxHeight: MediaQuery.of(context).size.height * 0.8,
+      ),
       padding: EdgeInsets.only(
         bottom: MediaQuery.of(context).viewInsets.bottom + AppSizes.p24,
       ),
@@ -65,34 +68,41 @@ class AtamanActionSheet extends StatelessWidget {
             style: AppTextStyles.h3,
           ),
           const SizedBox(height: AppSizes.p16),
-          ...options.map((option) => ListTile(
-            contentPadding: const EdgeInsets.symmetric(horizontal: AppSizes.p24),
-            leading: Container(
-              padding: const EdgeInsets.all(8),
-              decoration: BoxDecoration(
-                color: option.isDestructive 
-                    ? AppColors.danger.withOpacity(0.1) 
-                    : AppColors.primary.withOpacity(0.1),
-                shape: BoxShape.circle,
-              ),
-              child: Icon(
-                option.icon, 
-                color: option.isDestructive ? AppColors.danger : AppColors.primary,
-                size: 20,
+          Flexible(
+            child: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: options.map((option) => ListTile(
+                  contentPadding: const EdgeInsets.symmetric(horizontal: AppSizes.p24),
+                  leading: Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: option.isDestructive 
+                          ? AppColors.danger.withOpacity(0.1) 
+                          : AppColors.primary.withOpacity(0.1),
+                      shape: BoxShape.circle,
+                    ),
+                    child: Icon(
+                      option.icon, 
+                      color: option.isDestructive ? AppColors.danger : AppColors.primary,
+                      size: 20,
+                    ),
+                  ),
+                  title: Text(
+                    option.title,
+                    style: AppTextStyles.bodyLarge.copyWith(
+                      color: option.isDestructive ? AppColors.danger : AppColors.textPrimary,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  onTap: () {
+                    Navigator.pop(context);
+                    option.onTap();
+                  },
+                )).toList(),
               ),
             ),
-            title: Text(
-              option.title,
-              style: AppTextStyles.bodyLarge.copyWith(
-                color: option.isDestructive ? AppColors.danger : AppColors.textPrimary,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-            onTap: () {
-              Navigator.pop(context);
-              option.onTap();
-            },
-          )),
+          ),
         ],
       ),
     );

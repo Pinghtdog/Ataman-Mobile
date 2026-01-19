@@ -8,7 +8,7 @@ import '../../logic/emergency/emergency_state.dart';
 import '../../logic/auth/auth_cubit.dart';
 import '../../data/models/emergency_request_model.dart';
 import '../../services/location_service.dart';
-import '../../widgets/ataman_header.dart';
+import '../../widgets/ataman_simple_header.dart';
 
 class EmergencyRequestScreen extends StatefulWidget {
   const EmergencyRequestScreen({super.key});
@@ -91,13 +91,24 @@ class _EmergencyRequestScreenState extends State<EmergencyRequestScreen> {
   Widget _buildInitialView() {
     return Column(
       children: [
-        const AtamanHeader(
+        AtamanSimpleHeader(
           height: 120,
-          child: Center(
-            child: Text(
-              "Emergency Assistance",
-              style: TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold),
-            ),
+          child: Stack(
+            children: [
+              Align(
+                alignment: Alignment.centerLeft,
+                child: IconButton(
+                  icon: const Icon(Icons.arrow_back_ios_new, color: Colors.white, size: 20),
+                  onPressed: () => Navigator.pop(context),
+                ),
+              ),
+              const Center(
+                child: Text(
+                  "Emergency Assistance",
+                  style: TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold),
+                ),
+              ),
+            ],
           ),
         ),
         Expanded(
@@ -175,10 +186,11 @@ class _EmergencyRequestScreenState extends State<EmergencyRequestScreen> {
     );
   }
 
+  //for demo
   Widget _buildActiveRequestView(EmergencyRequest request) {
     return Column(
       children: [
-        const AtamanHeader(height: 100, child: Center(child: Text("Request Active", style: TextStyle(color: Colors.white)))),
+        const AtamanSimpleHeader(height: 100, child: Center(child: Text("Request Active", style: TextStyle(color: Colors.white)))),
         Expanded(
           child: Padding(
             padding: const EdgeInsets.all(24.0),

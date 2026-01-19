@@ -1,45 +1,38 @@
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../models/user_model.dart';
+import 'base_repository.dart';
 
-class UserRepository {
-  SupabaseClient get _supabase => Supabase.instance.client;
-
-  // Get User Profile from 'users' table
+class UserRepository extends BaseRepository {
+  
   Future<UserModel?> getUserProfile(String userId) async {
-    try {
-      final data = await _supabase
-          .from('users')
-          .select()
-          .eq('id', userId)
-          .single();
-      
-      return UserModel.fromMap(data);
-    } catch (e) {
-      print('Error fetching user profile: $e');
-      return null;
-    }
+    return await getCached<UserModel?>(
+      'user_profile_$userId',
+      () async {
+        final data = await safeCall(() => supabase
+            .from('users')
+            .select()
+            .eq('id', userId)
+            .single());
+        
+        return UserModel.fromMap(data);
+      },
+      ttl: const Duration(minutes: 15), // Profile can be cached longer
+    );
   }
 
-  // Update User Profile
   Future<void> updateProfile(UserModel user) async {
-    try {
-      await _supabase
-          .from('users')
-          .upsert(user.toMap());
-    } catch (e) {
-      throw Exception('Update User Failed: $e');
-    }
+    await safeCall(() => supabase
+        .from('users')
+        .upsert(user.toMap()));
+    
+    // Invalidate cache after update
+    cache.invalidate('user_profile_${user.id}');
   }
 
-  // Update FCM Token
   Future<void> updateFCMToken(String userId, String token) async {
-    try {
-      await _supabase
-          .from('users')
-          .update({'fcm_token': token})
-          .eq('id', userId);
-    } catch (e) {
-      print('Error updating FCM token: $e');
-    }
+    await safeCall(() => supabase
+        .from('users')
+        .update({'fcm_token': token})
+        .eq('id', userId));
   }
 }

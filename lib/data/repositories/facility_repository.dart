@@ -1,50 +1,51 @@
-import 'package:supabase_flutter/supabase_flutter.dart';
 import '../models/facility_model.dart';
+import 'base_repository.dart';
 
-class FacilityRepository {
-  final SupabaseClient _supabase = Supabase.instance.client;
-
+class FacilityRepository extends BaseRepository {
+  
   Future<List<Facility>> getFacilities() async {
-    try {
-      final response = await _supabase
-          .from('facilities')
-          .select()
-          .order('name');
-      
-      return (response as List).map((json) => Facility.fromJson(json)).toList();
-    } catch (e) {
-      throw Exception('Failed to fetch facilities: $e');
-    }
+    return await getCached<List<Facility>>(
+      'all_facilities',
+      () async {
+        final response = await safeCall(() => supabase
+            .from('facilities')
+            .select()
+            .order('name'));
+        
+        return (response as List).map((json) => Facility.fromJson(json)).toList();
+      },
+      ttl: const Duration(minutes: 10),
+    );
   }
 
   Future<List<Facility>> getFacilitiesByBarangay(String barangay) async {
-    try {
-      final response = await _supabase
-          .from('facilities')
-          .select()
-          .eq('barangay', barangay);
-      
-      return (response as List).map((json) => Facility.fromJson(json)).toList();
-    } catch (e) {
-      throw Exception('Failed to fetch facilities in $barangay: $e');
-    }
+    return await getCached<List<Facility>>(
+      'facilities_brgy_$barangay',
+      () async {
+        final response = await safeCall(() => supabase
+            .from('facilities')
+            .select()
+            .eq('barangay', barangay));
+        
+        return (response as List).map((json) => Facility.fromJson(json)).toList();
+      }
+    );
   }
 
   Stream<List<Facility>> watchFacilities() {
-    return _supabase
+    return supabase
         .from('facilities')
         .stream(primaryKey: ['id'])
         .map((data) => data.map((json) => Facility.fromJson(json)).toList());
   }
 
   Future<void> updateQueueCount(String facilityId, int count) async {
-    try {
-      await _supabase
-          .from('facilities')
-          .update({'current_queue_length': count})
-          .eq('id', facilityId);
-    } catch (e) {
-      throw Exception('Failed to update queue count: $e');
-    }
+    await safeCall(() => supabase
+        .from('facilities')
+        .update({'current_queue_length': count})
+        .eq('id', facilityId));
+    
+    // Invalidate relevant caches
+    cache.invalidate('all_facilities');
   }
 }

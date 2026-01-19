@@ -7,6 +7,7 @@ import '../../logic/profile/profile_state.dart';
 import '../../data/models/user_model.dart';
 import '../../widgets/ataman_avatar.dart';
 import '../../widgets/ataman_header.dart';
+import '../../widgets/ataman_badge.dart';
 import '../../widgets/profile/profile_feature_card.dart';
 import '../../widgets/profile/profile_list_tile.dart';
 import '../../widgets/profile/profile_square_card.dart';
@@ -58,8 +59,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
             builder: (context, authState) {
               String fullName = "Guest";
               String address = "Naga City Resident";
-              String idStatus = "UNVERIFIED";
-              Color statusColor = Colors.grey;
+              bool isVerified = false;
 
               final user = profileState is ProfileSuccess ? profileState.user : _cachedUser;
 
@@ -68,11 +68,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 address = user.barangay != null 
                     ? "${user.barangay}, Naga City" 
                     : "Naga City Resident";
-                
-                if (user.isProfileComplete) {
-                  idStatus = "VERIFIED";
-                  statusColor = AppColors.success;
-                }
+                isVerified = user.isProfileComplete;
               } else if (authState is Authenticated) {
                 fullName = authState.profile?.fullName ?? authState.user!.userMetadata?['full_name'] ?? "User";
                 address = authState.profile?.barangay != null ? "${authState.profile!.barangay}, Naga City" : "Naga City Resident";
@@ -232,21 +228,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                     ProfileListTile(
                                       title: "Indigency Verification",
                                       icon: Icons.verified_user_outlined,
-                                      trailing: Container(
-                                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                                        decoration: BoxDecoration(
-                                            color: statusColor.withOpacity(0.1),
-                                            borderRadius: BorderRadius.circular(AppSizes.radiusSmall)
-                                        ),
-                                        child: Text(
-                                          idStatus,
-                                          style: TextStyle(
-                                            color: statusColor,
-                                            fontWeight: FontWeight.bold,
-                                            fontSize: 12,
-                                          ),
-                                        ),
-                                      ),
+                                      trailing: isVerified 
+                                        ? AtamanBadge.success(text: "VERIFIED")
+                                        : AtamanBadge(text: "UNVERIFIED", color: Colors.grey),
                                       onTap: () {},
                                     ),
                                     const Divider(height: 1, indent: 60, endIndent: 20),

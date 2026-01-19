@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart' show rootBundle;
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:geolocator/geolocator.dart';
 
@@ -14,6 +15,16 @@ class AtamanLiveMap extends StatelessWidget {
     required this.onMapCreated,
   });
 
+  Future<void> _applyMapStyle(GoogleMapController controller) async {
+    try {
+      final String style = await rootBundle.loadString('assets/map_style.json');
+      await controller.setMapStyle(style);
+      debugPrint("Map style applied successfully");
+    } catch (e) {
+      debugPrint("Error applying map style: $e");
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final CameraPosition initialCamera = CameraPosition(
@@ -25,7 +36,10 @@ class AtamanLiveMap extends StatelessWidget {
 
     return GoogleMap(
       initialCameraPosition: initialCamera,
-      onMapCreated: onMapCreated,
+      onMapCreated: (controller) async {
+        await _applyMapStyle(controller);
+        onMapCreated(controller);
+      },
       myLocationEnabled: true,
       myLocationButtonEnabled: false,
       markers: markers,

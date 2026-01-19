@@ -1,44 +1,41 @@
-import 'package:supabase_flutter/supabase_flutter.dart';
 import '../models/booking_model.dart';
+import 'base_repository.dart';
 
-class BookingRepository {
-  final SupabaseClient _supabase = Supabase.instance.client;
-
+class BookingRepository extends BaseRepository {
+  
   Future<void> createBooking(Booking booking) async {
-    try {
-      await _supabase.from('bookings').insert(booking.toJson());
-    } catch (e) {
-      throw Exception('Failed to create booking: $e');
-    }
+    await safeCall(() => supabase.from('bookings').insert(booking.toJson()));
+    // Invalidate user's booking list cache
+    cache.invalidate('user_bookings_${booking.userId}');
   }
 
   Future<List<Booking>> getUserBookings(String userId) async {
-    try {
-      final response = await _supabase
-          .from('bookings')
-          .select()
-          .eq('user_id', userId)
-          .order('appointment_time', ascending: false);
-      
-      return (response as List).map((json) => Booking.fromJson(json)).toList();
-    } catch (e) {
-      throw Exception('Failed to fetch user bookings: $e');
-    }
+    return await getCached<List<Booking>>(
+      'user_bookings_$userId',
+      () async {
+        final response = await safeCall(() => supabase
+            .from('bookings')
+            .select()
+            .eq('user_id', userId)
+            .order('appointment_time', ascending: false));
+        
+        return (response as List).map((json) => Booking.fromJson(json)).toList();
+      },
+      ttl: const Duration(minutes: 2), // Short TTL for dynamic data
+    );
   }
 
-  Future<void> cancelBooking(String bookingId) async {
-    try {
-      await _supabase
-          .from('bookings')
-          .update({'status': 'cancelled'})
-          .eq('id', bookingId);
-    } catch (e) {
-      throw Exception('Failed to cancel booking: $e');
-    }
+  Future<void> cancelBooking(String bookingId, String userId) async {
+    await safeCall(() => supabase
+        .from('bookings')
+        .update({'status': 'cancelled'})
+        .eq('id', bookingId));
+    
+    cache.invalidate('user_bookings_$userId');
   }
 
   Stream<List<Booking>> watchUserBookings(String userId) {
-    return _supabase
+    return supabase
         .from('bookings')
         .stream(primaryKey: ['id'])
         .eq('user_id', userId)

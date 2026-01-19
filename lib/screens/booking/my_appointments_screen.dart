@@ -5,7 +5,7 @@ import '../../constants/constants.dart';
 import '../../logic/booking/booking_cubit.dart';
 import '../../logic/booking/booking_state.dart';
 import '../../logic/auth/auth_cubit.dart';
-import '../../widgets/ataman_header.dart';
+import '../../widgets/ataman_simple_header.dart';
 import '../../widgets/booking/ataman_booking_ticket.dart';
 import '../../widgets/booking/booking_qr_dialog.dart';
 import '../../data/models/booking_model.dart';
@@ -30,7 +30,7 @@ class _MyAppointmentsScreenState extends State<MyAppointmentsScreen> with Single
   void _loadBookings() {
     final authState = context.read<AuthCubit>().state;
     if (authState is Authenticated) {
-      context.read<BookingCubit>().startWatchingBookings(authState.user!.id);
+      context.read<BookingCubit>().startWatchingBookings(authState.user.id);
     }
   }
 
@@ -46,14 +46,26 @@ class _MyAppointmentsScreenState extends State<MyAppointmentsScreen> with Single
       backgroundColor: AppColors.background,
       body: Column(
         children: [
-          AtamanHeader(
-            height: 140,
+          AtamanSimpleHeader(
+            height: 160,
             child: Column(
               mainAxisAlignment: MainAxisAlignment.end,
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  "My Appointments",
-                  style: AppTextStyles.h2.copyWith(color: Colors.white),
+                Row(
+                  children: [
+                    IconButton(
+                      icon: const Icon(Icons.arrow_back_ios_new, color: Colors.white, size: 20),
+                      onPressed: () => Navigator.pop(context),
+                      padding: EdgeInsets.zero,
+                      constraints: const BoxConstraints(),
+                    ),
+                    const SizedBox(width: 16),
+                    Text(
+                      "My Appointments",
+                      style: AppTextStyles.h2.copyWith(color: Colors.white),
+                    ),
+                  ],
                 ),
                 const SizedBox(height: 16),
                 TabBar(
@@ -74,7 +86,7 @@ class _MyAppointmentsScreenState extends State<MyAppointmentsScreen> with Single
             child: BlocBuilder<BookingCubit, BookingState>(
               builder: (context, state) {
                 if (state is BookingLoading) {
-                  return const Center(child: CircularProgressIndicator());
+                  return const Center(child: CircularProgressIndicator(color: AppColors.primary));
                 } else if (state is BookingLoaded) {
                   final activeBookings = state.bookings
                       .where((b) => b.status == BookingStatus.pending || b.status == BookingStatus.confirmed)
@@ -91,7 +103,12 @@ class _MyAppointmentsScreenState extends State<MyAppointmentsScreen> with Single
                     ],
                   );
                 } else if (state is BookingError) {
-                  return Center(child: Text(state.message));
+                  return Center(
+                    child: Padding(
+                      padding: const EdgeInsets.all(24.0),
+                      child: Text(state.message, textAlign: TextAlign.center),
+                    ),
+                  );
                 }
                 return const SizedBox.shrink();
               },
@@ -104,17 +121,22 @@ class _MyAppointmentsScreenState extends State<MyAppointmentsScreen> with Single
 
   Widget _buildBookingList(List<Booking> bookings, {required bool isActive}) {
     if (bookings.isEmpty) {
-      return Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(Icons.calendar_today_outlined, size: 64, color: Colors.grey.withOpacity(0.5)),
-            const SizedBox(height: 16),
-            Text(
-              isActive ? "No active appointments" : "No appointment history",
-              style: AppTextStyles.bodyLarge.copyWith(color: Colors.grey),
-            ),
-          ],
+      return SingleChildScrollView(
+        physics: const AlwaysScrollableScrollPhysics(),
+        child: Container(
+          height: MediaQuery.of(context).size.height - 250,
+          alignment: Alignment.center,
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(Icons.calendar_today_outlined, size: 64, color: Colors.grey.withOpacity(0.5)),
+              const SizedBox(height: 16),
+              Text(
+                isActive ? "No active appointments" : "No appointment history",
+                style: AppTextStyles.bodyLarge.copyWith(color: Colors.grey),
+              ),
+            ],
+          ),
         ),
       );
     }
@@ -144,19 +166,23 @@ class _MyAppointmentsScreenState extends State<MyAppointmentsScreen> with Single
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         title: const Text("Cancel Appointment"),
         content: const Text("Are you sure you want to cancel this appointment?"),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: const Text("No"),
+            child: const Text("No", style: TextStyle(color: Colors.grey)),
           ),
           TextButton(
             onPressed: () {
-              context.read<BookingCubit>().cancelBooking(booking.id);
+              final authState = context.read<AuthCubit>().state;
+              if (authState is Authenticated) {
+                context.read<BookingCubit>().cancelBooking(booking.id, authState.user.id);
+              }
               Navigator.pop(context);
             },
-            child: const Text("Yes, Cancel", style: TextStyle(color: AppColors.danger)),
+            child: const Text("Yes, Cancel", style: TextStyle(color: AppColors.danger, fontWeight: FontWeight.bold)),
           ),
         ],
       ),

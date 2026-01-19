@@ -268,29 +268,26 @@ class _BookingScreenState extends State<BookingScreen> {
                   ),
                 ),
 
-              // Toggle Button
+              // Toggle Button - Moved to the right with space
               if (state is FacilityLoaded)
                 Positioned(
                   bottom: _selectedFacility != null ? 320 : AppSizes.p24,
-                  left: 200,
-                  right: 0,
-                  child: Center(
-                    child: FloatingActionButton.extended(
-                      onPressed: () {
-                        setState(() {
-                          _isMapView = !_isMapView;
-                          _selectedFacility = null;
-                        });
-                      },
-                      backgroundColor: AppColors.textPrimary,
-                      icon: Icon(_isMapView ? Icons.format_list_bulleted_rounded : Icons.map_outlined,
-                          color: Colors.white),
-                      label: Text(
-                        _isMapView ? "List View" : "Map View",
-                        style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
-                      ),
-                      elevation: 4,
+                  right: 24, // Space from the right
+                  child: FloatingActionButton.extended(
+                    onPressed: () {
+                      setState(() {
+                        _isMapView = !_isMapView;
+                        _selectedFacility = null;
+                      });
+                    },
+                    backgroundColor: AppColors.textPrimary,
+                    icon: Icon(_isMapView ? Icons.format_list_bulleted_rounded : Icons.map_outlined,
+                        color: Colors.white),
+                    label: Text(
+                      _isMapView ? "List View" : "Map View",
+                      style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
                     ),
+                    elevation: 4,
                   ),
                 ),
 

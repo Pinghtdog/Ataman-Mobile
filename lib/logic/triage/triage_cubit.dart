@@ -25,6 +25,15 @@ class TriageCubit extends Cubit<TriageState> {
 
   Future<void> selectOption(String question, String answer) async {
     _history.add({'question': question, 'answer': answer});
+    await _processNextStep();
+  }
+
+  // New method to retry the current state of history without adding new answers
+  Future<void> retryLastStep() async {
+    await _processNextStep();
+  }
+
+  Future<void> _processNextStep() async {
     emit(TriageLoading());
     try {
       final step = await _triageRepository.getNextStep(_history);
@@ -48,16 +57,6 @@ class TriageCubit extends Cubit<TriageState> {
     try {
       final result = await _triageRepository.performTriage(symptoms);
       emit(TriageSuccess(result));
-    } catch (e) {
-      emit(TriageError(e.toString()));
-    }
-  }
-
-  Future<void> loadHistory() async {
-    emit(TriageLoading());
-    try {
-      final history = await _triageRepository.getHistory();
-      emit(TriageHistoryLoaded(history));
     } catch (e) {
       emit(TriageError(e.toString()));
     }

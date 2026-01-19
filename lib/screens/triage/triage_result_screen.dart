@@ -146,9 +146,7 @@ class TriageResultScreen extends StatelessWidget {
               MaterialPageRoute(builder: (context) => const AtamanBaseScreen()),
               (route) => false,
             );
-            // Ideally, we'd want to switch the tab to 1 here. 
-            // Since AtamanBaseScreen uses Index 0 by default, 
-            // you might want to add a static variable or a callback to set initial index.
+            // tab1
           }
         },
         style: ElevatedButton.styleFrom(
