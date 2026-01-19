@@ -11,4 +11,7 @@ class AppRoutes {
   static const String profile = '/profile';
   static const String chat = '/chat';
   static const String history = '/history';
+  static const String emergency = '/emergency';
+  static const String bookingDetails = '/booking-details';
+  static const String myAppointments = '/my-appointments';
 }

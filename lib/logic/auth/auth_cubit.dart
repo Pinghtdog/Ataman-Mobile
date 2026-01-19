@@ -65,7 +65,7 @@ class AuthCubit extends Cubit<AuthState> {
       debugPrint('Auth State Change Event: $event');
       
       if (user != null) {
-        // Detect if this was a deep-link sign-in
+        // Deep-link sign-in
         if (event == sb.AuthChangeEvent.signedIn && state is! AuthLoading && state is! Authenticated) {
           emit(AuthEmailVerified(user));
           return;
@@ -73,7 +73,7 @@ class AuthCubit extends Cubit<AuthState> {
 
         final profile = await _userRepository.getUserProfile(user.id);
         
-        // Update FCM Token on successful authentication
+        // Update FCM Token
         try {
           final fcmToken = await NotificationService.getFCMToken();
           if (fcmToken != null) {

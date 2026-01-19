@@ -70,16 +70,22 @@ class _LoginScreenState extends State<LoginScreen> {
             }
           }
           if (state is AuthError) {
-            if (state.message.contains("incorrect") || state.message.contains("not found")) {
+            final isAccountNotFound = state.message.toLowerCase().contains("incorrect") ||
+                                     state.message.toLowerCase().contains("not found");
+            
+            if (isAccountNotFound) {
+              final identity = _identityController.text.trim();
+              final isEmail = !RegExp(r'^\+?[0-9]+$').hasMatch(identity);
+
               showDialog(
                 context: context,
+                barrierDismissible: false,
                 builder: (context) => AccountNotFoundDialog(
-                  isEmail: true,
+                  isEmail: isEmail,
                   onCreateAccount: () {
-                    Navigator.pushReplacementNamed(context, AppRoutes.register);
+                    Navigator.pushNamed(context, AppRoutes.register);
                   },
                   onRetry: () {
-                    _identityController.clear();
                     _passwordController.clear();
                   },
                 ),
@@ -114,7 +120,6 @@ class _LoginScreenState extends State<LoginScreen> {
                       const AtamanLabel(text: "EMAIL OR MOBILE NUMBER"),
                       AtamanTextField(
                         label: "",
-                        hintText: "Enter email or phone",
                         controller: _identityController,
                         prefixIcon: Icons.person_outline,
                         keyboardType: TextInputType.emailAddress,
@@ -125,7 +130,6 @@ class _LoginScreenState extends State<LoginScreen> {
                       const AtamanLabel(text: "PASSWORD"),
                       AtamanTextField(
                         label: "",
-                        hintText: "••••••••",
                         controller: _passwordController,
                         prefixIcon: Icons.lock_outline,
                         isPassword: true,

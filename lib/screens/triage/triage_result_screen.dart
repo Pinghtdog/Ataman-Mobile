@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../../constants/constants.dart';
 import '../../data/models/triage_model.dart';
 import '../../logic/triage/triage_cubit.dart';
+import '../ataman_base_screen.dart';
 
 class TriageResultScreen extends StatelessWidget {
   final TriageResult result;
@@ -60,7 +62,7 @@ class TriageResultScreen extends StatelessWidget {
             ),
             const SizedBox(height: AppSizes.p32),
             _buildDetailSection(
-              "Your Symptoms",
+              "Your Symptoms Summary",
               result.rawSymptoms,
               Icons.description_outlined,
             ),
@@ -70,8 +72,24 @@ class TriageResultScreen extends StatelessWidget {
               result.specialty,
               Icons.medical_services_outlined,
             ),
+            if (result.reason != null) ...[
+              const SizedBox(height: AppSizes.p16),
+              _buildDetailSection(
+                "Clinical Reasoning",
+                result.reason!,
+                Icons.info_outline_rounded,
+              ),
+            ],
             const SizedBox(height: AppSizes.p48),
             _buildActionButton(context),
+            const SizedBox(height: 16),
+            TextButton(
+              onPressed: () {
+                context.read<TriageCubit>().reset();
+                Navigator.popUntil(context, (route) => route.isFirst);
+              },
+              child: const Text("Go Back to Home"),
+            ),
           ],
         ),
       ),
@@ -115,12 +133,22 @@ class TriageResultScreen extends StatelessWidget {
       width: double.infinity,
       height: 56,
       child: ElevatedButton(
-        onPressed: () {
-          // Handle actions based on urgency
+        onPressed: () async {
           if (result.urgency == TriageUrgency.emergency) {
-            // Call 911 logic
+            final Uri launchUri = Uri(scheme: 'tel', path: '911');
+            if (await canLaunchUrl(launchUri)) {
+              await launchUrl(launchUri);
+            }
           } else {
-            // Navigate to Booking logic
+            // Navigate to Booking tab (Index 1) and reset Triage
+            context.read<TriageCubit>().reset();
+            Navigator.of(context).pushAndRemoveUntil(
+              MaterialPageRoute(builder: (context) => const AtamanBaseScreen()),
+              (route) => false,
+            );
+            // Ideally, we'd want to switch the tab to 1 here. 
+            // Since AtamanBaseScreen uses Index 0 by default, 
+            // you might want to add a static variable or a callback to set initial index.
           }
         },
         style: ElevatedButton.styleFrom(

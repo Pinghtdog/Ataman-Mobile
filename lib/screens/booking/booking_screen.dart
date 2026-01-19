@@ -12,8 +12,11 @@ import '../../logic/facility/facility_state.dart';
 import '../../widgets/ataman_header.dart';
 import '../../widgets/booking/facility_list_view.dart';
 import '../../widgets/booking/ataman_live_map.dart';
+import '../../widgets/booking/facility_card.dart';
 import '../../widgets/ataman_shimmer.dart';
 import '../../services/location_service.dart';
+import '../ataman_base_screen.dart';
+import 'booking_details_screen.dart';
 
 class BookingScreen extends StatefulWidget {
   const BookingScreen({super.key});
@@ -27,10 +30,13 @@ class _BookingScreenState extends State<BookingScreen> {
   final TextEditingController _searchController = TextEditingController();
   GoogleMapController? _mapController;
   Position? _currentPosition;
+  Facility? _selectedFacility;
   
   StreamSubscription<List<Map<String, dynamic>>>? _ambulanceSubscription;
   List<Ambulance> _ambulances = [];
   Set<Marker> _markers = {};
+
+  final LatLng _nagaCityCenter = const LatLng(13.6193, 123.1598);
 
   @override
   void initState() {
@@ -81,13 +87,16 @@ class _BookingScreenState extends State<BookingScreen> {
           Marker(
             markerId: MarkerId('facility_${f.id}'),
             position: LatLng(f.latitude!, f.longitude!),
-            infoWindow: InfoWindow(
-              title: f.name, 
-              snippet: f.isDiversionActive ? "DIVERSION ACTIVE" : _getFacilityStatusName(f.status),
-            ),
+            onTap: () {
+              setState(() {
+                _selectedFacility = f;
+              });
+            },
             icon: BitmapDescriptor.defaultMarkerWithHue(
               f.isDiversionActive ? BitmapDescriptor.hueOrange :
-              (f.status == FacilityStatus.available ? BitmapDescriptor.hueAzure : BitmapDescriptor.hueRed),
+              (f.status == FacilityStatus.available ? BitmapDescriptor.hueGreen : 
+               f.status == FacilityStatus.congested ? BitmapDescriptor.hueRed : 
+               BitmapDescriptor.hueYellow),
             ),
           ),
         );
@@ -113,11 +122,17 @@ class _BookingScreenState extends State<BookingScreen> {
     });
   }
 
-  String _getFacilityStatusName(FacilityStatus status) {
-    switch (status) {
-      case FacilityStatus.available: return "Available";
-      case FacilityStatus.congested: return "Congested";
-      case FacilityStatus.closed: return "Closed";
+  void _reCenterCamera() {
+    if (_mapController != null) {
+      final target = _currentPosition != null 
+          ? LatLng(_currentPosition!.latitude, _currentPosition!.longitude)
+          : _nagaCityCenter;
+      
+      _mapController!.animateCamera(
+        CameraUpdate.newCameraPosition(
+          CameraPosition(target: target, zoom: 15),
+        ),
+      );
     }
   }
 
@@ -140,6 +155,11 @@ class _BookingScreenState extends State<BookingScreen> {
 
   @override
   Widget build(BuildContext context) {
+    // Control Navbar visibility
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      AtamanBaseScreen.of(context)?.setNavbarVisibility(!_isMapView);
+    });
+
     return Scaffold(
       backgroundColor: AppColors.background,
       body: BlocConsumer<FacilityCubit, FacilityState>(
@@ -212,15 +232,23 @@ class _BookingScreenState extends State<BookingScreen> {
                         ? Center(child: Text(state.message))
                         : state is FacilityLoaded
                           ? _isMapView 
-                            ? AtamanLiveMap(
-                                currentPosition: _currentPosition,
-                                markers: _markers,
-                                onMapCreated: (controller) => _mapController = controller,
+                            ? GestureDetector(
+                                onTap: () => setState(() => _selectedFacility = null),
+                                child: AtamanLiveMap(
+                                  currentPosition: _currentPosition,
+                                  markers: _markers,
+                                  onMapCreated: (controller) => _mapController = controller,
+                                ),
                               ) 
                             : FacilityListView(
                                 facilities: _processFacilities(state.facilities),
                                 onFacilityTap: (facility) {
-                                  // Handle navigation to details/booking
+                                  Navigator.push(
+                                    context,
+                                    MaterialPageRoute(
+                                      builder: (context) => BookingDetailsScreen(facility: facility),
+                                    ),
+                                  );
                                 },
                               )
                           : const SizedBox.shrink(),
@@ -228,14 +256,32 @@ class _BookingScreenState extends State<BookingScreen> {
                 ],
               ),
 
+              // Floating Location Button
+              if (_isMapView)
+                Positioned(
+                  top: 240,
+                  right: 16,
+                  child: FloatingActionButton.small(
+                    onPressed: _reCenterCamera,
+                    backgroundColor: Colors.white,
+                    child: const Icon(Icons.my_location, color: AppColors.primary),
+                  ),
+                ),
+
+              // Toggle Button
               if (state is FacilityLoaded)
                 Positioned(
-                  bottom: AppSizes.p24,
-                  left: 0,
+                  bottom: _selectedFacility != null ? 320 : AppSizes.p24,
+                  left: 200,
                   right: 0,
                   child: Center(
                     child: FloatingActionButton.extended(
-                      onPressed: () => setState(() => _isMapView = !_isMapView),
+                      onPressed: () {
+                        setState(() {
+                          _isMapView = !_isMapView;
+                          _selectedFacility = null;
+                        });
+                      },
                       backgroundColor: AppColors.textPrimary,
                       icon: Icon(_isMapView ? Icons.format_list_bulleted_rounded : Icons.map_outlined,
                           color: Colors.white),
@@ -244,6 +290,54 @@ class _BookingScreenState extends State<BookingScreen> {
                         style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
                       ),
                       elevation: 4,
+                    ),
+                  ),
+                ),
+
+              // Pull-up / Bottom Sheet Style Facility Card
+              if (_isMapView && _selectedFacility != null)
+                Align(
+                  alignment: Alignment.bottomCenter,
+                  child: GestureDetector(
+                    onVerticalDragUpdate: (details) {
+                      if (details.primaryDelta! > 10) {
+                        setState(() => _selectedFacility = null);
+                      }
+                    },
+                    child: Container(
+                      padding: const EdgeInsets.fromLTRB(16, 8, 16, 32),
+                      decoration: const BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+                        boxShadow: [
+                          BoxShadow(color: Colors.black12, blurRadius: 10, spreadRadius: 2),
+                        ],
+                      ),
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Container(
+                            width: 40,
+                            height: 4,
+                            margin: const EdgeInsets.only(bottom: 16),
+                            decoration: BoxDecoration(
+                              color: Colors.grey[300],
+                              borderRadius: BorderRadius.circular(2),
+                            ),
+                          ),
+                          FacilityCard(
+                            facility: _processFacilities([_selectedFacility!]).first,
+                            onTap: () {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (context) => BookingDetailsScreen(facility: _selectedFacility!),
+                                ),
+                              );
+                            },
+                          ),
+                        ],
+                      ),
                     ),
                   ),
                 ),

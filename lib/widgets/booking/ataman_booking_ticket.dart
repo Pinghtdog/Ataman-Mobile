@@ -1,174 +1,132 @@
 import 'package:flutter/material.dart';
-import 'package:qr_flutter/qr_flutter.dart';
+import 'package:intl/intl.dart';
 import '../../constants/constants.dart';
+import '../../data/models/booking_model.dart';
 
 class AtamanBookingTicket extends StatelessWidget {
-  final String patientName;
-  final String serviceName;
-  final String facilityName;
-  final DateTime date;
-  final String time;
-  final String ticketId;
+  final Booking booking;
+  final VoidCallback onTap;
+  final VoidCallback? onCancel;
 
   const AtamanBookingTicket({
     super.key,
-    required this.patientName,
-    required this.serviceName,
-    required this.facilityName,
-    required this.date,
-    required this.time,
-    required this.ticketId,
+    required this.booking,
+    required this.onTap,
+    this.onCancel,
   });
 
   @override
   Widget build(BuildContext context) {
+    final bool isCancelled = booking.status == BookingStatus.cancelled;
+    final bool isCompleted = booking.status == BookingStatus.completed;
+
     return Container(
-      width: double.infinity,
+      margin: const EdgeInsets.only(bottom: AppSizes.p16),
       decoration: BoxDecoration(
         color: AppColors.surface,
         borderRadius: BorderRadius.circular(AppSizes.radiusLarge),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.1),
-            blurRadius: 20,
-            offset: const Offset(0, 10),
+            color: Colors.black.withOpacity(0.04),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
           ),
         ],
       ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Container(
-            width: double.infinity,
-            padding: const EdgeInsets.symmetric(vertical: AppSizes.p24),
-            decoration: BoxDecoration(
-              color: AppColors.success.withOpacity(0.1),
-              borderRadius: const BorderRadius.vertical(
-                top: Radius.circular(AppSizes.radiusLarge),
-              ),
-            ),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(AppSizes.radiusLarge),
+          child: Padding(
+            padding: const EdgeInsets.all(AppSizes.p16),
             child: Column(
               children: [
-                const Icon(
-                  Icons.check_circle_rounded,
-                  color: AppColors.success,
-                  size: 64,
+                Row(
+                  children: [
+                    Container(
+                      width: 50,
+                      height: 50,
+                      decoration: BoxDecoration(
+                        color: AppColors.primary.withOpacity(0.1),
+                        borderRadius: BorderRadius.circular(AppSizes.radiusMedium),
+                      ),
+                      child: const Icon(Icons.medical_services_outlined, color: AppColors.primary),
+                    ),
+                    const SizedBox(width: 16),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            booking.facilityName,
+                            style: AppTextStyles.bodyLarge.copyWith(fontWeight: FontWeight.bold),
+                          ),
+                          Text(
+                            DateFormat('MMMM dd, yyyy • hh:mm a').format(booking.appointmentTime),
+                            style: AppTextStyles.bodySmall,
+                          ),
+                        ],
+                      ),
+                    ),
+                    _buildStatusBadge(),
+                  ],
                 ),
-                const SizedBox(height: AppSizes.p12),
-                Text(
-                  "Booking Successful!",
-                  style: AppTextStyles.h3.copyWith(color: AppColors.success),
-                ),
-                const SizedBox(height: AppSizes.p4),
-                Text(
-                  "Ticket ID: $ticketId",
-                  style: AppTextStyles.caption,
-                ),
-              ],
-            ),
-          ),
-
-          // 2. Ticket Details
-          Padding(
-            padding: const EdgeInsets.all(AppSizes.p24),
-            child: Column(
-              children: [
-                _buildDetailRow("Patient", patientName),
-                const SizedBox(height: AppSizes.p16),
-                _buildDetailRow("Service", serviceName),
-                const SizedBox(height: AppSizes.p16),
-                _buildDetailRow("Facility", facilityName),
-                const SizedBox(height: AppSizes.p16),
-                
-                const Divider(height: 32, thickness: 1),
-                
+                const SizedBox(height: 16),
+                const Divider(height: 1),
+                const SizedBox(height: 12),
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          "DATE",
-                          style: AppTextStyles.caption.copyWith(
-                            fontWeight: FontWeight.bold,
-                            letterSpacing: 1.2,
-                          ),
-                        ),
-                        const SizedBox(height: AppSizes.p4),
-                        Text(
-                          "${date.month}/${date.day}/${date.year}", 
-                          style: AppTextStyles.bodyLarge.copyWith(fontWeight: FontWeight.bold),
-                        ),
-                      ],
-                    ),
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.end,
-                      children: [
-                        Text(
-                          "TIME",
-                          style: AppTextStyles.caption.copyWith(
-                            fontWeight: FontWeight.bold,
-                            letterSpacing: 1.2,
-                          ),
-                        ),
-                        const SizedBox(height: AppSizes.p4),
-                        Text(
-                          time,
-                          style: AppTextStyles.bodyLarge.copyWith(
-                            fontWeight: FontWeight.bold, 
-                            color: AppColors.primary,
-                          ),
-                        ),
-                      ],
-                    ),
+                    Text("Ticket ID: ${booking.id}", style: AppTextStyles.caption),
+                    if (onCancel != null && !isCancelled && !isCompleted)
+                      TextButton(
+                        onPressed: onCancel,
+                        style: TextButton.styleFrom(padding: EdgeInsets.zero, minimumSize: Size.zero),
+                        child: const Text("Cancel", style: TextStyle(color: AppColors.danger)),
+                      ),
                   ],
                 ),
               ],
             ),
           ),
-
-          // QR Code Section
-          Padding(
-            padding: const EdgeInsets.only(
-              bottom: AppSizes.p32, 
-              left: AppSizes.p32, 
-              right: AppSizes.p32,
-            ),
-            child: QrImageView(
-              data: ticketId,
-              version: QrVersions.auto,
-              size: 180.0,
-              eyeStyle: const QrEyeStyle(
-                eyeShape: QrEyeShape.square,
-                color: AppColors.primary,
-              ),
-              dataModuleStyle: const QrDataModuleStyle(
-                dataModuleShape: QrDataModuleShape.square,
-                color: AppColors.primary,
-              ),
-            ),
-          ),
-        ],
+        ),
       ),
     );
   }
 
-  Widget _buildDetailRow(String label, String value) {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-      children: [
-        Text(label, style: AppTextStyles.bodyMedium),
-        const SizedBox(width: AppSizes.p16),
-        Expanded(
-          child: Text(
-            value, 
-            textAlign: TextAlign.end,
-            style: AppTextStyles.bodyLarge.copyWith(fontWeight: FontWeight.bold),
-            overflow: TextOverflow.ellipsis,
-          ),
-        ),
-      ],
+  Widget _buildStatusBadge() {
+    Color color = Colors.grey;
+    String text = booking.status.name.toUpperCase();
+
+    switch (booking.status) {
+      case BookingStatus.pending:
+        color = Colors.orange;
+        break;
+      case BookingStatus.confirmed:
+        color = AppColors.success;
+        break;
+      case BookingStatus.completed:
+        color = AppColors.primary;
+        break;
+      case BookingStatus.cancelled:
+        color = AppColors.danger;
+        break;
+      case BookingStatus.missed:
+        color = Colors.black;
+        break;
+    }
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      decoration: BoxDecoration(
+        color: color.withOpacity(0.1),
+        borderRadius: BorderRadius.circular(AppSizes.radiusSmall),
+      ),
+      child: Text(
+        text,
+        style: TextStyle(color: color, fontWeight: FontWeight.bold, fontSize: 10),
+      ),
     );
   }
 }

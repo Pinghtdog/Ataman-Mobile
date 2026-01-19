@@ -19,7 +19,7 @@ class AuthSelectionScreen extends StatelessWidget {
               child: Center(
                 child: Hero(
                   tag: 'logo',
-                  child: AtamanLogoFull(height: 220),
+                  child: AtamanLogoFull(height: 300),
                 ),
               ),
             ),

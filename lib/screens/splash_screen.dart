@@ -60,7 +60,7 @@ class _SplashScreenState extends State<SplashScreen> {
             children: [
               const Hero(
                 tag: 'logo',
-                child: AtamanLogoFull(height: 180),
+                child: AtamanLogoFull(height: 300),
               ),
               const SizedBox(height: AppSizes.p32),
               Text(

@@ -7,6 +7,7 @@ import '../data/repositories/triage_repository.dart';
 import '../data/repositories/facility_repository.dart';
 import '../data/repositories/booking_repository.dart';
 import '../data/repositories/emergency_repository.dart';
+import '../data/repositories/prescription_repository.dart';
 
 final getIt = GetIt.instance;
 
@@ -26,4 +27,5 @@ Future<void> initInjector() async {
   getIt.registerLazySingleton<FacilityRepository>(() => FacilityRepository());
   getIt.registerLazySingleton<BookingRepository>(() => BookingRepository());
   getIt.registerLazySingleton<EmergencyRepository>(() => EmergencyRepository());
+  getIt.registerLazySingleton<PrescriptionRepository>(() => PrescriptionRepository());
 }

@@ -22,12 +22,11 @@ class HomeScreen extends StatelessWidget {
         return Scaffold(
           backgroundColor: AppColors.background,
           body: SingleChildScrollView(
-            physics: const BouncingScrollPhysics(),
+            // physics: const BouncingScrollPhysics(),
             child: Column(
               children: [
-                // Use a Container to define the hit-testable area for the header and card
                 SizedBox(
-                  height: 340, // Header (220) + overlap logic
+                  height: 340,
                   child: Stack(
                     children: [
                       AtamanHeader(
@@ -73,7 +72,7 @@ class HomeScreen extends StatelessWidget {
                         ),
                       ),
                       Positioned(
-                        bottom: 0, // This keeps it inside the 340px height area
+                        bottom: 0,
                         left: 0,
                         right: 0,
                         child: SmartTriageCard(
@@ -123,10 +122,10 @@ class HomeScreen extends StatelessWidget {
                         },
                       ),
                       const SizedBox(height: AppSizes.p32),
-                      
+
                       EmergencyHelpCard(
                         onTap: () {
-                          // TODO: Navigate to emergency screen
+                          Navigator.of(context, rootNavigator: true).pushNamed(AppRoutes.emergency);
                         },
                       ),
                       const SizedBox(height: AppSizes.p32),

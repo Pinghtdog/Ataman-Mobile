@@ -17,6 +17,8 @@ import 'screens/ataman_base_screen.dart';
 import 'screens/splash_screen.dart';
 import 'screens/triage/triage_input_screen.dart';
 import 'screens/triage/triage_result_screen.dart';
+import 'screens/emergency/emergency_request_screen.dart';
+import 'screens/booking/my_appointments_screen.dart';
 
 import 'logic/auth/auth_cubit.dart';
 import 'logic/triage/triage_cubit.dart';
@@ -24,6 +26,7 @@ import 'logic/facility/facility_cubit.dart';
 import 'logic/booking/booking_cubit.dart';
 import 'logic/emergency/emergency_cubit.dart';
 import 'logic/profile/profile_cubit.dart';
+import 'logic/telemedicine/prescription_cubit.dart';
 
 import 'data/models/triage_model.dart';
 import 'data/repositories/auth_repository.dart';
@@ -32,6 +35,7 @@ import 'data/repositories/triage_repository.dart';
 import 'data/repositories/facility_repository.dart';
 import 'data/repositories/booking_repository.dart';
 import 'data/repositories/emergency_repository.dart';
+import 'data/repositories/prescription_repository.dart';
 
 import 'utils/injector.dart';
 import 'services/notification_service.dart';
@@ -145,6 +149,11 @@ class AtamanApp extends StatelessWidget {
             userRepository: getIt<UserRepository>(),
           ),
         ),
+        BlocProvider<PrescriptionCubit>(
+          create: (context) => PrescriptionCubit(
+            prescriptionRepository: getIt<PrescriptionRepository>(),
+          ),
+        ),
       ],
       child: MaterialApp(
         title: AppStrings.appName,
@@ -170,6 +179,8 @@ class AtamanApp extends StatelessWidget {
           AppRoutes.registerEmail: (context) => const RegisterEmailScreen(),
           AppRoutes.home: (context) => const AtamanBaseScreen(),
           AppRoutes.triage: (context) => const TriageInputScreen(),
+          AppRoutes.emergency: (context) => const EmergencyRequestScreen(),
+          AppRoutes.myAppointments: (context) => const MyAppointmentsScreen(),
         },
       ),
     );
