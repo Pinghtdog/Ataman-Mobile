@@ -6,39 +6,36 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:flutter_gemini/flutter_gemini.dart';
-
-import 'constants/constants.dart';
-import 'screens/auth/login_screen.dart';
-import 'screens/auth/auth_selection_screen.dart';
-import 'screens/auth/register_screen.dart';
-import 'screens/auth/id_verification_screen.dart';
-import 'screens/auth/register_email_screen.dart';
-import 'screens/ataman_base_screen.dart';
-import 'screens/splash_screen.dart';
-import 'screens/triage/triage_input_screen.dart';
-import 'screens/triage/triage_result_screen.dart';
-import 'screens/emergency/emergency_request_screen.dart';
-import 'screens/booking/my_appointments_screen.dart';
-
-import 'logic/auth/auth_cubit.dart';
-import 'logic/triage/triage_cubit.dart';
-import 'logic/facility/facility_cubit.dart';
-import 'logic/booking/booking_cubit.dart';
-import 'logic/emergency/emergency_cubit.dart';
-import 'logic/profile/profile_cubit.dart';
-import 'logic/telemedicine/prescription_cubit.dart';
-
-import 'data/models/triage_model.dart';
-import 'data/repositories/auth_repository.dart';
-import 'data/repositories/user_repository.dart';
-import 'data/repositories/triage_repository.dart';
-import 'data/repositories/facility_repository.dart';
-import 'data/repositories/booking_repository.dart';
-import 'data/repositories/emergency_repository.dart';
-import 'data/repositories/prescription_repository.dart';
-
-import 'utils/injector.dart';
-import 'services/notification_service.dart';
+import '../../../../core/constants/constants.dart';
+import '../../../../core/widgets/widgets.dart';
+import 'core/services/notification_service.dart';
+import 'features/auth/data/repositories/auth_repository.dart';
+import 'features/auth/data/repositories/user_repository.dart';
+import 'features/auth/logic/auth_cubit.dart';
+import 'features/auth/presentation/screens/auth_selection_screen.dart';
+import 'features/auth/presentation/screens/id_verification_screen.dart';
+import 'features/auth/presentation/screens/login_screen.dart';
+import 'features/auth/presentation/screens/register_email_screen.dart';
+import 'features/auth/presentation/screens/register_screen.dart';
+import 'features/booking/data/repositories/booking_repository.dart';
+import 'features/booking/logic/booking_cubit.dart';
+import 'features/booking/presentation/screens/my_appointments_screen.dart';
+import 'features/emergency/data/repositories/emergency_repository.dart';
+import 'features/emergency/logic/emergency_cubit.dart';
+import 'features/emergency/presentation/screens/emergency_request_screen.dart';
+import 'features/facility/data/repositories/facility_repository.dart';
+import 'features/facility/logic/facility_cubit.dart';
+import 'features/home/presentation/screens/ataman_base_screen.dart';
+import 'features/medical_records/data/repositories/prescription_repository.dart';
+import 'features/profile/logic/profile_cubit.dart';
+import 'features/splash/presentation/splash_screen.dart';
+import 'features/telemedicine/logic/prescription_cubit.dart';
+import 'features/triage/data/models/triage_model.dart';
+import 'features/triage/data/repositories/triage_repository.dart';
+import 'features/triage/logic/triage_cubit.dart';
+import 'features/triage/presentation/screens/triage_input_screen.dart';
+import 'features/triage/presentation/screens/triage_result_screen.dart';
+import 'injector.dart';
 
 
 //ako pa ni tarongon ang folders kay samok basin nice core(mga services, utiltie etc...)

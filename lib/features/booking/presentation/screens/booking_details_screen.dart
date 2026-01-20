@@ -1,0 +1,214 @@
+import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:intl/intl.dart';
+import '../../../../core/constants/constants.dart';
+import '../../../../core/widgets/widgets.dart';
+import '../../../auth/logic/auth_cubit.dart';
+import '../../../facility/data/models/facility_model.dart';
+import '../../../facility/data/models/facility_service_model.dart';
+import '../../../profile/data/model/family_member_model.dart';
+import '../../data/models/booking_model.dart';
+import '../../logic/booking_cubit.dart';
+import '../../logic/booking_state.dart';
+import '../widgets/booking_date_selector.dart';
+import '../widgets/booking_facility_info.dart';
+import '../widgets/booking_member_selector.dart';
+import '../widgets/booking_service_selector.dart';
+import '../widgets/booking_time_selector.dart';
+
+class BookingDetailsScreen extends StatefulWidget {
+  final Facility facility;
+
+  const BookingDetailsScreen({super.key, required this.facility});
+
+  @override
+  State<BookingDetailsScreen> createState() => _BookingDetailsScreenState();
+}
+
+class _BookingDetailsScreenState extends State<BookingDetailsScreen> {
+  DateTime _selectedDate = DateTime.now();
+  String _selectedTime = "09:00 AM";
+  FacilityService? _selectedService;
+  dynamic _bookingFor = "Self";
+
+  // Mock Data for UI/Supabase demo
+  final List<FamilyMember> _mockFamily = [
+    FamilyMember(id: '1', userId: 'user1', fullName: 'Maria Dela Cruz', relationship: 'Spouse'),
+    FamilyMember(id: '2', userId: 'user1', fullName: 'Junior Dela Cruz', relationship: 'Child'),
+  ];
+
+  final List<FacilityService> _mockServices = [
+    FacilityService(id: '1', facilityId: 'f1', name: 'General Checkup', isAvailable: true, category: 'checkup'),
+    FacilityService(id: '2', facilityId: 'f1', name: 'Vaccination', isAvailable: true, category: 'vaccine'),
+  ];
+
+  @override
+  void initState() {
+    super.initState();
+    if (_mockServices.isNotEmpty) {
+      _selectedService = _mockServices.first;
+    }
+  }
+
+  void _confirmBooking() {
+    final authState = context.read<AuthCubit>().state;
+    if (authState is! Authenticated) return;
+    if (_selectedService == null) return;
+
+    final timeParts = _selectedTime.split(' ');
+    final hourMinute = timeParts[0].split(':');
+    int hour = int.parse(hourMinute[0]);
+    int minute = int.parse(hourMinute[1]);
+    
+    if (timeParts[1] == "PM" && hour < 12) hour += 12;
+    if (timeParts[1] == "AM" && hour == 12) hour = 0;
+
+    final appointmentTime = DateTime(
+      _selectedDate.year,
+      _selectedDate.month,
+      _selectedDate.day,
+      hour,
+      minute,
+    );
+
+    final familyMemberId = (_bookingFor is FamilyMember) ? (_bookingFor as FamilyMember).id : null;
+
+    final booking = Booking(
+      id: '',
+      userId: authState.user.id,
+      facilityId: widget.facility.id,
+      facilityName: widget.facility.name,
+      appointmentTime: appointmentTime,
+      status: BookingStatus.pending,
+      createdAt: DateTime.now(),
+      serviceId: _selectedService!.id,
+      familyMemberId: familyMemberId,
+    );
+
+    context.read<BookingCubit>().createBooking(booking);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final authState = context.read<AuthCubit>().state;
+    String userName = "User";
+    if (authState is Authenticated) {
+      userName = authState.profile?.fullName ?? "User";
+    }
+
+    return Scaffold(
+      backgroundColor: AppColors.background,
+      body: BlocConsumer<BookingCubit, BookingState>(
+        listener: (context, state) {
+          if (state is BookingLoaded) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text("Booking successful! View it in your appointments."),
+                backgroundColor: AppColors.success,
+              ),
+            );
+            Navigator.pop(context);
+          } else if (state is BookingError) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(content: Text(state.message), backgroundColor: AppColors.danger),
+            );
+          }
+        },
+        builder: (context, state) {
+          return Column(
+            children: [
+              AtamanSimpleHeader(
+                child: Row(
+                  children: [
+                    IconButton(
+                      icon: const Icon(Icons.arrow_back, color: Colors.white),
+                      onPressed: () => Navigator.pop(context),
+                    ),
+                    Text(
+                      "Book Appointment",
+                      style: AppTextStyles.h3.copyWith(color: Colors.white),
+                    ),
+                  ],
+                ),
+              ),
+
+              //jardcoded for demo
+              Expanded(
+                child: SingleChildScrollView(
+                  padding: const EdgeInsets.all(AppSizes.p24),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // Facility Info Card
+                      BookingFacilityInfo(facility: widget.facility),
+                      const SizedBox(height: 24),
+
+                      // Booking For Dropdown
+                      const Text("Booking For", style: AppTextStyles.h3),
+                      const SizedBox(height: 12),
+                      BookingMemberSelector(
+                        userName: userName,
+                        familyMembers: _mockFamily,
+                        selectedMember: _bookingFor,
+                        onMemberSelected: (val) => setState(() => _bookingFor = val),
+                      ),
+                      const SizedBox(height: 24),
+
+                      // Select Service
+                      const Text("Select Service", style: AppTextStyles.h3),
+                      const SizedBox(height: 12),
+                      BookingServiceSelector(
+                        services: _mockServices,
+                        selectedService: _selectedService,
+                        onServiceSelected: (service) => setState(() => _selectedService = service),
+                      ),
+                      const SizedBox(height: 24),
+
+                      // Select Date & Time
+                      const Text("Select Date & Time", style: AppTextStyles.h3),
+                      const SizedBox(height: 12),
+                      BookingDateSelector(
+                        selectedDate: _selectedDate, 
+                        onDateSelected: (date) => setState(() => _selectedDate = date),
+                      ),
+                      const SizedBox(height: 16),
+
+                      const Text("Morning Slots", style: AppTextStyles.caption),
+                      const SizedBox(height: 12),
+                      BookingTimeSelector(
+                        selectedTime: _selectedTime,
+                        onTimeSelected: (time) => setState(() => _selectedTime = time),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              
+              // Bottom Action Button
+              Padding(
+                padding: const EdgeInsets.all(AppSizes.p24),
+                child: SizedBox(
+                  width: double.infinity,
+                  height: 56,
+                  child: ElevatedButton(
+                    onPressed: state is BookingLoading ? null : _confirmBooking,
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppColors.primary,
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                    ),
+                    child: state is BookingLoading
+                        ? const CircularProgressIndicator(color: Colors.white)
+                        : const Text(
+                            "Confirm & Get Ticket",
+                            style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold),
+                          ),
+                  ),
+                ),
+              ),
+            ],
+          );
+        },
+      ),
+    );
+  }
+}
