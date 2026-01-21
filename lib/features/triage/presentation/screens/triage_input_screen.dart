@@ -38,6 +38,7 @@ class _TriageInputScreenState extends State<TriageInputScreen> {
           children: [
             Scaffold(
               backgroundColor: AppColors.background,
+              resizeToAvoidBottomInset: true, // Ensure the body resizes when keyboard appears
               body: BlocListener<TriageCubit, TriageState>(
                 listener: (context, state) {
                   if (state is TriageSuccess) {
@@ -112,12 +113,12 @@ class _TriageInputScreenState extends State<TriageInputScreen> {
 
     if (state is TriageStepLoaded) {
       final step = state.step;
-      return Padding(
-        padding: const EdgeInsets.all(AppSizes.p24),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            ClipRRect(
+      
+      return Column(
+        children: [
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: AppSizes.p24, vertical: AppSizes.p16),
+            child: ClipRRect(
               borderRadius: BorderRadius.circular(8),
               child: LinearProgressIndicator(
                 value: (state.history.length + 1) / 7,
@@ -126,110 +127,112 @@ class _TriageInputScreenState extends State<TriageInputScreen> {
                 valueColor: const AlwaysStoppedAnimation<Color>(AppColors.primary),
               ),
             ),
-            const SizedBox(height: AppSizes.p32),
-            Text(
-              step.question,
-              style: AppTextStyles.h2.copyWith(height: 1.3),
-            ),
-            const SizedBox(height: AppSizes.p32),
-            if (step.inputType == TriageInputType.buttons)
-              Expanded(
-                child: ListView.separated(
-                  padding: EdgeInsets.zero,
-                  itemCount: step.options.length,
-                  separatorBuilder: (_, __) => const SizedBox(height: AppSizes.p16),
-                  itemBuilder: (context, index) {
-                    final option = step.options[index];
-                    return Container(
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.circular(AppSizes.radiusMedium),
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.black.withOpacity(0.03),
-                            blurRadius: 8,
-                            offset: const Offset(0, 2),
-                          ),
-                        ],
-                      ),
-                      child: Material(
-                        color: Colors.transparent,
-                        child: InkWell(
-                          onTap: () {
-                            context.read<TriageCubit>().selectOption(step.question, option);
-                          },
-                          borderRadius: BorderRadius.circular(AppSizes.radiusMedium),
-                          child: Padding(
-                            padding: const EdgeInsets.all(AppSizes.p20),
-                            child: Text(
-                              option,
-                              style: AppTextStyles.bodyLarge.copyWith(
-                                color: AppColors.primary,
-                                fontWeight: FontWeight.w600,
+          ),
+          Expanded(
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.all(AppSizes.p24),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    step.question,
+                    style: AppTextStyles.bodyLarge.copyWith(height: 1.3),
+                  ),
+                  const SizedBox(height: AppSizes.p32),
+                  if (step.inputType == TriageInputType.buttons)
+                    ...step.options.map((option) => Padding(
+                          padding: const EdgeInsets.only(bottom: AppSizes.p16),
+                          child: Container(
+                            width: double.infinity,
+                            decoration: BoxDecoration(
+                              color: Colors.white,
+                              borderRadius: BorderRadius.circular(AppSizes.radiusMedium),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Colors.black.withOpacity(0.03),
+                                  blurRadius: 8,
+                                  offset: const Offset(0, 2),
+                                ),
+                              ],
+                            ),
+                            child: Material(
+                              color: Colors.transparent,
+                              child: InkWell(
+                                onTap: () {
+                                  context.read<TriageCubit>().selectOption(step.question, option);
+                                },
+                                borderRadius: BorderRadius.circular(AppSizes.radiusMedium),
+                                child: Padding(
+                                  padding: const EdgeInsets.all(AppSizes.p20),
+                                  child: Text(
+                                    option,
+                                    style: AppTextStyles.bodyLarge.copyWith(
+                                      color: AppColors.primary,
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                    textAlign: TextAlign.center,
+                                  ),
+                                ),
                               ),
-                              textAlign: TextAlign.center,
                             ),
                           ),
+                        ))
+                  else ...[
+                    TextField(
+                      controller: _textController,
+                      maxLines: 4,
+                      style: AppTextStyles.bodyLarge,
+                      decoration: InputDecoration(
+                        hintText: "Type your response here...",
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(AppSizes.p12),
+                          borderSide: BorderSide(color: Colors.grey.shade300),
+                        ),
+                        enabledBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(AppSizes.p12),
+                          borderSide: BorderSide(color: Colors.grey.shade300),
+                        ),
+                        focusedBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(AppSizes.p12),
+                          borderSide: const BorderSide(color: AppColors.primary, width: 2),
+                        ),
+                        filled: true,
+                        fillColor: Colors.white,
+                      ),
+                    ),
+                    const SizedBox(height: AppSizes.p32),
+                    SizedBox(
+                      width: double.infinity,
+                      height: 56,
+                      child: ElevatedButton(
+                        onPressed: () {
+                          if (_textController.text.trim().isNotEmpty) {
+                            context.read<TriageCubit>().selectOption(
+                                  step.question,
+                                  _textController.text.trim(),
+                                );
+                            _textController.clear();
+                          }
+                        },
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: AppColors.primary,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(AppSizes.p12),
+                          ),
+                          elevation: 0,
+                        ),
+                        child: const Text(
+                          "Next",
+                          style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold),
                         ),
                       ),
-                    );
-                  },
-                ),
-              )
-            else ...[
-              TextField(
-                controller: _textController,
-                maxLines: 4,
-                style: AppTextStyles.bodyLarge,
-                decoration: InputDecoration(
-                  hintText: "Type your response here...",
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(AppSizes.p12),
-                    borderSide: BorderSide(color: Colors.grey.shade300),
-                  ),
-                  enabledBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(AppSizes.p12),
-                    borderSide: BorderSide(color: Colors.grey.shade300),
-                  ),
-                  focusedBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(AppSizes.p12),
-                    borderSide: const BorderSide(color: AppColors.primary, width: 2),
-                  ),
-                  filled: true,
-                  fillColor: Colors.white,
-                ),
-              ),
-              const Spacer(),
-              SizedBox(
-                width: double.infinity,
-                height: 56,
-                child: ElevatedButton(
-                  onPressed: () {
-                    if (_textController.text.trim().isNotEmpty) {
-                      context.read<TriageCubit>().selectOption(
-                            step.question,
-                            _textController.text.trim(),
-                          );
-                      _textController.clear();
-                    }
-                  },
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: AppColors.primary,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(AppSizes.p12),
                     ),
-                    elevation: 0,
-                  ),
-                  child: const Text(
-                    "Next",
-                    style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold),
-                  ),
-                ),
+                  ],
+                ],
               ),
-              const SizedBox(height: AppSizes.p24),
-            ],
-          ],
-        ),
+            ),
+          ),
+        ],
       );
     }
 

@@ -53,16 +53,22 @@ class HomeScreen extends StatelessWidget {
                               ),
                               Align(
                                 alignment: Alignment.topRight,
-                                child: Container(
-                                  padding: const EdgeInsets.all(AppSizes.p8),
-                                  decoration: BoxDecoration(
-                                    color: Colors.white.withOpacity(0.2),
-                                    shape: BoxShape.circle,
-                                  ),
-                                  child: const Icon(
-                                    Icons.notifications_none_rounded,
-                                    color: Colors.white,
-                                    size: AppSizes.iconMedium,
+                                child: GestureDetector(
+                                  onTap: () {
+                                    Navigator.of(context, rootNavigator: true)
+                                        .pushNamed(AppRoutes.notifications);
+                                  },
+                                  child: Container(
+                                    padding: const EdgeInsets.all(AppSizes.p8),
+                                    decoration: BoxDecoration(
+                                      color: Colors.white.withOpacity(0.2),
+                                      shape: BoxShape.circle,
+                                    ),
+                                    child: const Icon(
+                                      Icons.notifications_none_rounded,
+                                      color: Colors.white,
+                                      size: AppSizes.iconMedium,
+                                    ),
                                   ),
                                 ),
                               ),

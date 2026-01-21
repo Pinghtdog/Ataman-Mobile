@@ -1,12 +1,12 @@
 import 'package:ataman/features/profile/logic/profile_state.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../auth/data/models/user_model.dart';
-import '../../auth/data/repositories/user_repository.dart';
+import '../../auth/domain/repositories/i_user_repository.dart';
 
 class ProfileCubit extends Cubit<ProfileState> {
-  final UserRepository _userRepository;
+  final IUserRepository _userRepository;
 
-  ProfileCubit({required UserRepository userRepository})
+  ProfileCubit({required IUserRepository userRepository})
       : _userRepository = userRepository,
         super(ProfileInitial());
 

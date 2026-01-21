@@ -14,4 +14,5 @@ class AppRoutes {
   static const String emergency = '/emergency';
   static const String bookingDetails = '/booking-details';
   static const String myAppointments = '/my-appointments';
+  static const String notifications = '/notifications';
 }

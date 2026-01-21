@@ -1,12 +1,11 @@
 import 'package:flutter_bloc/flutter_bloc.dart';
-import '../data/models/triage_model.dart';
-import '../data/repositories/triage_repository.dart';
+import '../domain/repositories/i_triage_repository.dart';
 import 'triage_state.dart';
 
 class TriageCubit extends Cubit<TriageState> {
-  final TriageRepository _triageRepository;
+  final ITriageRepository _triageRepository;
 
-  TriageCubit({required TriageRepository triageRepository})
+  TriageCubit({required ITriageRepository triageRepository})
       : _triageRepository = triageRepository,
         super(TriageInitial());
 
@@ -28,7 +27,6 @@ class TriageCubit extends Cubit<TriageState> {
     await _processNextStep();
   }
 
-  // New method to retry the current state of history without adding new answers
   Future<void> retryLastStep() async {
     await _processNextStep();
   }

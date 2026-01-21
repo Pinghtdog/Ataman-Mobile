@@ -30,7 +30,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
   void _loadProfile() {
     final authState = context.read<AuthCubit>().state;
     if (authState is Authenticated) {
-      context.read<ProfileCubit>().loadProfile(authState.user!.id);
+      context.read<ProfileCubit>().loadProfile(authState.user.id);
     }
   }
 
@@ -67,7 +67,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     : "Naga City Resident";
                 isVerified = user.isProfileComplete;
               } else if (authState is Authenticated) {
-                fullName = authState.profile?.fullName ?? authState.user!.userMetadata?['full_name'] ?? "User";
+                fullName = authState.profile?.fullName ?? authState.user.userMetadata?['full_name'] ?? "User";
                 address = authState.profile?.barangay != null ? "${authState.profile!.barangay}, Naga City" : "Naga City Resident";
               }
 
@@ -136,10 +136,14 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                   alignment: Alignment.centerRight,
                                   child: TextButton.icon(
                                     onPressed: () {
+                                      final profileCubit = context.read<ProfileCubit>();
                                       Navigator.push(
                                         context,
                                         MaterialPageRoute(
-                                          builder: (context) => EditProfileScreen(user: user),
+                                          builder: (context) => BlocProvider.value(
+                                            value: profileCubit,
+                                            child: EditProfileScreen(user: user),
+                                          ),
                                         ),
                                       ).then((_) => _loadProfile());
                                     },

@@ -1,10 +1,10 @@
-import 'package:supabase_flutter/supabase_flutter.dart';
-
 import '../../../../core/data/repositories/base_repository.dart';
+import '../../domain/repositories/i_user_repository.dart';
 import '../models/user_model.dart';
 
-class UserRepository extends BaseRepository {
+class UserRepository extends BaseRepository implements IUserRepository {
   
+  @override
   Future<UserModel?> getUserProfile(String userId) async {
     return await getCached<UserModel?>(
       'user_profile_$userId',
@@ -17,19 +17,20 @@ class UserRepository extends BaseRepository {
         
         return UserModel.fromMap(data);
       },
-      ttl: const Duration(minutes: 15), // Profile can be cached longer
+      ttl: const Duration(minutes: 15),
     );
   }
 
+  @override
   Future<void> updateProfile(UserModel user) async {
     await safeCall(() => supabase
         .from('users')
         .upsert(user.toMap()));
     
-    // Invalidate cache after update
     cache.invalidate('user_profile_${user.id}');
   }
 
+  @override
   Future<void> updateFCMToken(String userId, String token) async {
     await safeCall(() => supabase
         .from('users')

@@ -8,7 +8,6 @@ class SupabaseService {
 
   SupabaseClient get client => Supabase.instance.client;
 
-  /// Initializes Supabase with credentials from .env
   static Future<void> init() async {
     await Supabase.initialize(
       url: dotenv.env['SUPABASE_URL']!,
@@ -16,10 +15,8 @@ class SupabaseService {
     );
   }
 
-  /// Helper to get current user session
   Session? get currentSession => client.auth.currentSession;
 
-  /// Helper to get current user ID
   String? get userId => client.auth.currentUser?.id;
 
   /// Generic function to upload a file to a Supabase bucket

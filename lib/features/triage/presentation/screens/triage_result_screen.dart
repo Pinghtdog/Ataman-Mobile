@@ -61,24 +61,38 @@ class TriageResultScreen extends StatelessWidget {
               ),
             ),
             const SizedBox(height: AppSizes.p32),
+            if (result.summaryForProvider != null) ...[
+              _buildDetailSection(
+                "Summary",
+                result.summaryForProvider!,
+                Icons.summarize_outlined,
+              ),
+              const SizedBox(height: AppSizes.p16),
+            ],
             _buildDetailSection(
-              "Your Symptoms Summary",
-              result.rawSymptoms,
-              Icons.description_outlined,
+              "Recommended Level",
+              result.requiredCapability.replaceAll('_', ' '),
+              Icons.account_balance_outlined,
             ),
             const SizedBox(height: AppSizes.p16),
             _buildDetailSection(
-              "Recommended Specialty",
+              "Specialty",
               result.specialty,
               Icons.medical_services_outlined,
             ),
-            if (result.reason != null) ...[
+            if (result.soapNote != null) ...[
+              const SizedBox(height: AppSizes.p24),
+              const Divider(),
               const SizedBox(height: AppSizes.p16),
-              _buildDetailSection(
-                "Clinical Reasoning",
-                result.reason!,
-                Icons.info_outline_rounded,
+              Align(
+                alignment: Alignment.centerLeft,
+                child: Text("Provider Note (SOAP)", style: AppTextStyles.h3),
               ),
+              const SizedBox(height: AppSizes.p16),
+              _buildSoapSection("Subjective", result.soapNote!.subjective),
+              _buildSoapSection("Objective", result.soapNote!.objective),
+              _buildSoapSection("Assessment", result.soapNote!.assessment),
+              _buildSoapSection("Plan", result.soapNote!.plan),
             ],
             const SizedBox(height: AppSizes.p48),
             _buildActionButton(context),
@@ -92,6 +106,19 @@ class TriageResultScreen extends StatelessWidget {
             ),
           ],
         ),
+      ),
+    );
+  }
+
+  Widget _buildSoapSection(String title, String content) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(title, style: AppTextStyles.bodySmall.copyWith(fontWeight: FontWeight.bold, color: AppColors.primary)),
+          Text(content, style: AppTextStyles.bodyMedium),
+        ],
       ),
     );
   }
@@ -124,7 +151,7 @@ class TriageResultScreen extends StatelessWidget {
   }
 
   Widget _buildActionButton(BuildContext context) {
-    String buttonText = "Book Appointment";
+    String buttonText = "Proceed to Action";
     if (result.urgency == TriageUrgency.emergency) {
       buttonText = "Call Emergency Services";
     }
@@ -134,19 +161,19 @@ class TriageResultScreen extends StatelessWidget {
       height: 56,
       child: ElevatedButton(
         onPressed: () async {
-          if (result.urgency == TriageUrgency.emergency) {
-            final Uri launchUri = Uri(scheme: 'tel', path: '911');
+          if (result.recommendedAction == 'AMBULANCE_DISPATCH' || result.urgency == TriageUrgency.emergency) {
+            final Uri launchUri = Uri(scheme: 'tel', path: '911'); // Or Naga's local emergency number
             if (await canLaunchUrl(launchUri)) {
               await launchUrl(launchUri);
             }
           } else {
-            // Navigate to Booking tab (Index 1) and reset Triage
+            // Handle other actions: TELEMEDICINE, BHC_APPOINTMENT, HOSPITAL_ER
+            // For now, redirect to appropriate tab or screen
             context.read<TriageCubit>().reset();
             Navigator.of(context).pushAndRemoveUntil(
               MaterialPageRoute(builder: (context) => const AtamanBaseScreen()),
               (route) => false,
             );
-            // tab1
           }
         },
         style: ElevatedButton.styleFrom(
@@ -169,7 +196,7 @@ class TriageResultScreen extends StatelessWidget {
         return Icons.report_problem_rounded;
       case TriageUrgency.urgent:
         return Icons.error_outline_rounded;
-      case TriageUrgency.nonUrgent:
+      case TriageUrgency.routine:
         return Icons.check_circle_outline_rounded;
     }
   }

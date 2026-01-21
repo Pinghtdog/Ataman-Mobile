@@ -67,7 +67,7 @@ class _MyAppointmentsScreenState extends State<MyAppointmentsScreen> with Single
                     ),
                   ],
                 ),
-                const SizedBox(height: 16),
+                const SizedBox(height: 5),
                 TabBar(
                   controller: _tabController,
                   indicatorColor: Colors.white,

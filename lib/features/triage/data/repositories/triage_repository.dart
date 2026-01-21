@@ -1,32 +1,25 @@
+import '../../../../core/data/repositories/base_repository.dart';
+import '../../domain/repositories/i_triage_repository.dart';
 import '../models/triage_model.dart';
 import '../services/triage_service.dart';
 
-class TriageRepository {
+class TriageRepository extends BaseRepository implements ITriageRepository {
   final TriageService _triageService;
 
   TriageRepository(this._triageService);
 
+  @override
   Future<TriageStep> getNextStep(List<Map<String, String>> history) async {
-    try {
-      return await _triageService.getNextStep(history);
-    } catch (e) {
-      rethrow;
-    }
+    return await safeCall(() => _triageService.getNextStep(history));
   }
 
+  @override
   Future<TriageResult> performTriage(String symptoms) async {
-    try {
-      return await _triageService.classifySymptoms(symptoms);
-    } catch (e) {
-      rethrow;
-    }
+    return await safeCall(() => _triageService.performTriage(symptoms));
   }
 
+  @override
   Future<List<TriageResult>> getHistory() async {
-    try {
-      return await _triageService.getTriageHistory();
-    } catch (e) {
-      rethrow;
-    }
+    return await safeCall(() => _triageService.getTriageHistory());
   }
 }

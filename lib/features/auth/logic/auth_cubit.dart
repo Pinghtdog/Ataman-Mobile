@@ -5,8 +5,8 @@ import 'package:equatable/equatable.dart';
 import 'package:supabase_flutter/supabase_flutter.dart' as sb;
 import '../../../core/services/notification_service.dart';
 import '../data/models/user_model.dart';
-import '../data/repositories/auth_repository.dart';
-import '../data/repositories/user_repository.dart';
+import '../domain/repositories/i_auth_repository.dart';
+import '../domain/repositories/i_user_repository.dart';
 
 abstract class AuthState extends Equatable {
   @override
@@ -44,13 +44,13 @@ class AuthError extends AuthState {
 }
 
 class AuthCubit extends Cubit<AuthState> {
-  final AuthRepository _authRepository;
-  final UserRepository _userRepository;
+  final IAuthRepository _authRepository;
+  final IUserRepository _userRepository;
   StreamSubscription<sb.AuthState>? _authStateSubscription;
 
   AuthCubit({
-    required AuthRepository authRepository,
-    required UserRepository userRepository,
+    required IAuthRepository authRepository,
+    required IUserRepository userRepository,
   })  : _authRepository = authRepository,
         _userRepository = userRepository,
         super(AuthInitial()) {
@@ -59,47 +59,49 @@ class AuthCubit extends Cubit<AuthState> {
 
   void _init() {
     _authStateSubscription = _authRepository.authStateChanges.listen((data) async {
-      final sb.User? user = data.session?.user;
-      final sb.AuthChangeEvent event = data.event;
+      try {
+        final sb.User? user = data.session?.user;
+        final sb.AuthChangeEvent event = data.event;
 
-      debugPrint('Auth State Change Event: $event');
-      
-      if (user != null) {
-        // Deep-link sign-in
-        if (event == sb.AuthChangeEvent.signedIn && state is! AuthLoading && state is! Authenticated) {
-          emit(AuthEmailVerified(user));
-          return;
-        }
-
-        final profile = await _userRepository.getUserProfile(user.id);
+        debugPrint('Auth State Change Event: $event');
         
-        // Update FCM Token
-        try {
-          final fcmToken = await NotificationService.getFCMToken();
-          if (fcmToken != null) {
-            await _userRepository.updateFCMToken(user.id, fcmToken);
+        if (user != null) {
+          // Deep-link sign-in
+          if (event == sb.AuthChangeEvent.signedIn && state is! AuthLoading && state is! Authenticated) {
+            emit(AuthEmailVerified(user));
+            return;
           }
-        } catch (e) {
-          debugPrint('Error updating FCM token during init: $e');
-        }
 
-        emit(Authenticated(user, profile: profile));
-      } else {
-        if (state is! AuthLoading && state is! AuthError) {
-          emit(Unauthenticated());
+          final profile = await _userRepository.getUserProfile(user.id);
+          
+          // Update FCM Token
+          try {
+            final fcmToken = await NotificationService.getFCMToken();
+            if (fcmToken != null) {
+              await _userRepository.updateFCMToken(user.id, fcmToken);
+            }
+          } catch (e) {
+            debugPrint('Error updating FCM token during init: $e');
+          }
+
+          emit(Authenticated(user, profile: profile));
+        } else {
+          if (state is! AuthLoading && state is! AuthError) {
+            emit(Unauthenticated());
+          }
         }
+      } catch (e) {
+        debugPrint('Error in auth state change: $e');
       }
     });
   }
 
   String _handleAuthError(dynamic e) {
-    if (e is sb.AuthWeakPasswordException) {
-      return "Password is too weak. It must include uppercase, lowercase, numbers, and special characters.";
-    }
-    
     final String errorString = e.toString().toLowerCase();
     
-    if (errorString.contains('invalid login credentials')) {
+    if (errorString.contains('weak password')) {
+      return "Password is too weak. It must include uppercase, lowercase, numbers, and special characters.";
+    } else if (errorString.contains('invalid login credentials')) {
       return "The email or password you entered is incorrect.";
     } else if (errorString.contains('user already exists')) {
       return "This email is already registered. Please try logging in.";
@@ -107,10 +109,6 @@ class AuthCubit extends Cubit<AuthState> {
       return "Connection failed. Please check your internet and try again.";
     } else if (errorString.contains('email not confirmed')) {
       return "Please check your email to confirm your account.";
-    } else if (errorString.contains('password should be') || errorString.contains('characters')) {
-      return "Password is too weak. It must include uppercase, lowercase, numbers, and special characters.";
-    } else if (errorString.contains('violates row level security')) {
-      return "Unable to save profile. Please contact support.";
     }
     
     return "Something went wrong. Please try again later.";
@@ -126,7 +124,6 @@ class AuthCubit extends Cubit<AuthState> {
       );
 
       if (response.user != null) {
-        // Update FCM token on successful login
         try {
           final fcmToken = await NotificationService.getFCMToken();
           if (fcmToken != null) {
