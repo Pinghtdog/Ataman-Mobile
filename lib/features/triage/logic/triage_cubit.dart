@@ -1,4 +1,7 @@
+// lib/features/triage/logic/triage_cubit.dart
+
 import 'package:flutter_bloc/flutter_bloc.dart';
+import '../../../core/error/failures.dart';
 import '../domain/repositories/i_triage_repository.dart';
 import 'triage_state.dart';
 
@@ -13,50 +16,30 @@ class TriageCubit extends Cubit<TriageState> {
 
   Future<void> startTriage() async {
     _history = [];
-    emit(TriageLoading());
-    try {
-      final step = await _triageRepository.getNextStep(_history);
-      emit(TriageStepLoaded(step, history: List.from(_history)));
-    } catch (e) {
-      emit(TriageError(e.toString()));
-    }
+    _fetchNextStep();
   }
 
   Future<void> selectOption(String question, String answer) async {
     _history.add({'question': question, 'answer': answer});
-    await _processNextStep();
+    _fetchNextStep();
   }
 
-  Future<void> retryLastStep() async {
-    await _processNextStep();
-  }
+  Future<void> retryLastStep() async => _fetchNextStep();
 
-  Future<void> _processNextStep() async {
+  Future<void> _fetchNextStep() async {
     emit(TriageLoading());
     try {
       final step = await _triageRepository.getNextStep(_history);
+
       if (step.isFinal && step.result != null) {
         emit(TriageSuccess(step.result!));
       } else {
         emit(TriageStepLoaded(step, history: List.from(_history)));
       }
     } catch (e) {
-      emit(TriageError(e.toString()));
-    }
-  }
-
-  Future<void> performTriage(String symptoms) async {
-    if (symptoms.trim().isEmpty) {
-      emit(const TriageError("Please describe your symptoms"));
-      return;
-    }
-
-    emit(TriageLoading());
-    try {
-      final result = await _triageRepository.performTriage(symptoms);
-      emit(TriageSuccess(result));
-    } catch (e) {
-      emit(TriageError(e.toString()));
+      // Mapping raw errors to user-friendly messages via our Failures system
+      final String message = e is Failure ? e.message : e.toString();
+      emit(TriageError(message));
     }
   }
 

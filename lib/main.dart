@@ -57,7 +57,6 @@ class AtamanApp extends StatelessWidget {
             userRepository: getIt<IUserRepository>(),
           ),
         ),
-        // Providing ProfileCubit globally to avoid route-scoping issues
         BlocProvider<ProfileCubit>(
           create: (context) => ProfileCubit(userRepository: getIt<IUserRepository>()),
         ),

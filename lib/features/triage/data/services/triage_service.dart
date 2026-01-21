@@ -13,32 +13,28 @@ class TriageService {
   Future<TriageStep> getNextStep(List<Map<String, String>> history) async {
     try {
       final user = _supabase.auth.currentUser;
-      String userContext = "";
+      Map<String, dynamic>? userProfileData;
       
       if (user != null) {
         final profile = await _userRepository.getUserProfile(user.id);
         if (profile != null) {
-          userContext = "USER CONTEXT: Patient is ${profile.fullName}. ";
-          if (profile.birthDate != null) {
-            userContext += "Age/BirthDate: ${profile.birthDate}. ";
-          }
-          userContext += "Adjust urgency thresholds based on this profile.\n\n";
+          userProfileData = profile.toMap();
         }
       }
 
-      String prompt = "${GeminiService.triageSystemPrompt}\n\n$userContext"
-          "CONVERSATION HISTORY:\n";
-          
-      if (history.isEmpty) {
-        prompt += "No history. Start with a broad question using BUTTONS to find the main issue.";
-      } else {
-        for (var turn in history) {
-          prompt += "Q: ${turn['question']} | A: ${turn['answer']}\n";
-        }
-        prompt += "\nProvide the next step (BUTTONS or TEXT) or the final result.";
+      String historyText = "";
+      for (var turn in history) {
+        historyText += "Q: ${turn['question']} | A: ${turn['answer']}\n";
       }
 
-      final data = await _geminiService.getTriageResponse(prompt);
+      final String lastAnswer = history.isNotEmpty ? history.last['answer']! : "Start Triage";
+
+      final data = await _geminiService.getTriageResponse(
+        userMessage: lastAnswer,
+        history: historyText,
+        stepCount: history.length + 1,
+        userProfile: userProfileData,
+      );
 
       if (data['is_final'] == true && data['result'] != null) {
         String historySummary = history.map((e) => "Q: ${e['question']} A: ${e['answer']}").join("\n");
@@ -85,13 +81,13 @@ class TriageService {
 
     try {
       final profile = await _userRepository.getUserProfile(user.id);
-      String userContext = profile != null 
-          ? "USER CONTEXT: Patient profile data provided. Adjust urgency.\n\n" 
-          : "";
-
-      final prompt = "${GeminiService.triageSystemPrompt}\n\n$userContext"
-          "User symptoms: $symptoms\n\nProvide the final result immediately.";
-      final data = await _geminiService.getTriageResponse(prompt);
+      
+      final data = await _geminiService.getTriageResponse(
+        userMessage: symptoms,
+        history: "Direct triage bypass.",
+        stepCount: 7, // Force final decision
+        userProfile: profile?.toMap(),
+      );
       
       final resultData = data['is_final'] == true ? data['result'] : data;
       final soapNote = resultData['soap_note'];
