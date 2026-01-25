@@ -10,6 +10,7 @@ import '../../../../core/constants/constants.dart';
 import '../../../../core/widgets/widgets.dart';
 import '../widgets/profile_square_card.dart';
 import 'edit_profile_screen.dart';
+import 'medical_id_screen.dart'; // Import MedicalIdScreen
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -67,7 +68,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     : "Naga City Resident";
                 isVerified = user.isProfileComplete;
               } else if (authState is Authenticated) {
-                fullName = authState.profile?.fullName ?? authState.user.userMetadata?['full_name'] ?? "User";
+                // Fallback to auth metadata if profile hasn't loaded yet
+                fullName = authState.profile?.fullName ?? 
+                          "${authState.user.userMetadata?['first_name'] ?? ''} ${authState.user.userMetadata?['last_name'] ?? ''}".trim();
+                if (fullName.isEmpty) fullName = "User";
                 address = authState.profile?.barangay != null ? "${authState.profile!.barangay}, Naga City" : "Naga City Resident";
               }
 
@@ -136,14 +140,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                   alignment: Alignment.centerRight,
                                   child: TextButton.icon(
                                     onPressed: () {
-                                      final profileCubit = context.read<ProfileCubit>();
                                       Navigator.push(
                                         context,
                                         MaterialPageRoute(
-                                          builder: (context) => BlocProvider.value(
-                                            value: profileCubit,
-                                            child: EditProfileScreen(user: user),
-                                          ),
+                                          builder: (context) => EditProfileScreen(user: user),
                                         ),
                                       ).then((_) => _loadProfile());
                                     },
@@ -187,7 +187,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                       icon: Icons.history_edu_rounded,
                                       iconColor: Colors.orange[800]!,
                                       iconBg: Colors.orange[50]!,
-                                      onTap: () {},
+                                      onTap: () {
+                                        // Linked to triage history or medical records
+                                      },
                                     ),
                                   ),
                                   const SizedBox(width: AppSizes.p16),
@@ -223,7 +225,20 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                     ProfileListTile(
                                       title: "Digital Medical ID",
                                       icon: Icons.qr_code_scanner_rounded,
-                                      onTap: () {},
+                                      onTap: () {
+                                        if (user != null) {
+                                          Navigator.push(
+                                            context,
+                                            MaterialPageRoute(
+                                              builder: (context) => MedicalIdScreen(user: user),
+                                            ),
+                                          );
+                                        } else {
+                                          ScaffoldMessenger.of(context).showSnackBar(
+                                            const SnackBar(content: Text("Loading profile data...")),
+                                          );
+                                        }
+                                      },
                                     ),
                                     const Divider(height: 1, indent: 60, endIndent: 20),
                                     ProfileListTile(

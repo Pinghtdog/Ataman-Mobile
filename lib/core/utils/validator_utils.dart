@@ -18,22 +18,18 @@ class ValidatorUtils {
       return 'Password must be at least 8 characters long';
     }
     
-    // Check for uppercase
     if (!value.contains(RegExp(r'[A-Z]'))) {
       return 'Password must contain at least one uppercase letter';
     }
     
-    // Check for lowercase
     if (!value.contains(RegExp(r'[a-z]'))) {
       return 'Password must contain at least one lowercase letter';
     }
     
-    // Check for numbers
     if (!value.contains(RegExp(r'[0-9]'))) {
       return 'Password must contain at least one number';
     }
     
-    // Check for special characters
     if (!value.contains(RegExp(r'[!@#$%^&*(),.?":{}|<>]'))) {
       return 'Password must contain at least one special character';
     }
@@ -45,9 +41,24 @@ class ValidatorUtils {
     if (value == null || value.isEmpty) {
       return 'Phone number is required';
     }
-    final phoneRegex = RegExp(r'^\+?[0-9]{10,12}$');
+    // Philippine standard: 11 digits starting with 09
+    final phoneRegex = RegExp(r'^09[0-9]{9}$');
     if (!phoneRegex.hasMatch(value)) {
-      return 'Enter a valid phone number';
+      return 'Enter a valid 11-digit number starting with 09';
+    }
+    return null;
+  }
+
+  static String? validateFirstName(String? value) {
+    if (value == null || value.isEmpty) {
+      return 'First name is required';
+    }
+    return null;
+  }
+
+  static String? validateLastName(String? value) {
+    if (value == null || value.isEmpty) {
+      return 'Last name is required';
     }
     return null;
   }
@@ -56,7 +67,7 @@ class ValidatorUtils {
     if (value == null || value.isEmpty) {
       return 'Full name is required';
     }
-    if (value.split(' ').length < 2) {
+    if (value.trim().split(' ').length < 2) {
       return 'Enter your full name (First and Last name)';
     }
     return null;

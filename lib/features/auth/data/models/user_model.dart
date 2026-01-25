@@ -1,7 +1,9 @@
 class UserModel {
   final String id;
   final String email;
-  final String fullName;
+  final String firstName;
+  final String? middleName;
+  final String lastName;
   final String? phoneNumber;
   final String? birthDate;
   final String? barangay;
@@ -9,7 +11,7 @@ class UserModel {
   final String? fcmToken;
   final bool isProfileComplete;
   
-  // health related fields
+  // Health related fields
   final String? gender;
   final String? bloodType;
   final String? emergencyContactName;
@@ -20,7 +22,9 @@ class UserModel {
   UserModel({
     required this.id,
     required this.email,
-    required this.fullName,
+    required this.firstName,
+    this.middleName,
+    required this.lastName,
     this.phoneNumber,
     this.birthDate,
     this.barangay,
@@ -35,11 +39,21 @@ class UserModel {
     this.medicalConditions,
   });
 
+  // Computed property for UI display (PH Standard: First Middle Last)
+  String get fullName {
+    if (middleName != null && middleName!.isNotEmpty) {
+      return "$firstName $middleName $lastName";
+    }
+    return "$firstName $lastName";
+  }
+
   factory UserModel.fromMap(Map<String, dynamic> map) {
     return UserModel(
       id: map['id'] ?? '',
       email: map['email'] ?? '',
-      fullName: map['full_name'] ?? '',
+      firstName: map['first_name'] ?? '',
+      middleName: map['middle_name'],
+      lastName: map['last_name'] ?? '',
       phoneNumber: map['phone_number'],
       birthDate: map['birth_date'],
       barangay: map['barangay'],
@@ -59,7 +73,9 @@ class UserModel {
     return {
       'id': id,
       'email': email,
-      'full_name': fullName,
+      'first_name': firstName,
+      'middle_name': middleName,
+      'last_name': lastName,
       'phone_number': phoneNumber,
       'birth_date': birthDate,
       'barangay': barangay,
@@ -79,7 +95,9 @@ class UserModel {
   UserModel copyWith({
     String? id,
     String? email,
-    String? fullName,
+    String? firstName,
+    String? middleName,
+    String? lastName,
     String? phoneNumber,
     String? birthDate,
     String? barangay,
@@ -96,7 +114,9 @@ class UserModel {
     return UserModel(
       id: id ?? this.id,
       email: email ?? this.email,
-      fullName: fullName ?? this.fullName,
+      firstName: firstName ?? this.firstName,
+      middleName: middleName ?? this.middleName,
+      lastName: lastName ?? this.lastName,
       phoneNumber: phoneNumber ?? this.phoneNumber,
       birthDate: birthDate ?? this.birthDate,
       barangay: barangay ?? this.barangay,

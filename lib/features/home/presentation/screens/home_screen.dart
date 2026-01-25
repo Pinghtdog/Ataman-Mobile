@@ -94,7 +94,7 @@ class HomeScreen extends StatelessWidget {
                 const SizedBox(height: AppSizes.p24),
 
                 Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: AppSizes.p24),
+                  padding: const EdgeInsets.symmetric(horizontal: AppSizes.p32),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
@@ -102,7 +102,7 @@ class HomeScreen extends StatelessWidget {
                         "Quick Services",
                         style: AppTextStyles.h3.copyWith(color: AppColors.textPrimary),
                       ),
-                      const SizedBox(height: AppSizes.p16),
+                      const SizedBox(height: AppSizes.p8),
                       AtamanServiceGrid(
                         services: const [
                           {'title': 'Medicine Access',

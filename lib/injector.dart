@@ -9,6 +9,7 @@ import 'features/booking/data/repositories/booking_repository.dart';
 import 'features/emergency/data/repositories/emergency_repository.dart';
 import 'features/facility/data/repositories/facility_repository.dart';
 import 'features/medical_records/data/repositories/prescription_repository.dart';
+import 'features/notification/data/repositories/notification_repository.dart';
 import 'features/triage/data/repositories/triage_repository.dart';
 import 'features/triage/data/services/triage_service.dart';
 import 'features/triage/domain/repositories/i_triage_repository.dart';
@@ -38,4 +39,5 @@ Future<void> initInjector() async {
   getIt.registerLazySingleton<BookingRepository>(() => BookingRepository());
   getIt.registerLazySingleton<EmergencyRepository>(() => EmergencyRepository());
   getIt.registerLazySingleton<PrescriptionRepository>(() => PrescriptionRepository());
+  getIt.registerLazySingleton<NotificationRepository>(() => NotificationRepository());
 }

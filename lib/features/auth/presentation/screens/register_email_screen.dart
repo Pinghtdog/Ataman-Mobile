@@ -45,7 +45,8 @@ class _RegisterEmailScreenState extends State<RegisterEmailScreen> {
       context.read<AuthCubit>().register(
             email: _emailController.text.trim(),
             password: _passController.text.trim(),
-            fullName: fullProfileData['fullName'],
+            firstName: fullProfileData['firstName'],
+            lastName: fullProfileData['lastName'],
             birthDate: fullProfileData['birthDate'],
             barangay: fullProfileData['barangay'],
             philhealthId: fullProfileData['philhealthId'],

@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:intl/intl.dart';
 import '../../../../core/constants/constants.dart';
 import '../../../../core/widgets/widgets.dart';
 import '../../../auth/logic/auth_cubit.dart';
@@ -82,12 +81,14 @@ class _MyAppointmentsScreenState extends State<MyAppointmentsScreen> with Single
               ],
             ),
           ),
+          const SizedBox(height: 8),
           Expanded(
             child: BlocBuilder<BookingCubit, BookingState>(
               builder: (context, state) {
                 if (state is BookingLoading) {
                   return const Center(child: CircularProgressIndicator(color: AppColors.primary));
                 } else if (state is BookingLoaded) {
+                  // Dynamic Filtering based on SQL status
                   final activeBookings = state.bookings
                       .where((b) => b.status == BookingStatus.pending || b.status == BookingStatus.confirmed)
                       .toList();
@@ -146,6 +147,7 @@ class _MyAppointmentsScreenState extends State<MyAppointmentsScreen> with Single
       itemCount: bookings.length,
       itemBuilder: (context, index) {
         final booking = bookings[index];
+        // UI Feedback: Using AtamanBookingTicket which handles dynamic display
         return AtamanBookingTicket(
           booking: booking,
           onTap: () {
@@ -156,6 +158,7 @@ class _MyAppointmentsScreenState extends State<MyAppointmentsScreen> with Single
               );
             }
           },
+          // Action Integration: Cancel functionality
           onCancel: isActive ? () => _confirmCancel(booking) : null,
         );
       },
@@ -178,6 +181,7 @@ class _MyAppointmentsScreenState extends State<MyAppointmentsScreen> with Single
             onPressed: () {
               final authState = context.read<AuthCubit>().state;
               if (authState is Authenticated) {
+                // Action Integration: Calling repository via Cubit
                 context.read<BookingCubit>().cancelBooking(booking.id, authState.user.id);
               }
               Navigator.pop(context);

@@ -9,6 +9,7 @@ class AtamanTextField extends StatefulWidget {
   final TextEditingController? controller;
   final TextInputType keyboardType;
   final String? Function(String?)? validator;
+  final bool readOnly;
 
   const AtamanTextField({
     super.key,
@@ -19,6 +20,7 @@ class AtamanTextField extends StatefulWidget {
     this.controller,
     this.keyboardType = TextInputType.text,
     this.validator,
+    this.readOnly = false,
   });
 
   @override
@@ -41,10 +43,13 @@ class _AtamanTextFieldState extends State<AtamanTextField> {
       obscureText: widget.isPassword ? _obscureText : false,
       keyboardType: widget.keyboardType,
       validator: widget.validator,
+      readOnly: widget.readOnly,
       decoration: InputDecoration(
         labelText: widget.label,
         hintText: widget.hintText,
         alignLabelWithHint: true,
+        filled: widget.readOnly,
+        fillColor: widget.readOnly ? Colors.grey.shade100 : null,
         prefixIcon: widget.prefixIcon != null
             ? Icon(widget.prefixIcon, color: AppColors.primary.withOpacity(0.7))
             : null,

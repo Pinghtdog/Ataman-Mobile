@@ -58,21 +58,21 @@ class AuthCubit extends Cubit<AuthState> {
   }
 
   Future<void> _init() async {
-    // 1. Immediate Check: See if Supabase already has a user cached
+    // Supabase already has a user cached
     final sb.User? initialUser = _authRepository.currentUser;
     if (initialUser != null) {
       debugPrint('Found initial user: ${initialUser.id}');
       await _handleUserAuthenticated(initialUser);
     } else {
-      // 2. Small fallback delay: If host lookup fails or no session, proceed to login screen
+      //  Supabase to attempt session recovery
       await Future.delayed(const Duration(milliseconds: 1500));
       if (state is AuthInitial) {
-        debugPrint('No session recovered. Proceeding to Unauthenticated.');
+        debugPrint('No session recovered. Emitting Unauthenticated to unblock splash.');
         emit(Unauthenticated());
       }
     }
 
-    // 3. Persistent Listening: Handle future sign-ins/outs
+    // Handle future sign-ins/outs
     _authStateSubscription = _authRepository.authStateChanges.listen(
       (data) async {
         try {
@@ -93,7 +93,7 @@ class AuthCubit extends Cubit<AuthState> {
             }
           }
         } catch (e) {
-          debugPrint('Error in auth listener: $e');
+          debugPrint('Error in auth state change: $e');
           if (state is AuthInitial) emit(Unauthenticated());
         }
       },
@@ -114,12 +114,13 @@ class AuthCubit extends Cubit<AuthState> {
           await _userRepository.updateFCMToken(user.id, fcmToken);
         }
       } catch (e) {
-        debugPrint('FCM Token Update failed: $e');
+        debugPrint('Error updating FCM token during init: $e');
       }
 
       emit(Authenticated(user, profile: profile));
     } catch (e) {
       debugPrint('Authenticated user detected, but profile fetch failed: $e');
+      // If profile fails (e.g. network), still emit Authenticated so user isn't kicked out
       emit(Authenticated(user));
     }
   }
@@ -129,7 +130,7 @@ class AuthCubit extends Cubit<AuthState> {
     if (errorString.contains('weak password')) return "Password is too weak.";
     if (errorString.contains('invalid login credentials')) return "Incorrect email or password.";
     if (errorString.contains('network') || errorString.contains('socketexception')) return "Connection failed.";
-    return "Something went wrong. Please try again.";
+    return "Something went wrong. Please try again later.";
   }
 
   Future<void> login(String identity, String password, {bool isPhoneLogin = false}) async {
@@ -153,7 +154,8 @@ class AuthCubit extends Cubit<AuthState> {
   Future<void> register({
     required String email,
     required String password,
-    required String fullName,
+    required String firstName,
+    required String lastName,
     String? phoneNumber,
     String? birthDate,
     String? barangay,
@@ -169,12 +171,17 @@ class AuthCubit extends Cubit<AuthState> {
         }
       }
 
+      // Combine for full_name as fallback/legacy support
+      final String fullName = "$firstName $lastName";
+
       final response = await _authRepository.signUp(
         email: email,
         password: password,
         fullName: fullName,
         phoneNumber: phoneNumber,
         additionalData: {
+          'first_name': firstName,
+          'last_name': lastName,
           'birth_date': formattedDate,
           'barangay': barangay,
           'philhealth_id': philhealthId,

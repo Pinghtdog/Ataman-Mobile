@@ -1,33 +1,32 @@
---Enums and Data Types
--- 1. Facility Types & Attributes
+-- Enums and Data Types
 CREATE TYPE facility_status AS ENUM ('available', 'congested', 'closed');
 CREATE TYPE facility_type AS ENUM ('hospital', 'bhc', 'clinic');
 CREATE TYPE facility_ownership_type AS ENUM ('GOVERNMENT_NATIONAL', 'GOVERNMENT_LGU', 'PRIVATE', 'NGO_CHARITABLE');
 CREATE TYPE facility_service_capability AS ENUM ('BARANGAY_HEALTH_STATION', 'RURAL_HEALTH_UNIT', 'INFIRMARY', 'HOSPITAL_LEVEL_1', 'HOSPITAL_LEVEL_2', 'HOSPITAL_LEVEL_3', 'SPECIALIZED_CENTER');
 
--- 2. Booking & Emergency
 CREATE TYPE booking_status AS ENUM ('pending', 'confirmed', 'completed', 'cancelled', 'missed');
 CREATE TYPE emergency_type AS ENUM ('sos', 'ambulance', 'accident', 'maternal', 'cardiac', 'other');
 CREATE TYPE emergency_status AS ENUM ('pending', 'dispatched', 'arrived', 'completed', 'cancelled');
 
--- 3. Referral Logic
 CREATE TYPE referral_priority_type AS ENUM ('ROUTINE', 'URGENT', 'EMERGENCY');
 CREATE TYPE referral_case_category AS ENUM ('GENERAL_MEDICINE', 'MATERNAL_CHILD_HEALTH', 'TRAUMA_SURGERY', 'INFECTIOUS_DISEASE', 'DIALYSIS_RENAL', 'ANIMAL_BITE', 'MENTAL_HEALTH');
 CREATE TYPE referral_status AS ENUM ('PENDING', 'ACCEPTED', 'REJECTED', 'COMPLETED', 'CANCELLED');
 
-
---Core Tables
--- Users (Patients) - Extends auth.users
+-- Core Tables
+-- Users (Patients) - Can be manual (temporary) or linked to auth.users
 CREATE TABLE public.users (
-  id uuid NOT NULL REFERENCES auth.users(id),
-  email text NOT NULL,
-  full_name text,
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  medical_id text UNIQUE DEFAULT ('ATAM-' || upper(substring(gen_random_uuid()::text from 1 for 8))),
+  email text, -- Nullable for manual input
+  first_name text NOT NULL,
+  last_name text NOT NULL,
   phone_number text,
   birth_date date,
   barangay text,
   philhealth_id text,
   fcm_token text,
   is_profile_complete boolean DEFAULT false,
+  is_temporary boolean DEFAULT false, -- True if manually created by staff/ambulance
   gender text,
   blood_type text,
   emergency_contact_name text,
@@ -59,12 +58,13 @@ CREATE TABLE public.facilities (
   email text,
   website text,
   metadata jsonb DEFAULT '{}'::jsonb,
+  is_philhealth_accredited BOOLEAN DEFAULT FALSE,
   created_at timestamp with time zone DEFAULT now(),
   updated_at timestamp with time zone DEFAULT now(),
   CONSTRAINT facilities_pkey PRIMARY KEY (id)
 );
 
--- Facility Staff (RBAC for Command Center)
+-- Facility Staff (RBAC)
 CREATE TABLE public.facility_staff (
   id uuid NOT NULL DEFAULT gen_random_uuid(),
   user_id uuid NOT NULL REFERENCES auth.users(id),
@@ -87,10 +87,10 @@ CREATE TABLE public.ambulances (
   CONSTRAINT ambulances_pkey PRIMARY KEY (id)
 );
 
--- Emergency Requests
+-- Emergency Requests (Linked to Users with Cascade Update)
 CREATE TABLE public.emergency_requests (
   id uuid NOT NULL DEFAULT gen_random_uuid(),
-  user_id uuid REFERENCES public.users(id),
+  user_id uuid REFERENCES public.users(id) ON UPDATE CASCADE,
   assigned_ambulance_id uuid REFERENCES public.ambulances(id),
   user_name text,
   user_phone text,
@@ -108,30 +108,27 @@ CREATE TABLE public.facility_services (
   id uuid NOT NULL DEFAULT gen_random_uuid(),
   facility_id bigint REFERENCES public.facilities(id),
   name text NOT NULL,
-  category text DEFAULT 'general', -- 'Reproductive Health' triggers privacy rules
+  category text DEFAULT 'general',
   is_available boolean DEFAULT true,
+  status text DEFAULT 'operational' CHECK (status IN ('operational', 'maintenance', 'offline')),
   created_at timestamp with time zone DEFAULT now(),
   CONSTRAINT facility_services_pkey PRIMARY KEY (id)
 );
 
-ALTER TABLE public.facility_services
-ADD COLUMN status text DEFAULT 'operational' CHECK (status IN ('operational', 'maintenance', 'offline'));
-
-
--- Family Members (for booking on behalf of others)
+-- Family Members
 CREATE TABLE public.family_members (
   id uuid NOT NULL DEFAULT gen_random_uuid(),
-  user_id uuid REFERENCES public.users(id),
+  user_id uuid REFERENCES public.users(id) ON UPDATE CASCADE,
   full_name text NOT NULL,
   relationship text NOT NULL,
   created_at timestamp with time zone DEFAULT now(),
   CONSTRAINT family_members_pkey PRIMARY KEY (id)
 );
 
--- Bookings (Appointments)
+-- Bookings
 CREATE TABLE public.bookings (
   id bigint GENERATED ALWAYS AS IDENTITY NOT NULL,
-  user_id uuid NOT NULL REFERENCES public.users(id),
+  user_id uuid NOT NULL REFERENCES public.users(id) ON UPDATE CASCADE,
   facility_id bigint REFERENCES public.facilities(id),
   service_id uuid REFERENCES public.facility_services(id),
   family_member_id uuid REFERENCES public.family_members(id),
@@ -140,37 +137,29 @@ CREATE TABLE public.bookings (
   status booking_status DEFAULT 'pending',
   triage_result text,
   triage_priority text,
+  notes text,
   created_at timestamp with time zone DEFAULT now(),
   CONSTRAINT bookings_pkey PRIMARY KEY (id)
 );
 
-ALTER TABLE public.bookings ADD COLUMN notes text;
-
-
--- Referrals (Hospital to Hospital)
+-- Referrals
 CREATE TABLE public.referrals (
   id uuid NOT NULL DEFAULT gen_random_uuid(),
   reference_number text DEFAULT ((('REF-'::text || to_char(now(), 'YYYYMMDD'::text)) || '-'::text) || SUBSTRING((gen_random_uuid())::text FROM 1 FOR 4)) UNIQUE,
-  patient_id uuid REFERENCES public.users(id),
+  patient_id uuid REFERENCES public.users(id) ON UPDATE CASCADE,
   origin_facility_id bigint REFERENCES public.facilities(id),
   destination_facility_id bigint REFERENCES public.facilities(id),
   chief_complaint text,
   diagnosis_impression text,
   status referral_status DEFAULT 'PENDING',
+  attachments text[],
+  ai_priority_score float,
+  ai_recommended_destination_id bigint REFERENCES public.facilities(id),
   created_at timestamp with time zone DEFAULT now(),
   CONSTRAINT referrals_pkey PRIMARY KEY (id)
 );
-ALTER TABLE public.referrals ADD COLUMN attachments text[];
 
-
--- AI Suggestions
--- Store AI insights so the dashboard can display "Recommended Referral"
-ALTER TABLE public.referrals
-ADD COLUMN ai_priority_score float,
-ADD COLUMN ai_recommended_destination_id bigint REFERENCES public.facilities(id);
-
-
--- Referral Pathways (Rules for Auto-Referral)
+-- Referral Pathways
 CREATE TABLE public.referral_pathways (
   id uuid NOT NULL DEFAULT gen_random_uuid(),
   origin_facility_id bigint REFERENCES public.facilities(id),
@@ -183,7 +172,7 @@ CREATE TABLE public.referral_pathways (
   CONSTRAINT referral_pathways_pkey PRIMARY KEY (id)
 );
 
--- Facility Resources (Real-time Bed Tracking)
+-- Facility Resources
 CREATE TABLE public.facility_resources (
   id uuid NOT NULL DEFAULT gen_random_uuid(),
   facility_id bigint NOT NULL REFERENCES public.facilities(id),
@@ -194,7 +183,7 @@ CREATE TABLE public.facility_resources (
   CONSTRAINT facility_resources_pkey PRIMARY KEY (id)
 );
 
--- Facility Notifications (Alerts for Command Center)
+-- Facility Notifications
 CREATE TABLE public.facility_notifications (
   id uuid NOT NULL DEFAULT gen_random_uuid(),
   facility_id bigint NOT NULL REFERENCES public.facilities(id),
@@ -209,7 +198,7 @@ CREATE TABLE public.facility_notifications (
 -- Telemed Doctors
 CREATE TABLE public.telemed_doctors (
   id uuid NOT NULL DEFAULT gen_random_uuid(),
-  user_id uuid REFERENCES auth.users(id), -- Linked for login
+  user_id uuid REFERENCES auth.users(id),
   full_name text NOT NULL,
   specialty text DEFAULT 'General Medicine',
   is_online boolean DEFAULT false,
@@ -218,40 +207,29 @@ CREATE TABLE public.telemed_doctors (
   CONSTRAINT telemed_doctors_pkey PRIMARY KEY (id)
 );
 
--- Triage Results (AI/Manual)
+-- Triage Results
 CREATE TABLE public.triage_results (
   id uuid NOT NULL DEFAULT gen_random_uuid(),
-  user_id uuid REFERENCES public.users(id),
+  user_id uuid REFERENCES public.users(id) ON UPDATE CASCADE,
   raw_symptoms text NOT NULL,
   urgency text NOT NULL,
   specialty text,
   reason text,
+  case_category TEXT,
+  recommended_action TEXT,
+  required_capability TEXT,
+  summary_for_provider TEXT,
+  soap_subjective TEXT,
+  soap_objective TEXT,
+  soap_assessment TEXT,
+  soap_plan TEXT,
+  is_telemed_suitable BOOLEAN DEFAULT FALSE,
+  ai_confidence DOUBLE PRECISION DEFAULT 0.0,
   created_at timestamp with time zone DEFAULT now(),
   CONSTRAINT triage_results_pkey PRIMARY KEY (id)
 );
 
-
--- Enhance triage_results table for ATAMAN AI Pro features
-ALTER TABLE triage_results
-ADD COLUMN IF NOT EXISTS case_category TEXT,
-ADD COLUMN IF NOT EXISTS recommended_action TEXT,
-ADD COLUMN IF NOT EXISTS required_capability TEXT,
-ADD COLUMN IF NOT EXISTS reason TEXT,
-ADD COLUMN IF NOT EXISTS summary_for_provider TEXT,
-ADD COLUMN IF NOT EXISTS soap_subjective TEXT,
-ADD COLUMN IF NOT EXISTS soap_objective TEXT,
-ADD COLUMN IF NOT EXISTS soap_assessment TEXT,
-ADD COLUMN IF NOT EXISTS soap_plan TEXT;
--- Indexing for potential clinical reporting/analytics later
-CREATE INDEX IF NOT EXISTS idx_triage_urgency ON triage_results(urgency);
-CREATE INDEX IF NOT EXISTS idx_triage_case_category ON triage_results(case_category);
--- Add Telemedicine suitability and AI Confidence columns
- ALTER TABLE triage_results
-ADD COLUMN IF NOT EXISTS is_telemed_suitable BOOLEAN DEFAULT FALSE,
-ADD COLUMN IF NOT EXISTS ai_confidence DOUBLE PRECISION DEFAULT 0.0;
-
-
--- Barangays (Lookup)
+-- Barangays
 CREATE TABLE public.barangays (
   id uuid NOT NULL DEFAULT gen_random_uuid(),
   name text NOT NULL UNIQUE,
@@ -262,7 +240,7 @@ CREATE TABLE public.barangays (
 -- Prescriptions
 CREATE TABLE public.prescriptions (
   id uuid NOT NULL DEFAULT gen_random_uuid(),
-  user_id uuid NOT NULL REFERENCES public.users(id),
+  user_id uuid NOT NULL REFERENCES public.users(id) ON UPDATE CASCADE,
   medication_name text NOT NULL,
   dosage text NOT NULL,
   doctor_name text NOT NULL,
@@ -272,88 +250,110 @@ CREATE TABLE public.prescriptions (
   CONSTRAINT prescriptions_pkey PRIMARY KEY (id)
 );
 
---Digital Charting
+-- Clinical Notes
 CREATE TABLE public.clinical_notes (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  patient_id uuid REFERENCES public.users(id),
+  patient_id uuid REFERENCES public.users(id) ON UPDATE CASCADE,
   doctor_id uuid REFERENCES auth.users(id),
-  referral_id uuid REFERENCES public.referrals(id), -- If part of a referral
+  referral_id uuid REFERENCES public.referrals(id),
   subjective_notes text,
   objective_notes text,
   assessment text,
   plan text,
+  vital_signs jsonb DEFAULT '{}'::jsonb,
   created_at timestamp with time zone DEFAULT now()
 );
 
-ALTER TABLE public.clinical_notes ADD COLUMN vital_signs jsonb DEFAULT '{}'::jsonb;
--- Example data: {"bp": "120/80", "temp": 37.5, "hr": 80}
-
-
--- Telemed Session Logs (For the Video Pitch Feature)
+-- Telemed Sessions
 CREATE TABLE public.telemed_sessions (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   doctor_id uuid REFERENCES public.telemed_doctors(id),
-  patient_id uuid REFERENCES public.users(id),
+  patient_id uuid REFERENCES public.users(id) ON UPDATE CASCADE,
   status text CHECK (status IN ('scheduled', 'active', 'completed')),
   meeting_link text,
   started_at timestamp with time zone,
   ended_at timestamp with time zone
 );
 
---audit logs
+-- Audit Logs
 CREATE TABLE public.audit_logs (
   id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
   user_id uuid REFERENCES auth.users(id),
   facility_id bigint REFERENCES public.facilities(id),
-  action text NOT NULL, -- e.g., "UPDATED_BED_COUNT"
-  details jsonb, -- e.g., {"old": 5, "new": 0}
+  action text NOT NULL,
+  details jsonb,
   created_at timestamptz DEFAULT now()
 );
--- Enable RLS so only Admins can see this
-ALTER TABLE public.audit_logs ENABLE ROW LEVEL SECURITY;
-CREATE POLICY "Admins view logs" ON public.audit_logs FOR SELECT USING (
-  EXISTS (SELECT 1 FROM public.facility_staff WHERE user_id = auth.uid() AND role = 'ADMIN')
+
+-- Beds
+CREATE TABLE public.beds (
+  id bigint generated by default as identity not null,
+  bed_label text not null,
+  facility_id bigint not null REFERENCES public.facilities (id) on delete CASCADE,
+  resource_id uuid not null REFERENCES public.facility_resources (id) on delete CASCADE,
+  status text not null DEFAULT 'AVAILABLE' CHECK (status IN ('AVAILABLE', 'OCCUPIED', 'CLEANING', 'MAINTENANCE', 'RESERVED')),
+  patient_id uuid null REFERENCES public.users (id) on delete set null ON UPDATE CASCADE,
+  updated_at timestamp with time zone DEFAULT now(),
+  constraint beds_pkey primary key (id)
 );
 
-
-
-
-
-
---Functions, Triggers & RPCs
---Trigger to Create User Profile on Sign Up
+-- Functions & Triggers
+-- Updated handle_new_user to support syncing from medical_id
 CREATE OR REPLACE FUNCTION public.handle_new_user()
 RETURNS trigger AS $$
+DECLARE
+  v_medical_id text;
 BEGIN
-  INSERT INTO public.users (
-    id,
-    email,
-    phone_number,
-    full_name,
-    birth_date,
-    barangay,
-    philhealth_id,
-    is_profile_complete
-  )
-  VALUES (
-    new.id,
-    new.email,
-    COALESCE(new.phone, new.raw_user_meta_data->>'phone'),
-    new.raw_user_meta_data->>'full_name',
-    (new.raw_user_meta_data->>'birth_date')::date,
-    new.raw_user_meta_data->>'barangay',
-    new.raw_user_meta_data->>'philhealth_id',
-    COALESCE((new.raw_user_meta_data->>'is_profile_complete')::boolean, false)
-  );
+  v_medical_id := new.raw_user_meta_data->>'medical_id';
+
+  IF v_medical_id IS NOT NULL AND EXISTS (SELECT 1 FROM public.users WHERE medical_id = v_medical_id AND is_temporary = true) THEN
+    UPDATE public.users
+    SET
+      id = new.id,
+      email = new.email,
+      first_name = COALESCE(new.raw_user_meta_data->>'first_name', first_name),
+      last_name = COALESCE(new.raw_user_meta_data->>'last_name', last_name),
+      phone_number = COALESCE(new.phone, new.raw_user_meta_data->>'phone', phone_number),
+      birth_date = COALESCE((new.raw_user_meta_data->>'birth_date')::date, birth_date),
+      philhealth_id = COALESCE(new.raw_user_meta_data->>'philhealth_id', philhealth_id),
+      is_temporary = false,
+      is_profile_complete = true,
+      updated_at = now()
+    WHERE medical_id = v_medical_id;
+  ELSE
+    INSERT INTO public.users (
+      id,
+      email,
+      first_name,
+      last_name,
+      phone_number,
+      birth_date,
+      barangay,
+      philhealth_id,
+      is_profile_complete,
+      is_temporary,
+      medical_id
+    )
+    VALUES (
+      new.id,
+      new.email,
+      new.raw_user_meta_data->>'first_name',
+      new.raw_user_meta_data->>'last_name',
+      COALESCE(new.phone, new.raw_user_meta_data->>'phone'),
+      (new.raw_user_meta_data->>'birth_date')::date,
+      new.raw_user_meta_data->>'barangay',
+      new.raw_user_meta_data->>'philhealth_id',
+      COALESCE((new.raw_user_meta_data->>'is_profile_complete')::boolean, false),
+      false,
+      COALESCE(new.raw_user_meta_data->>'medical_id', 'ATAM-' || upper(substring(gen_random_uuid()::text from 1 for 8)))
+    );
+  END IF;
   RETURN new;
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
-CREATE TRIGGER on_auth_user_created
-  AFTER INSERT ON auth.users
-  FOR EACH ROW EXECUTE PROCEDURE public.handle_new_user();
+CREATE TRIGGER on_auth_user_created AFTER INSERT ON auth.users FOR EACH ROW EXECUTE PROCEDURE public.handle_new_user();
 
---Utility: Auto-update updated_at timestamp
 CREATE OR REPLACE FUNCTION update_updated_at_column()
 RETURNS TRIGGER AS $$
 BEGIN
@@ -362,16 +362,10 @@ BEGIN
 END;
 $$ language 'plpgsql';
 
-CREATE TRIGGER update_facilities_updated_at
-BEFORE UPDATE ON public.facilities
-FOR EACH ROW EXECUTE PROCEDURE update_updated_at_column();
+CREATE TRIGGER update_facilities_updated_at BEFORE UPDATE ON public.facilities FOR EACH ROW EXECUTE PROCEDURE update_updated_at_column();
+CREATE TRIGGER update_ambulances_modtime BEFORE UPDATE ON public.ambulances FOR EACH ROW EXECUTE PROCEDURE update_updated_at_column();
 
-CREATE TRIGGER update_ambulances_modtime
-BEFORE UPDATE ON public.ambulances
-FOR EACH ROW EXECUTE PROCEDURE update_updated_at_column();
-
---CORE LOGIC: Rapid Referral Transaction (RPC)
--- This ensures a notification is ALWAYS sent when a referral is created.
+-- CORE LOGIC: Rapid Referral Transaction (RPC)
 CREATE OR REPLACE FUNCTION create_referral_transaction(
   p_patient_id uuid,
   p_origin_facility_id bigint,
@@ -380,156 +374,87 @@ CREATE OR REPLACE FUNCTION create_referral_transaction(
   p_diagnosis text,
   p_priority text
 )
-RETURNS json
-LANGUAGE plpgsql
-SECURITY DEFINER
-AS $$
+RETURNS json LANGUAGE plpgsql SECURITY DEFINER AS $$
 DECLARE
   v_referral_id uuid;
   v_reference_number text;
   v_origin_name text;
 BEGIN
-  -- Get Origin Name
-  SELECT name INTO v_origin_name
-  FROM public.facilities
-  WHERE id = p_origin_facility_id;
-
-  -- Insert Referral
-  INSERT INTO public.referrals (
-    patient_id,
-    origin_facility_id,
-    destination_facility_id,
-    chief_complaint,
-    diagnosis_impression,
-    status
-  )
-  VALUES (
-    p_patient_id,
-    p_origin_facility_id,
-    p_destination_facility_id,
-    p_chief_complaint,
-    p_diagnosis,
-    'PENDING'::referral_status
-  )
+  SELECT name INTO v_origin_name FROM public.facilities WHERE id = p_origin_facility_id;
+  INSERT INTO public.referrals (patient_id, origin_facility_id, destination_facility_id, chief_complaint, diagnosis_impression, status)
+  VALUES (p_patient_id, p_origin_facility_id, p_destination_facility_id, p_chief_complaint, p_diagnosis, 'PENDING'::referral_status)
   RETURNING id, reference_number INTO v_referral_id, v_reference_number;
 
-  -- Create Notification for Destination
-  INSERT INTO public.facility_notifications (
-    facility_id,
-    type,
-    message,
-    related_record_id
-  )
-  VALUES (
-    p_destination_facility_id,
-    'NEW_REFERRAL',
-    'Incoming ' || p_priority || ' referral from ' || v_origin_name || '. Ref: ' || v_reference_number,
-    v_referral_id
-  );
+  INSERT INTO public.facility_notifications (facility_id, type, message, related_record_id)
+  VALUES (p_destination_facility_id, 'NEW_REFERRAL', 'Incoming ' || p_priority || ' referral from ' || v_origin_name || '. Ref: ' || v_reference_number, v_referral_id);
 
-  RETURN json_build_object(
-    'referral_id', v_referral_id,
-    'reference_number', v_reference_number,
-    'status', 'success'
-  );
+  RETURN json_build_object('referral_id', v_referral_id, 'reference_number', v_reference_number, 'status', 'success');
 END;
 $$;
 
+-- Bed Count Automation
+CREATE OR REPLACE FUNCTION update_resource_counts()
+RETURNS TRIGGER AS $$
+BEGIN
+  UPDATE public.facility_resources
+  SET total_capacity = (SELECT count(*) FROM public.beds WHERE resource_id = NEW.resource_id),
+      current_occupied = (SELECT count(*) FROM public.beds WHERE resource_id = NEW.resource_id AND status = 'OCCUPIED')
+  WHERE id = NEW.resource_id;
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
 
---Row Level Security (RLS) Policies
--- Enable RLS on all sensitive tables
+CREATE TRIGGER trigger_update_bed_counts AFTER INSERT OR UPDATE OR DELETE ON public.beds FOR EACH ROW EXECUTE PROCEDURE update_resource_counts();
+
+-- RLS Policies
 ALTER TABLE public.users ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.facilities ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.facility_staff ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.ambulances ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.emergency_requests ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.facility_services ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.family_members ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.bookings ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.referrals ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.emergency_requests ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.ambulances ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.facility_staff ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.referral_pathways ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.facility_resources ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.facility_notifications ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.barangays ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.telemed_doctors ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.triage_results ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.barangays ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.prescriptions ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.clinical_notes ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.telemed_sessions ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.audit_logs ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.beds ENABLE ROW LEVEL SECURITY;
 
---PUBLIC READ (Reference Data)
+-- Policy definitions
 CREATE POLICY "Public facilities viewable by all" ON public.facilities FOR SELECT USING (true);
 CREATE POLICY "Barangays viewable by all" ON public.barangays FOR SELECT USING (true);
-CREATE POLICY "Ambulances viewable by all" ON public.ambulances FOR SELECT USING (true); -- For GPS tracking
+CREATE POLICY "Ambulances viewable by all" ON public.ambulances FOR SELECT USING (true);
 CREATE POLICY "Bed stats viewable by all" ON public.facility_resources FOR SELECT TO authenticated USING (true);
 
---PATIENT DATA (Users accessing their own records)
 CREATE POLICY "Users view own profile" ON public.users FOR SELECT USING (auth.uid() = id);
 CREATE POLICY "Users update own profile" ON public.users FOR UPDATE USING (auth.uid() = id);
+CREATE POLICY "Staff manage patients" ON public.users FOR ALL USING (
+  EXISTS (SELECT 1 FROM public.facility_staff WHERE user_id = auth.uid()) OR
+  EXISTS (SELECT 1 FROM public.ambulances WHERE current_driver_id = auth.uid())
+);
 
 CREATE POLICY "Users view own bookings" ON public.bookings FOR SELECT USING (auth.uid() = user_id);
 CREATE POLICY "Users create own bookings" ON public.bookings FOR INSERT WITH CHECK (auth.uid() = user_id);
-
-CREATE POLICY "Users view own emergencies" ON public.emergency_requests FOR SELECT USING (auth.uid() = user_id);
-CREATE POLICY "Users create emergencies" ON public.emergency_requests FOR INSERT WITH CHECK (auth.uid() = user_id);
+CREATE POLICY "Staff view facility bookings" ON public.bookings FOR SELECT USING (EXISTS (SELECT 1 FROM public.facility_staff WHERE user_id = auth.uid() AND facility_id = bookings.facility_id));
 
 CREATE POLICY "Users view own triage" ON public.triage_results FOR SELECT USING (auth.uid() = user_id);
 CREATE POLICY "Users create triage" ON public.triage_results FOR INSERT WITH CHECK (auth.uid() = user_id);
 
--- HOSPITAL STAFF (Command Center Access)
+CREATE POLICY "Staff view referrals" ON public.referrals FOR SELECT USING (EXISTS (SELECT 1 FROM public.facility_staff WHERE user_id = auth.uid() AND (facility_id = referrals.origin_facility_id OR facility_id = referrals.destination_facility_id)));
+CREATE POLICY "Staff update incoming referrals" ON public.referrals FOR UPDATE USING (EXISTS (SELECT 1 FROM public.facility_staff WHERE user_id = auth.uid() AND facility_id = referrals.destination_facility_id));
 
--- Staff Roles
-CREATE POLICY "Staff view own role" ON public.facility_staff FOR SELECT USING (auth.uid() = user_id);
-CREATE POLICY "Admins manage staff" ON public.facility_staff FOR ALL USING (
-  EXISTS (
-    SELECT 1 FROM public.facility_staff AS s
-    WHERE s.user_id = auth.uid() AND s.role = 'ADMIN' AND s.facility_id = facility_staff.facility_id
-  )
-);
+CREATE POLICY "Admins view logs" ON public.audit_logs FOR SELECT USING (EXISTS (SELECT 1 FROM public.facility_staff WHERE user_id = auth.uid() AND role = 'ADMIN'));
 
--- Staff Viewing Bookings (With Privacy Filter)
-CREATE POLICY "Staff view facility bookings" ON public.bookings FOR SELECT USING (
-  EXISTS (
-    SELECT 1 FROM public.facility_staff
-    WHERE user_id = auth.uid() AND facility_id = bookings.facility_id
-  )
-  AND NOT EXISTS ( -- REPRODUCTIVE HEALTH PRIVACY FILTER
-     SELECT 1 FROM public.facility_services
-     WHERE id = bookings.service_id
-     AND category = 'Reproductive Health'
-  )
-);
+CREATE POLICY "Public view beds" ON public.beds FOR SELECT USING (true);
+CREATE POLICY "Staff manage beds" ON public.beds FOR ALL USING (EXISTS (SELECT 1 FROM public.facility_staff WHERE user_id = auth.uid() AND facility_id = beds.facility_id));
 
--- Staff Managing Referrals
-CREATE POLICY "Staff view referrals" ON public.referrals FOR SELECT USING (
-  EXISTS (
-    SELECT 1 FROM public.facility_staff
-    WHERE user_id = auth.uid()
-    AND (facility_id = referrals.origin_facility_id OR facility_id = referrals.destination_facility_id)
-  )
-);
-
-CREATE POLICY "Staff update incoming referrals" ON public.referrals FOR UPDATE USING (
-  EXISTS (
-    SELECT 1 FROM public.facility_staff
-    WHERE user_id = auth.uid() AND facility_id = referrals.destination_facility_id
-  )
-);
-
--- Staff Managing Resources (Beds)
-CREATE POLICY "Staff update facility beds" ON public.facility_resources FOR UPDATE USING (
-  EXISTS (
-    SELECT 1 FROM public.facility_staff
-    WHERE user_id = auth.uid() AND facility_id = facility_resources.facility_id
-  )
-);
-
--- Staff Notifications
-CREATE POLICY "Staff view notifications" ON public.facility_notifications FOR SELECT USING (
-  EXISTS (
-    SELECT 1 FROM public.facility_staff
-    WHERE user_id = auth.uid() AND facility_id = facility_notifications.facility_id
-  )
-);
-
-
---Real-Time Setup
-ALTER publication supabase_realtime ADD TABLE ambulances;
-ALTER publication supabase_realtime ADD TABLE emergency_requests;
-ALTER publication supabase_realtime ADD TABLE facility_resources;
-ALTER publication supabase_realtime ADD TABLE facility_notifications;
-
-
+-- Real-Time Setup
+ALTER publication supabase_realtime ADD TABLE ambulances, emergency_requests, facility_resources, facility_notifications, beds;

@@ -42,6 +42,16 @@ class _LoginScreenState extends State<LoginScreen> {
     );
   }
 
+  void _handleMedicalIdSync() {
+    // Navigates to registration with the 'syncing' flag
+    //to do: add a qr scanner right now it just go to register
+    Navigator.pushNamed(
+      context, 
+      AppRoutes.register,
+      arguments: {'is_medical_id_sync': true},
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return BlocBuilder<AuthCubit, AuthState>(
@@ -150,11 +160,33 @@ class _LoginScreenState extends State<LoginScreen> {
                                 ),
                               ),
                               
-                              const SizedBox(height: AppSizes.p32),
+                              const SizedBox(height: AppSizes.p16),
 
                               AtamanButton(
                                 text: "Log In",
                                 onPressed: _handleLogin,
+                              ),
+
+                              const SizedBox(height: AppSizes.p24),
+
+                              const Row(
+                                children: [
+                                  Expanded(child: Divider()),
+                                  Padding(
+                                    padding: EdgeInsets.symmetric(horizontal: 16),
+                                    child: Text("OR", style: AppTextStyles.caption),
+                                  ),
+                                  Expanded(child: Divider()),
+                                ],
+                              ),
+
+                              const SizedBox(height: AppSizes.p24),
+
+                              AtamanButton(
+                                text: "Sync Records with Medical ID",
+                                isOutlined: true,
+                                icon: Icons.qr_code_scanner,
+                                onPressed: _handleMedicalIdSync,
                               ),
 
                               const SizedBox(height: AppSizes.p32),

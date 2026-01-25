@@ -33,6 +33,7 @@ class _BookingScreenState extends State<BookingScreen> {
   GoogleMapController? _mapController;
   Position? _currentPosition;
   Facility? _selectedFacility;
+  String _searchQuery = "";
   
   StreamSubscription<List<Map<String, dynamic>>>? _ambulanceSubscription;
   List<Ambulance> _ambulances = [];
@@ -49,7 +50,15 @@ class _BookingScreenState extends State<BookingScreen> {
     
     if (widget.triageResult != null) {
       _searchController.text = widget.triageResult!.specialty;
+      _searchQuery = widget.triageResult!.specialty.toLowerCase();
     }
+
+    _searchController.addListener(() {
+      setState(() {
+        _searchQuery = _searchController.text.toLowerCase();
+        _refreshMarkers(context.read<FacilityCubit>().state);
+      });
+    });
   }
 
   @override
@@ -98,6 +107,15 @@ class _BookingScreenState extends State<BookingScreen> {
               setState(() {
                 _selectedFacility = f;
               });
+              
+              _mapController?.animateCamera(
+                CameraUpdate.newCameraPosition(
+                  CameraPosition(
+                    target: LatLng(f.latitude!, f.longitude!),
+                    zoom: 16,
+                  ),
+                ),
+              );
             },
             icon: BitmapDescriptor.defaultMarkerWithHue(
               f.isDiversionActive ? BitmapDescriptor.hueOrange :
@@ -130,24 +148,34 @@ class _BookingScreenState extends State<BookingScreen> {
   }
 
   List<Facility> _filterFacilities(List<Facility> facilities) {
-    if (widget.triageResult == null) return facilities;
-    
-    final String requiredCap = widget.triageResult!.requiredCapability.toUpperCase();
+    List<Facility> filtered = facilities;
 
-    return facilities.where((f) {
-      // Logic: Show facilities that match or EXCEED the required capability for safety
-      if (requiredCap == 'HOSPITAL_LEVEL_3') {
-        return f.capability == FacilityCapability.hospitalLevel3;
-      }
-      if (requiredCap == 'HOSPITAL_LEVEL_2') {
-        return f.capability == FacilityCapability.hospitalLevel3 || 
-               f.capability == FacilityCapability.hospitalLevel2;
-      }
-      if (requiredCap == 'BARANGAY_HEALTH_STATION') {
-        return f.type == FacilityType.bhc;
-      }
-      return true;
-    }).toList();
+    if (widget.triageResult != null) {
+      final String requiredCap = widget.triageResult!.requiredCapability.toUpperCase();
+      filtered = filtered.where((f) {
+        if (requiredCap == 'HOSPITAL_LEVEL_3') {
+          return f.capability == FacilityCapability.hospitalLevel3;
+        }
+        if (requiredCap == 'HOSPITAL_LEVEL_2') {
+          return f.capability == FacilityCapability.hospitalLevel3 || 
+                 f.capability == FacilityCapability.hospitalLevel2;
+        }
+        if (requiredCap == 'BARANGAY_HEALTH_STATION') {
+          return f.type == FacilityType.bhc;
+        }
+        return true;
+      }).toList();
+    }
+
+    if (_searchQuery.isNotEmpty) {
+      filtered = filtered.where((f) {
+        return f.name.toLowerCase().contains(_searchQuery) ||
+               f.address.toLowerCase().contains(_searchQuery) ||
+               (f.barangay?.toLowerCase().contains(_searchQuery) ?? false);
+      }).toList();
+    }
+
+    return filtered;
   }
 
   void _reCenterCamera() {
@@ -220,7 +248,7 @@ class _BookingScreenState extends State<BookingScreen> {
                                 const Icon(Icons.auto_awesome, color: Colors.white, size: 14),
                                 const SizedBox(width: 6),
                                 Text(
-                                  "AI Recommended: \${widget.triageResult!.requiredCapability.replaceAll('_', ' ')}",
+                                  "AI Recommended: ${widget.triageResult!.requiredCapability.replaceAll('_', ' ')}",
                                   style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.bold),
                                 ),
                               ],
@@ -255,7 +283,7 @@ class _BookingScreenState extends State<BookingScreen> {
                               isDense: true,
                               border: InputBorder.none,
                               hintText: "Search health centers, hospitals...",
-                              hintStyle: TextStyle(color: Colors.white.withOpacity(0.6)),
+                              hintStyle: TextStyle(color: Colors.black45.withOpacity(0.6)),
                               prefixIcon: const Icon(Icons.search_rounded, color: Colors.white),
                               contentPadding: const EdgeInsets.symmetric(vertical: 15),
                             ),
@@ -265,39 +293,46 @@ class _BookingScreenState extends State<BookingScreen> {
                     ),
                   ),
                   Expanded(
-                    child: state is FacilityLoading
-                      ? _buildShimmerList()
-                      : state is FacilityError
-                        ? Center(child: Text(state.message))
-                        : state is FacilityLoaded
-                          ? _isMapView 
-                            ? AtamanLiveMap(
-                                currentPosition: _currentPosition,
-                                markers: _markers,
-                                onMapCreated: (controller) => _mapController = controller,
-                              ) 
-                            : FacilityListView(
-                                facilities: _processFacilities(state.facilities),
-                                onFacilityTap: (facility) {
-                                  Navigator.push(
-                                    context,
-                                    MaterialPageRoute(
-                                      builder: (context) => BookingDetailsScreen(
-                                        facility: facility,
-                                        triageResult: widget.triageResult,
+                    child: GestureDetector(
+                      onTap: () {
+                        if (_selectedFacility != null) {
+                          setState(() => _selectedFacility = null);
+                        }
+                      },
+                      child: state is FacilityLoading
+                        ? _buildShimmerList()
+                        : state is FacilityError
+                          ? Center(child: Text(state.message))
+                          : state is FacilityLoaded
+                            ? _isMapView 
+                              ? AtamanLiveMap(
+                                  currentPosition: _currentPosition,
+                                  markers: _markers,
+                                  onMapCreated: (controller) => _mapController = controller,
+                                ) 
+                              : FacilityListView(
+                                  facilities: _processFacilities(state.facilities),
+                                  onFacilityTap: (facility) {
+                                    Navigator.push(
+                                      context,
+                                      MaterialPageRoute(
+                                        builder: (context) => BookingDetailsScreen(
+                                          facility: facility,
+                                          triageResult: widget.triageResult,
+                                        ),
                                       ),
-                                    ),
-                                  );
-                                },
-                              )
-                          : const SizedBox.shrink(),
+                                    );
+                                  },
+                                )
+                            : const SizedBox.shrink(),
+                    ),
                   ),
                 ],
               ),
 
               if (_isMapView)
                 Positioned(
-                  top: 280,
+                  top: widget.triageResult != null ? 280 : 240,
                   right: 16,
                   child: FloatingActionButton.small(
                     onPressed: _reCenterCamera,
@@ -327,21 +362,31 @@ class _BookingScreenState extends State<BookingScreen> {
               if (_isMapView && _selectedFacility != null)
                 Align(
                   alignment: Alignment.bottomCenter,
-                  child: Container(
-                    margin: const EdgeInsets.all(16),
-                    child: FacilityCard(
-                      facility: _processFacilities([_selectedFacility!]).first,
-                      onTap: () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (context) => BookingDetailsScreen(
-                              facility: _selectedFacility!,
-                              triageResult: widget.triageResult,
-                            ),
-                          ),
-                        );
-                      },
+                  child: GestureDetector(
+                    onVerticalDragUpdate: (details) {
+                      if (details.primaryDelta! > 10) {
+                        setState(() => _selectedFacility = null);
+                      }
+                    },
+                    child: Center(
+                      child: Container(
+                        constraints: const BoxConstraints(maxWidth: 450),
+                        margin: const EdgeInsets.fromLTRB(16, 0, 16, 40),
+                        child: FacilityCard(
+                          facility: _processFacilities([_selectedFacility!]).first,
+                          onTap: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) => BookingDetailsScreen(
+                                  facility: _selectedFacility!,
+                                  triageResult: widget.triageResult,
+                                ),
+                              ),
+                            );
+                          },
+                        ),
+                      ),
                     ),
                   ),
                 ),

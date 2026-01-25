@@ -17,29 +17,84 @@ class RegisterScreen extends StatefulWidget {
 class _RegisterScreenState extends State<RegisterScreen> {
   final _formKey = GlobalKey<FormState>();
   
-  final _nameController = TextEditingController();
+  final _firstNameController = TextEditingController();
+  final _lastNameController = TextEditingController();
   final _birthdateController = TextEditingController();
   final _barangayController = TextEditingController();
   final _philhealthController = TextEditingController();
+  final _medicalIdController = TextEditingController(); // For Record Syncing
+  
   DateTime? _selectedDate;
   
   final AddressService _addressService = AddressService();
   List<String> _barangays = [];
   bool _isLoadingBarangays = true;
+  bool _isSyncingRecords = false;
 
   @override
   void initState() {
     super.initState();
     _loadBarangays();
+    
+    // Check if we came from the Medical ID Sync flow
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final args = ModalRoute.of(context)?.settings.arguments as Map<String, dynamic>?;
+      if (args != null && args['is_medical_id_sync'] == true) {
+        setState(() {
+          _isSyncingRecords = true;
+        });
+        _showScannerDialog();
+      }
+    });
   }
 
   @override
   void dispose() {
-    _nameController.dispose();
+    _firstNameController.dispose();
+    _lastNameController.dispose();
     _birthdateController.dispose();
     _barangayController.dispose();
     _philhealthController.dispose();
+    _medicalIdController.dispose();
     super.dispose();
+  }
+
+  void _showScannerDialog() {
+    // Simulated Scanner
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => AlertDialog(
+        title: const Text("Sync Medical Records"),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Text("Please scan the QR code given to you by the hospital or ambulance staff to sync your records."),
+            const SizedBox(height: 16),
+            AtamanTextField(
+              label: "MEDICAL ID",
+              hintText: "ATAM-XXXXXXXX",
+              controller: _medicalIdController,
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text("CANCEL"),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              if (_medicalIdController.text.isNotEmpty) {
+                Navigator.pop(context);
+                UiUtils.showSuccess(context, "Medical ID linked. Your records will be synced after setup.");
+              }
+            },
+            child: const Text("LINK ID"),
+          ),
+        ],
+      ),
+    );
   }
 
   Future<void> _loadBarangays() async {
@@ -95,10 +150,12 @@ class _RegisterScreenState extends State<RegisterScreen> {
       }
 
       final profileData = {
-        'fullName': _nameController.text.trim(),
+        'firstName': _firstNameController.text.trim(),
+        'lastName': _lastNameController.text.trim(),
         'birthDate': _birthdateController.text.trim(),
         'barangay': _barangayController.text.trim(),
         'philhealthId': _philhealthController.text.trim(),
+        'medicalId': _medicalIdController.text.trim(), 
       };
 
       Navigator.pushNamed(
@@ -131,23 +188,76 @@ class _RegisterScreenState extends State<RegisterScreen> {
               children: [
                 const SizedBox(height: AppSizes.p8),
                 Text(
-                  "Create Profile",
+                  _isSyncingRecords ? "Setup Official Account" : "Create Profile",
                   style: AppTextStyles.h1.copyWith(color: AppColors.primary),
                 ),
                 const SizedBox(height: AppSizes.p8),
-                const Text(
-                  "Please provide accurate information.",
+                Text(
+                  _isSyncingRecords 
+                    ? "Complete your profile to sync your hospital records."
+                    : "Please provide accurate information.",
                   style: AppTextStyles.bodyMedium,
                 ),
+
+                if (_isSyncingRecords && _medicalIdController.text.isNotEmpty)
+                   Padding(
+                     padding: const EdgeInsets.only(top: AppSizes.p16),
+                     child: Container(
+                       padding: const EdgeInsets.all(AppSizes.p12),
+                       decoration: BoxDecoration(
+                         color: AppColors.primary.withOpacity(0.1),
+                         borderRadius: BorderRadius.circular(AppSizes.radiusSmall),
+                         border: Border.all(color: AppColors.primary),
+                       ),
+                       child: Row(
+                         children: [
+                           const Icon(Icons.sync_outlined, color: AppColors.primary),
+                           const SizedBox(width: 8),
+                           Text(
+                             "ID Linked: ${_medicalIdController.text}",
+                             style: AppTextStyles.caption.copyWith(color: AppColors.primary, fontWeight: FontWeight.bold),
+                           ),
+                         ],
+                       ),
+                     ),
+                   ),
+
                 const SizedBox(height: AppSizes.p32),
                 
-                const AtamanLabel(text: "FULL NAME"),
-                AtamanTextField(
-                  label: "",
-                  hintText: "Juan Dela Cruz",
-                  controller: _nameController,
-                  prefixIcon: Icons.person_outline,
-                  validator: ValidatorUtils.validateFullName,
+                Row(
+                  children: [
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const AtamanLabel(text: "FIRST NAME"),
+                          AtamanTextField(
+                            label: "",
+                            hintText: "Juan",
+                            controller: _firstNameController,
+                            prefixIcon: Icons.person_outline,
+                            validator: ValidatorUtils.validateFirstName,
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(width: AppSizes.p16),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const AtamanLabel(text: "LAST NAME"),
+                          AtamanTextField(
+                            label: "",
+                            hintText: "Dela Cruz",
+                            controller: _lastNameController,
+                            prefixIcon: Icons.person_outline,
+                            validator: ValidatorUtils.validateLastName,
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
                 ),
                 const SizedBox(height: AppSizes.p24),
         

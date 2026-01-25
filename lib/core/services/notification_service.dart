@@ -2,6 +2,7 @@ import 'dart:io';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:flutter/foundation.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 class NotificationService {
   static final FlutterLocalNotificationsPlugin _localNotificationsPlugin =
@@ -39,6 +40,30 @@ class NotificationService {
         _showLocalNotification(message);
       }
     });
+
+    // Handle token refresh
+    FirebaseMessaging.instance.onTokenRefresh.listen(_updateUserFcmToken);
+    
+    // Update token on init if user is logged in
+    final token = await getFCMToken();
+    if (token != null) {
+      _updateUserFcmToken(token);
+    }
+  }
+
+  static Future<void> _updateUserFcmToken(String token) async {
+    final user = Supabase.instance.client.auth.currentUser;
+    if (user != null) {
+      try {
+        await Supabase.instance.client
+            .from('profiles')
+            .update({'fcm_token': token})
+            .eq('id', user.id);
+        debugPrint('FCM Token updated for user: ${user.id}');
+      } catch (e) {
+        debugPrint('Error updating FCM Token: $e');
+      }
+    }
   }
 
   static Future<void> _showLocalNotification(RemoteMessage message) async {

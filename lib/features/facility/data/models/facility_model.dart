@@ -28,6 +28,7 @@ class Facility {
   final double? latitude;
   final double? longitude;
   final bool isDiversionActive;
+  final bool isPhilHealthAccredited;
   final String? contactNumber;
   final String? email;
   final String? website;
@@ -49,6 +50,7 @@ class Facility {
     this.latitude,
     this.longitude,
     this.isDiversionActive = false,
+    this.isPhilHealthAccredited = false,
     this.contactNumber,
     this.email,
     this.website,
@@ -71,6 +73,7 @@ class Facility {
     double? latitude,
     double? longitude,
     bool? isDiversionActive,
+    bool? isPhilHealthAccredited,
     String? contactNumber,
     String? email,
     String? website,
@@ -92,6 +95,7 @@ class Facility {
       latitude: latitude ?? this.latitude,
       longitude: longitude ?? this.longitude,
       isDiversionActive: isDiversionActive ?? this.isDiversionActive,
+      isPhilHealthAccredited: isPhilHealthAccredited ?? this.isPhilHealthAccredited,
       contactNumber: contactNumber ?? this.contactNumber,
       email: email ?? this.email,
       website: website ?? this.website,
@@ -153,6 +157,7 @@ class Facility {
       latitude: json['latitude']?.toDouble(),
       longitude: json['longitude']?.toDouble(),
       isDiversionActive: json['is_diversion_active'] ?? false,
+      isPhilHealthAccredited: json['is_philhealth_accredited'] ?? false,
       contactNumber: json['contact_number'],
       email: json['email'],
       website: json['website'],
