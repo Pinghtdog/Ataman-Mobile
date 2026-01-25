@@ -60,6 +60,9 @@ class AtamanApp extends StatelessWidget {
         BlocProvider<ProfileCubit>(
           create: (context) => ProfileCubit(userRepository: getIt<IUserRepository>()),
         ),
+        BlocProvider<BookingCubit>(
+          create: (context) => BookingCubit(bookingRepository: getIt<BookingRepository>()),
+        ),
       ],
       child: MaterialApp(
         title: AppStrings.appName,
@@ -87,7 +90,6 @@ class AtamanApp extends StatelessWidget {
           builder: (context) => MultiBlocProvider(
             providers: [
               BlocProvider(create: (context) => FacilityCubit(facilityRepository: getIt<FacilityRepository>())),
-              BlocProvider(create: (context) => BookingCubit(bookingRepository: getIt<BookingRepository>())),
               BlocProvider(create: (context) => PrescriptionCubit(prescriptionRepository: getIt<PrescriptionRepository>())),
             ],
             child: const AtamanBaseScreen(),
@@ -114,10 +116,7 @@ class AtamanApp extends StatelessWidget {
       create: (context) => EmergencyCubit(emergencyRepository: getIt<EmergencyRepository>()),
       child: const EmergencyRequestScreen(),
     ),
-    AppRoutes.myAppointments: (context) => BlocProvider(
-      create: (context) => BookingCubit(bookingRepository: getIt<BookingRepository>()),
-      child: const MyAppointmentsScreen(),
-    ),
+    AppRoutes.myAppointments: (context) => const MyAppointmentsScreen(),
   };
 }
 
