@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../../../../core/constants/constants.dart';
+import '../../../../core/widgets/ataman_button.dart';
 import '../../data/models/triage_model.dart';
 import '../../logic/triage_cubit.dart';
 import '../../../home/presentation/screens/ataman_base_screen.dart';
@@ -14,95 +15,34 @@ class TriageResultScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: AppColors.background,
       appBar: AppBar(
-        title: const Text("Triage Result"),
+        title: const Text("Triage Assessment"),
         backgroundColor: Colors.transparent,
         elevation: 0,
         foregroundColor: AppColors.textPrimary,
         leading: IconButton(
           icon: const Icon(Icons.close),
-          onPressed: () {
-            context.read<TriageCubit>().reset();
-            Navigator.popUntil(context, (route) => route.isFirst);
-          },
+          onPressed: () => _exitTriage(context),
         ),
       ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(AppSizes.p24),
         child: Column(
           children: [
-            Container(
-              padding: const EdgeInsets.all(AppSizes.p24),
-              decoration: BoxDecoration(
-                color: result.urgencyColor.withOpacity(0.1),
-                borderRadius: BorderRadius.circular(AppSizes.p24),
-                border: Border.all(color: result.urgencyColor.withOpacity(0.3), width: 2),
-              ),
-              child: Column(
-                children: [
-                  Icon(
-                    _getUrgencyIcon(result.urgency),
-                    size: 80,
-                    color: result.urgencyColor,
-                  ),
-                  const SizedBox(height: AppSizes.p16),
-                  Text(
-                    result.urgency.name.toUpperCase(),
-                    style: AppTextStyles.h1.copyWith(color: result.urgencyColor),
-                  ),
-                  const SizedBox(height: AppSizes.p8),
-                  Text(
-                    result.actionText,
-                    textAlign: TextAlign.center,
-                    style: AppTextStyles.bodyLarge.copyWith(fontWeight: FontWeight.bold),
-                  ),
-                ],
-              ),
-            ),
+            _buildUrgencyHeader(),
             const SizedBox(height: AppSizes.p32),
-            if (result.summaryForProvider != null) ...[
-              _buildDetailSection(
-                "Summary",
-                result.summaryForProvider!,
-                Icons.summarize_outlined,
-              ),
-              const SizedBox(height: AppSizes.p16),
-            ],
-            _buildDetailSection(
-              "Recommended Level",
-              result.requiredCapability.replaceAll('_', ' '),
-              Icons.account_balance_outlined,
-            ),
-            const SizedBox(height: AppSizes.p16),
-            _buildDetailSection(
-              "Specialty",
-              result.specialty,
-              Icons.medical_services_outlined,
-            ),
+            _buildDetails(),
             if (result.soapNote != null) ...[
               const SizedBox(height: AppSizes.p24),
-              const Divider(),
-              const SizedBox(height: AppSizes.p16),
-              Align(
-                alignment: Alignment.centerLeft,
-                child: Text("Provider Note (SOAP)", style: AppTextStyles.h3),
-              ),
-              const SizedBox(height: AppSizes.p16),
-              _buildSoapSection("Subjective", result.soapNote!.subjective),
-              _buildSoapSection("Objective", result.soapNote!.objective),
-              _buildSoapSection("Assessment", result.soapNote!.assessment),
-              _buildSoapSection("Plan", result.soapNote!.plan),
+              _buildSoapNote(),
             ],
             const SizedBox(height: AppSizes.p48),
             _buildActionButton(context),
             const SizedBox(height: 16),
             TextButton(
-              onPressed: () {
-                context.read<TriageCubit>().reset();
-                Navigator.popUntil(context, (route) => route.isFirst);
-              },
-              child: const Text("Go Back to Home"),
+              onPressed: () => _exitTriage(context),
+              child: const Text("Return to Home"),
             ),
           ],
         ),
@@ -110,38 +50,117 @@ class TriageResultScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildSoapSection(String title, String content) {
+  Widget _buildUrgencyHeader() {
+    return Container(
+      padding: const EdgeInsets.all(AppSizes.p24),
+      decoration: BoxDecoration(
+        color: result.urgencyColor.withOpacity(0.1),
+        borderRadius: BorderRadius.circular(AppSizes.radiusLarge),
+        border: Border.all(color: result.urgencyColor.withOpacity(0.3), width: 2),
+      ),
+      child: Column(
+        children: [
+          Icon(_getUrgencyIcon(), size: 80, color: result.urgencyColor),
+          const SizedBox(height: AppSizes.p16),
+          Text(
+            result.urgency.name.toUpperCase(),
+            style: AppTextStyles.h1.copyWith(color: result.urgencyColor),
+          ),
+          const SizedBox(height: AppSizes.p8),
+          Text(
+            result.actionText,
+            textAlign: TextAlign.center,
+            style: AppTextStyles.bodyLarge.copyWith(fontWeight: FontWeight.bold),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildDetails() {
+    return Column(
+      children: [
+        if (result.summaryForProvider != null) ...[
+          _buildDetailTile("Summary", result.summaryForProvider!, Icons.summarize_outlined),
+          const SizedBox(height: AppSizes.p16),
+        ],
+        _buildDetailTile(
+          "Recommended Facility", 
+          result.requiredCapability.replaceAll('_', ' '), 
+          Icons.account_balance_outlined
+        ),
+        const SizedBox(height: AppSizes.p16),
+        _buildDetailTile("Likely Specialty", result.specialty, Icons.medical_services_outlined),
+        if (result.aiConfidence > 0) ...[
+          const SizedBox(height: AppSizes.p16),
+          _buildDetailTile(
+            "AI Confidence", 
+            "\${(result.aiConfidence * 100).toInt()}%", 
+            Icons.verified_user_outlined
+          ),
+        ],
+      ],
+    );
+  }
+
+  Widget _buildSoapNote() {
+    return Container(
+      padding: const EdgeInsets.all(AppSizes.p20),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(AppSizes.radiusMedium),
+        border: Border.all(color: Colors.grey.shade200),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const Icon(Icons.description_outlined, size: 20, color: AppColors.primary),
+              const SizedBox(width: 8),
+              Text("Provider SOAP Note", style: AppTextStyles.h3),
+            ],
+          ),
+          const SizedBox(height: 16),
+          _buildSoapField("Subjective", result.soapNote!.subjective),
+          _buildSoapField("Objective", result.soapNote!.objective),
+          _buildSoapField("Assessment", result.soapNote!.assessment),
+          _buildSoapField("Plan", result.soapNote!.plan),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSoapField(String label, String content) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 12),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(title, style: AppTextStyles.bodySmall.copyWith(fontWeight: FontWeight.bold, color: AppColors.primary)),
+          Text(label, style: AppTextStyles.bodySmall.copyWith(fontWeight: FontWeight.bold, color: AppColors.primary)),
           Text(content, style: AppTextStyles.bodyMedium),
         ],
       ),
     );
   }
 
-  Widget _buildDetailSection(String title, String content, IconData icon) {
+  Widget _buildDetailTile(String label, String value, IconData icon) {
     return Container(
       padding: const EdgeInsets.all(AppSizes.p16),
       decoration: BoxDecoration(
-        color: Colors.grey[50],
-        borderRadius: BorderRadius.circular(AppSizes.p16),
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(AppSizes.radiusMedium),
       ),
       child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Icon(icon, color: AppColors.primary),
-          const SizedBox(width: AppSizes.p16),
+          Icon(icon, color: AppColors.primary.withOpacity(0.7)),
+          const SizedBox(width: 16),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(title, style: AppTextStyles.bodySmall.copyWith(color: AppColors.textSecondary)),
-                const SizedBox(height: 4),
-                Text(content, style: AppTextStyles.bodyMedium),
+                Text(label, style: AppTextStyles.bodySmall.copyWith(color: AppColors.textSecondary)),
+                Text(value, style: AppTextStyles.bodyMedium.copyWith(fontWeight: FontWeight.w600)),
               ],
             ),
           ),
@@ -151,53 +170,57 @@ class TriageResultScreen extends StatelessWidget {
   }
 
   Widget _buildActionButton(BuildContext context) {
-    String buttonText = "Proceed to Action";
+    String buttonText = "Proceed to Booking";
     if (result.urgency == TriageUrgency.emergency) {
-      buttonText = "Call Emergency Services";
+      buttonText = "Call Emergency Services (911)";
+    } else if (result.recommendedAction == 'TELEMEDICINE') {
+      buttonText = "Start Telemedicine";
     }
 
-    return SizedBox(
-      width: double.infinity,
-      height: 56,
-      child: ElevatedButton(
-        onPressed: () async {
-          if (result.recommendedAction == 'AMBULANCE_DISPATCH' || result.urgency == TriageUrgency.emergency) {
-            final Uri launchUri = Uri(scheme: 'tel', path: '911'); // Or Naga's local emergency number
-            if (await canLaunchUrl(launchUri)) {
-              await launchUrl(launchUri);
-            }
-          } else {
-            // Handle other actions: TELEMEDICINE, BHC_APPOINTMENT, HOSPITAL_ER
-            // For now, redirect to appropriate tab or screen
-            context.read<TriageCubit>().reset();
-            Navigator.of(context).pushAndRemoveUntil(
-              MaterialPageRoute(builder: (context) => const AtamanBaseScreen()),
-              (route) => false,
-            );
-          }
-        },
-        style: ElevatedButton.styleFrom(
-          backgroundColor: result.urgencyColor,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(AppSizes.p12),
-          ),
-        ),
-        child: Text(
-          buttonText,
-          style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold),
-        ),
-      ),
+    return AtamanButton(
+      text: buttonText,
+      color: result.urgencyColor,
+      onPressed: () => _handleProceed(context),
     );
   }
 
-  IconData _getUrgencyIcon(TriageUrgency urgency) {
-    switch (urgency) {
-      case TriageUrgency.emergency:
-        return Icons.report_problem_rounded;
-      case TriageUrgency.urgent:
-        return Icons.error_outline_rounded;
-      case TriageUrgency.routine:
-        return Icons.check_circle_outline_rounded;
+  Future<void> _handleProceed(BuildContext context) async {
+    if (result.recommendedAction == 'AMBULANCE_DISPATCH' || result.urgency == TriageUrgency.emergency) {
+      final Uri url = Uri.parse("tel:911");
+      if (await canLaunchUrl(url)) {
+        await launchUrl(url);
+      }
+    } else if (result.recommendedAction == 'TELEMEDICINE') {
+      // Navigate to Telemed List
+      _exitTriage(context);
+    } else {
+      // BHC or Hospital Visit: Go to Booking
+      context.read<TriageCubit>().reset();
+      Navigator.of(context).pushAndRemoveUntil(
+        MaterialPageRoute(
+          builder: (context) => AtamanBaseScreen(
+            initialIndex: 1, // Open Booking Tab
+            triageResult: result, // Pass result to pre-fill booking
+          ),
+        ),
+        (route) => false,
+      );
+    }
+  }
+
+  void _exitTriage(BuildContext context) {
+    context.read<TriageCubit>().reset();
+    Navigator.of(context).pushAndRemoveUntil(
+      MaterialPageRoute(builder: (context) => const AtamanBaseScreen()),
+      (route) => false,
+    );
+  }
+
+  IconData _getUrgencyIcon() {
+    switch (result.urgency) {
+      case TriageUrgency.emergency: return Icons.report_problem_rounded;
+      case TriageUrgency.urgent: return Icons.error_outline_rounded;
+      case TriageUrgency.routine: return Icons.check_circle_outline_rounded;
     }
   }
 }

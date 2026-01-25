@@ -57,61 +57,79 @@ class AuthCubit extends Cubit<AuthState> {
     _init();
   }
 
-  void _init() {
-    _authStateSubscription = _authRepository.authStateChanges.listen((data) async {
-      try {
-        final sb.User? user = data.session?.user;
-        final sb.AuthChangeEvent event = data.event;
+  Future<void> _init() async {
+    // 1. Immediate Check: See if Supabase already has a user cached
+    final sb.User? initialUser = _authRepository.currentUser;
+    if (initialUser != null) {
+      debugPrint('Found initial user: ${initialUser.id}');
+      await _handleUserAuthenticated(initialUser);
+    } else {
+      // 2. Small fallback delay: If host lookup fails or no session, proceed to login screen
+      await Future.delayed(const Duration(milliseconds: 1500));
+      if (state is AuthInitial) {
+        debugPrint('No session recovered. Proceeding to Unauthenticated.');
+        emit(Unauthenticated());
+      }
+    }
 
-        debugPrint('Auth State Change Event: $event');
-        
-        if (user != null) {
-          // Deep-link sign-in
-          if (event == sb.AuthChangeEvent.signedIn && state is! AuthLoading && state is! Authenticated) {
-            emit(AuthEmailVerified(user));
-            return;
-          }
+    // 3. Persistent Listening: Handle future sign-ins/outs
+    _authStateSubscription = _authRepository.authStateChanges.listen(
+      (data) async {
+        try {
+          final sb.User? user = data.session?.user;
+          final sb.AuthChangeEvent event = data.event;
 
-          final profile = await _userRepository.getUserProfile(user.id);
+          debugPrint('Auth State Change Event: $event');
           
-          // Update FCM Token
-          try {
-            final fcmToken = await NotificationService.getFCMToken();
-            if (fcmToken != null) {
-              await _userRepository.updateFCMToken(user.id, fcmToken);
+          if (user != null) {
+            if (event == sb.AuthChangeEvent.signedIn && state is! AuthLoading && state is! Authenticated) {
+              emit(AuthEmailVerified(user));
+              return;
             }
-          } catch (e) {
-            debugPrint('Error updating FCM token during init: $e');
+            await _handleUserAuthenticated(user);
+          } else {
+            if (state is! AuthLoading) {
+              emit(Unauthenticated());
+            }
           }
+        } catch (e) {
+          debugPrint('Error in auth listener: $e');
+          if (state is AuthInitial) emit(Unauthenticated());
+        }
+      },
+      onError: (err) {
+        debugPrint('Auth stream error: $err');
+        if (state is AuthInitial) emit(Unauthenticated());
+      }
+    );
+  }
 
-          emit(Authenticated(user, profile: profile));
-        } else {
-          if (state is! AuthLoading && state is! AuthError) {
-            emit(Unauthenticated());
-          }
+  Future<void> _handleUserAuthenticated(sb.User user) async {
+    try {
+      final profile = await _userRepository.getUserProfile(user.id);
+      
+      try {
+        final fcmToken = await NotificationService.getFCMToken();
+        if (fcmToken != null) {
+          await _userRepository.updateFCMToken(user.id, fcmToken);
         }
       } catch (e) {
-        debugPrint('Error in auth state change: $e');
+        debugPrint('FCM Token Update failed: $e');
       }
-    });
+
+      emit(Authenticated(user, profile: profile));
+    } catch (e) {
+      debugPrint('Authenticated user detected, but profile fetch failed: $e');
+      emit(Authenticated(user));
+    }
   }
 
   String _handleAuthError(dynamic e) {
     final String errorString = e.toString().toLowerCase();
-    
-    if (errorString.contains('weak password')) {
-      return "Password is too weak. It must include uppercase, lowercase, numbers, and special characters.";
-    } else if (errorString.contains('invalid login credentials')) {
-      return "The email or password you entered is incorrect.";
-    } else if (errorString.contains('user already exists')) {
-      return "This email is already registered. Please try logging in.";
-    } else if (errorString.contains('network') || errorString.contains('socketexception')) {
-      return "Connection failed. Please check your internet and try again.";
-    } else if (errorString.contains('email not confirmed')) {
-      return "Please check your email to confirm your account.";
-    }
-    
-    return "Something went wrong. Please try again later.";
+    if (errorString.contains('weak password')) return "Password is too weak.";
+    if (errorString.contains('invalid login credentials')) return "Incorrect email or password.";
+    if (errorString.contains('network') || errorString.contains('socketexception')) return "Connection failed.";
+    return "Something went wrong. Please try again.";
   }
 
   Future<void> login(String identity, String password, {bool isPhoneLogin = false}) async {
@@ -124,17 +142,9 @@ class AuthCubit extends Cubit<AuthState> {
       );
 
       if (response.user != null) {
-        try {
-          final fcmToken = await NotificationService.getFCMToken();
-          if (fcmToken != null) {
-            await _userRepository.updateFCMToken(response.user!.id, fcmToken);
-          }
-        } catch (e) {
-          debugPrint('Error updating FCM token on login: $e');
-        }
+        await _handleUserAuthenticated(response.user!);
       }
     } catch (e) {
-      debugPrint('Login error: $e');
       emit(AuthError(_handleAuthError(e)));
       emit(Unauthenticated());
     }
@@ -175,12 +185,10 @@ class AuthCubit extends Cubit<AuthState> {
       if (response.session == null && response.user != null) {
         emit(AuthError("Please check your email to confirm your account."));
       } else if (response.session == null) {
-        emit(AuthError("Registration failed. Please try again."));
+        emit(AuthError("Registration failed."));
         emit(Unauthenticated());
       }
-      
     } catch (e) {
-      debugPrint('Registration error: $e');
       emit(AuthError(_handleAuthError(e)));
       emit(Unauthenticated());
     }

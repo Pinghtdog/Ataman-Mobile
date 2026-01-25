@@ -22,6 +22,18 @@ class TriageService {
         }
       }
 
+      // FETCH DIVERSION CONTEXT: Identify congested facilities to inform the AI
+      final facilitiesResponse = await _supabase
+          .from('facilities')
+          .select('name, status, is_diversion_active')
+          .or('status.eq.congested,is_diversion_active.eq.true');
+      
+      String diversionContext = "";
+      if (facilitiesResponse.isNotEmpty) {
+        diversionContext = "\n[DIVERSION ALERT] The following facilities are CONGESTED. Suggest alternatives if relevant: ";
+        diversionContext += facilitiesResponse.map((f) => f['name']).join(", ");
+      }
+
       String historyText = "";
       for (var turn in history) {
         historyText += "Q: ${turn['question']} | A: ${turn['answer']}\n";
@@ -30,7 +42,7 @@ class TriageService {
       final String lastAnswer = history.isNotEmpty ? history.last['answer']! : "Start Triage";
 
       final data = await _geminiService.getTriageResponse(
-        userMessage: lastAnswer,
+        userMessage: lastAnswer + diversionContext, // Inject diversion info
         history: historyText,
         stepCount: history.length + 1,
         userProfile: userProfileData,
@@ -85,7 +97,7 @@ class TriageService {
       final data = await _geminiService.getTriageResponse(
         userMessage: symptoms,
         history: "Direct triage bypass.",
-        stepCount: 7, // Force final decision
+        stepCount: 7,
         userProfile: profile?.toMap(),
       );
       

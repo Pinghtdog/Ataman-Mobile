@@ -6,11 +6,18 @@ import '../../../../core/widgets/widgets.dart';
 import '../../../booking/presentation/screens/booking_screen.dart';
 import '../../../profile/presentation/screens/profile_screen.dart';
 import '../../../telemedicine/presentation/screens/telemedicine_screen.dart';
+import '../../../triage/data/models/triage_model.dart';
 import 'home_screen.dart';
 
 class AtamanBaseScreen extends StatefulWidget {
   final int initialIndex;
-  const AtamanBaseScreen({super.key, this.initialIndex = 0});
+  final TriageResult? triageResult;
+  
+  const AtamanBaseScreen({
+    super.key, 
+    this.initialIndex = 0,
+    this.triageResult,
+  });
 
   static _AtamanBaseScreenState? of(BuildContext context) =>
       context.findAncestorStateOfType<_AtamanBaseScreenState>();
@@ -23,12 +30,24 @@ class _AtamanBaseScreenState extends State<AtamanBaseScreen> {
   late int _currentIndex;
   bool _isNavbarVisible = true;
 
-  final List<Widget> _screens = [
-    const HomeScreen(),
-    const BookingScreen(),
-    const TelemedicineScreen(),
-    const ProfileScreen(),
-  ];
+  late List<Widget> _screens;
+
+  @override
+  void initState() {
+    super.initState();
+    _currentIndex = widget.initialIndex;
+    
+    _screens = [
+      const HomeScreen(),
+      BookingScreen(triageResult: widget.triageResult),
+      const TelemedicineScreen(),
+      const ProfileScreen(),
+    ];
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      NetworkUtils.initialize(context);
+    });
+  }
 
   void setNavbarVisibility(bool visible) {
     if (_isNavbarVisible != visible) {
@@ -36,15 +55,6 @@ class _AtamanBaseScreenState extends State<AtamanBaseScreen> {
         _isNavbarVisible = visible;
       });
     }
-  }
-
-  @override
-  void initState() {
-    super.initState();
-    _currentIndex = widget.initialIndex;
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      NetworkUtils.initialize(context);
-    });
   }
 
   @override

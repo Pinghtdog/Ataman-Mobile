@@ -7,6 +7,7 @@ import '../../../auth/logic/auth_cubit.dart';
 import '../../../facility/data/models/facility_model.dart';
 import '../../../facility/data/models/facility_service_model.dart';
 import '../../../profile/data/model/family_member_model.dart';
+import '../../../triage/data/models/triage_model.dart';
 import '../../data/models/booking_model.dart';
 import '../../logic/booking_cubit.dart';
 import '../../logic/booking_state.dart';
@@ -18,8 +19,13 @@ import '../widgets/booking_time_selector.dart';
 
 class BookingDetailsScreen extends StatefulWidget {
   final Facility facility;
+  final TriageResult? triageResult;
 
-  const BookingDetailsScreen({super.key, required this.facility});
+  const BookingDetailsScreen({
+    super.key, 
+    required this.facility,
+    this.triageResult,
+  });
 
   @override
   State<BookingDetailsScreen> createState() => _BookingDetailsScreenState();
@@ -31,7 +37,6 @@ class _BookingDetailsScreenState extends State<BookingDetailsScreen> {
   FacilityService? _selectedService;
   dynamic _bookingFor = "Self";
 
-  // Mock Data for UI/Supabase demo
   final List<FamilyMember> _mockFamily = [
     FamilyMember(id: '1', userId: 'user1', fullName: 'Maria Dela Cruz', relationship: 'Spouse'),
     FamilyMember(id: '2', userId: 'user1', fullName: 'Junior Dela Cruz', relationship: 'Child'),
@@ -83,6 +88,9 @@ class _BookingDetailsScreenState extends State<BookingDetailsScreen> {
       createdAt: DateTime.now(),
       serviceId: _selectedService!.id,
       familyMemberId: familyMemberId,
+      // Pass Triage data to the database
+      triageResult: widget.triageResult?.summaryForProvider,
+      triagePriority: widget.triageResult?.urgency.name,
     );
 
     context.read<BookingCubit>().createBooking(booking);
@@ -118,32 +126,39 @@ class _BookingDetailsScreenState extends State<BookingDetailsScreen> {
           return Column(
             children: [
               AtamanSimpleHeader(
+                height: 120,
                 child: Row(
                   children: [
                     IconButton(
-                      icon: const Icon(Icons.arrow_back, color: Colors.white),
+                      icon: const Icon(Icons.arrow_back_ios_new, color: Colors.white, size: 20),
                       onPressed: () => Navigator.pop(context),
                     ),
-                    Text(
-                      "Book Appointment",
-                      style: AppTextStyles.h3.copyWith(color: Colors.white),
+                    const Expanded(
+                      child: Text(
+                        "Review Booking",
+                        style: TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold),
+                        textAlign: TextAlign.center,
+                      ),
                     ),
+                    const SizedBox(width: 48),
                   ],
                 ),
               ),
 
-              //jardcoded for demo
               Expanded(
                 child: SingleChildScrollView(
                   padding: const EdgeInsets.all(AppSizes.p24),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      // Facility Info Card
+                      if (widget.triageResult != null) ...[
+                        _buildTriageSummaryCard(),
+                        const SizedBox(height: 24),
+                      ],
+                      
                       BookingFacilityInfo(facility: widget.facility),
                       const SizedBox(height: 24),
 
-                      // Booking For Dropdown
                       const Text("Booking For", style: AppTextStyles.h3),
                       const SizedBox(height: 12),
                       BookingMemberSelector(
@@ -154,7 +169,6 @@ class _BookingDetailsScreenState extends State<BookingDetailsScreen> {
                       ),
                       const SizedBox(height: 24),
 
-                      // Select Service
                       const Text("Select Service", style: AppTextStyles.h3),
                       const SizedBox(height: 12),
                       BookingServiceSelector(
@@ -164,7 +178,6 @@ class _BookingDetailsScreenState extends State<BookingDetailsScreen> {
                       ),
                       const SizedBox(height: 24),
 
-                      // Select Date & Time
                       const Text("Select Date & Time", style: AppTextStyles.h3),
                       const SizedBox(height: 12),
                       BookingDateSelector(
@@ -173,7 +186,7 @@ class _BookingDetailsScreenState extends State<BookingDetailsScreen> {
                       ),
                       const SizedBox(height: 16),
 
-                      const Text("Morning Slots", style: AppTextStyles.caption),
+                      const Text("Available Slots", style: AppTextStyles.caption),
                       const SizedBox(height: 12),
                       BookingTimeSelector(
                         selectedTime: _selectedTime,
@@ -184,30 +197,55 @@ class _BookingDetailsScreenState extends State<BookingDetailsScreen> {
                 ),
               ),
               
-              // Bottom Action Button
               Padding(
                 padding: const EdgeInsets.all(AppSizes.p24),
-                child: SizedBox(
-                  width: double.infinity,
-                  height: 56,
-                  child: ElevatedButton(
-                    onPressed: state is BookingLoading ? null : _confirmBooking,
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: AppColors.primary,
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                    ),
-                    child: state is BookingLoading
-                        ? const CircularProgressIndicator(color: Colors.white)
-                        : const Text(
-                            "Confirm & Get Ticket",
-                            style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold),
-                          ),
-                  ),
+                child: AtamanButton(
+                  text: "Confirm & Get Ticket",
+                  isLoading: state is BookingLoading,
+                  onPressed: _confirmBooking,
                 ),
               ),
             ],
           );
         },
+      ),
+    );
+  }
+
+  Widget _buildTriageSummaryCard() {
+    final result = widget.triageResult!;
+    return Container(
+      padding: const EdgeInsets.all(AppSizes.p16),
+      decoration: BoxDecoration(
+        color: result.urgencyColor.withOpacity(0.05),
+        borderRadius: BorderRadius.circular(AppSizes.radiusMedium),
+        border: Border.all(color: result.urgencyColor.withOpacity(0.2)),
+      ),
+      child: Row(
+        children: [
+          Icon(Icons.auto_awesome, color: result.urgencyColor, size: 24),
+          const SizedBox(width: 16),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  "Triage Reference Included",
+                  style: AppTextStyles.bodySmall.copyWith(
+                    fontWeight: FontWeight.bold,
+                    color: result.urgencyColor,
+                  ),
+                ),
+                Text(
+                  result.summaryForProvider ?? "Priority: \${result.urgency.name}",
+                  style: AppTextStyles.bodyMedium,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ],
+            ),
+          ),
+        ],
       ),
     );
   }

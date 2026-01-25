@@ -12,6 +12,7 @@ import '../../../facility/data/models/facility_model.dart';
 import '../../../facility/logic/facility_cubit.dart';
 import '../../../facility/logic/facility_state.dart';
 import '../../../home/presentation/screens/ataman_base_screen.dart';
+import '../../../triage/data/models/triage_model.dart';
 import '../widgets/ataman_live_map.dart';
 import '../widgets/facility_card.dart';
 import '../widgets/facility_list_view.dart';
@@ -19,7 +20,8 @@ import 'booking_details_screen.dart';
 
 
 class BookingScreen extends StatefulWidget {
-  const BookingScreen({super.key});
+  final TriageResult? triageResult;
+  const BookingScreen({super.key, this.triageResult});
 
   @override
   State<BookingScreen> createState() => _BookingScreenState();
@@ -44,6 +46,10 @@ class _BookingScreenState extends State<BookingScreen> {
     _initLocation();
     context.read<FacilityCubit>().startWatchingFacilities();
     _setupAmbulanceRealtime();
+    
+    if (widget.triageResult != null) {
+      _searchController.text = widget.triageResult!.specialty;
+    }
   }
 
   @override
@@ -79,9 +85,10 @@ class _BookingScreenState extends State<BookingScreen> {
   void _refreshMarkers(FacilityState state) {
     if (state is! FacilityLoaded) return;
     
+    final filteredFacilities = _filterFacilities(state.facilities);
     final Set<Marker> newMarkers = {};
 
-    for (var f in state.facilities) {
+    for (var f in filteredFacilities) {
       if (f.latitude != null && f.longitude != null) {
         newMarkers.add(
           Marker(
@@ -122,6 +129,27 @@ class _BookingScreenState extends State<BookingScreen> {
     });
   }
 
+  List<Facility> _filterFacilities(List<Facility> facilities) {
+    if (widget.triageResult == null) return facilities;
+    
+    final String requiredCap = widget.triageResult!.requiredCapability.toUpperCase();
+
+    return facilities.where((f) {
+      // Logic: Show facilities that match or EXCEED the required capability for safety
+      if (requiredCap == 'HOSPITAL_LEVEL_3') {
+        return f.capability == FacilityCapability.hospitalLevel3;
+      }
+      if (requiredCap == 'HOSPITAL_LEVEL_2') {
+        return f.capability == FacilityCapability.hospitalLevel3 || 
+               f.capability == FacilityCapability.hospitalLevel2;
+      }
+      if (requiredCap == 'BARANGAY_HEALTH_STATION') {
+        return f.type == FacilityType.bhc;
+      }
+      return true;
+    }).toList();
+  }
+
   void _reCenterCamera() {
     if (_mapController != null) {
       final target = _currentPosition != null 
@@ -137,9 +165,10 @@ class _BookingScreenState extends State<BookingScreen> {
   }
 
   List<Facility> _processFacilities(List<Facility> facilities) {
-    if (_currentPosition == null) return facilities;
+    final filtered = _filterFacilities(facilities);
+    if (_currentPosition == null) return filtered;
     
-    return facilities.map((f) {
+    return filtered.map((f) {
       if (f.latitude != null && f.longitude != null) {
         final double km = LocationService.calculateDistance(
           _currentPosition!.latitude,
@@ -155,7 +184,6 @@ class _BookingScreenState extends State<BookingScreen> {
 
   @override
   Widget build(BuildContext context) {
-    // Control Navbar visibility
     WidgetsBinding.instance.addPostFrameCallback((_) {
       AtamanBaseScreen.of(context)?.setNavbarVisibility(!_isMapView);
     });
@@ -174,23 +202,41 @@ class _BookingScreenState extends State<BookingScreen> {
               Column(
                 children: [
                   AtamanHeader(
-                    height: 220,
-                    padding: const EdgeInsets.only(
-                      top: 60, 
-                      left: AppSizes.p24, 
-                      right: AppSizes.p24, 
-                      bottom: AppSizes.p20
-                    ),
+                    height: widget.triageResult != null ? 260 : 220,
+                    padding: const EdgeInsets.only(top: 60, left: 24, right: 24, bottom: 20),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
+                        if (widget.triageResult != null) ...[
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                            decoration: BoxDecoration(
+                              color: Colors.white.withOpacity(0.2),
+                              borderRadius: BorderRadius.circular(20),
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                const Icon(Icons.auto_awesome, color: Colors.white, size: 14),
+                                const SizedBox(width: 6),
+                                Text(
+                                  "AI Recommended: \${widget.triageResult!.requiredCapability.replaceAll('_', ' ')}",
+                                  style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.bold),
+                                ),
+                              ],
+                            ),
+                          ),
+                          const SizedBox(height: 12),
+                        ],
                         Text(
                           "Book Appointment",
                           style: AppTextStyles.h2.copyWith(color: Colors.white),
                         ),
                         const SizedBox(height: AppSizes.p8),
                         Text(
-                          "Find the nearest medical facility",
+                          widget.triageResult != null 
+                            ? "Showing facilities matching your triage results" 
+                            : "Find the nearest medical facility",
                           style: AppTextStyles.bodySmall.copyWith(color: Colors.white.withOpacity(0.8)),
                         ),
                         const SizedBox(height: AppSizes.p20),
@@ -203,22 +249,15 @@ class _BookingScreenState extends State<BookingScreen> {
                           ),
                           child: TextField(
                             controller: _searchController,
-                            style: AppTextStyles.bodyMedium.copyWith(color: AppColors.primary),
+                            style: const TextStyle(color: Colors.white),
                             cursorColor: Colors.white,
-                            textAlignVertical: TextAlignVertical.center,
                             decoration: InputDecoration(
                               isDense: true,
                               border: InputBorder.none,
                               hintText: "Search health centers, hospitals...",
-                              hintStyle: AppTextStyles.bodyMedium.copyWith(
-                                color: Colors.black45.withOpacity(0.6),
-                              ),
-                              prefixIcon: const Icon(
-                                Icons.search_rounded, 
-                                color: AppColors.primary,
-                                size: 22,
-                              ),
-                              contentPadding: const EdgeInsets.only(right: AppSizes.p16),
+                              hintStyle: TextStyle(color: Colors.white.withOpacity(0.6)),
+                              prefixIcon: const Icon(Icons.search_rounded, color: Colors.white),
+                              contentPadding: const EdgeInsets.symmetric(vertical: 15),
                             ),
                           ),
                         ),
@@ -232,13 +271,10 @@ class _BookingScreenState extends State<BookingScreen> {
                         ? Center(child: Text(state.message))
                         : state is FacilityLoaded
                           ? _isMapView 
-                            ? GestureDetector(
-                                onTap: () => setState(() => _selectedFacility = null),
-                                child: AtamanLiveMap(
-                                  currentPosition: _currentPosition,
-                                  markers: _markers,
-                                  onMapCreated: (controller) => _mapController = controller,
-                                ),
+                            ? AtamanLiveMap(
+                                currentPosition: _currentPosition,
+                                markers: _markers,
+                                onMapCreated: (controller) => _mapController = controller,
                               ) 
                             : FacilityListView(
                                 facilities: _processFacilities(state.facilities),
@@ -246,7 +282,10 @@ class _BookingScreenState extends State<BookingScreen> {
                                   Navigator.push(
                                     context,
                                     MaterialPageRoute(
-                                      builder: (context) => BookingDetailsScreen(facility: facility),
+                                      builder: (context) => BookingDetailsScreen(
+                                        facility: facility,
+                                        triageResult: widget.triageResult,
+                                      ),
                                     ),
                                   );
                                 },
@@ -256,10 +295,9 @@ class _BookingScreenState extends State<BookingScreen> {
                 ],
               ),
 
-              // Floating Location Button
               if (_isMapView)
                 Positioned(
-                  top: 240,
+                  top: 280,
                   right: 16,
                   child: FloatingActionButton.small(
                     onPressed: _reCenterCamera,
@@ -282,58 +320,28 @@ class _BookingScreenState extends State<BookingScreen> {
                     backgroundColor: AppColors.textPrimary,
                     icon: Icon(_isMapView ? Icons.format_list_bulleted_rounded : Icons.map_outlined,
                         color: Colors.white),
-                    label: Text(
-                      _isMapView ? "List View" : "Map View",
-                      style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
-                    ),
-                    elevation: 4,
+                    label: Text(_isMapView ? "List View" : "Map View", style: const TextStyle(color: Colors.white)),
                   ),
                 ),
 
-              // Pull-up / Bottom Sheet Style Facility Card
               if (_isMapView && _selectedFacility != null)
                 Align(
                   alignment: Alignment.bottomCenter,
-                  child: GestureDetector(
-                    onVerticalDragUpdate: (details) {
-                      if (details.primaryDelta! > 10) {
-                        setState(() => _selectedFacility = null);
-                      }
-                    },
-                    child: Container(
-                      padding: const EdgeInsets.fromLTRB(16, 8, 16, 32),
-                      decoration: const BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-                        boxShadow: [
-                          BoxShadow(color: Colors.black12, blurRadius: 10, spreadRadius: 2),
-                        ],
-                      ),
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Container(
-                            width: 40,
-                            height: 4,
-                            margin: const EdgeInsets.only(bottom: 16),
-                            decoration: BoxDecoration(
-                              color: Colors.grey[300],
-                              borderRadius: BorderRadius.circular(2),
+                  child: Container(
+                    margin: const EdgeInsets.all(16),
+                    child: FacilityCard(
+                      facility: _processFacilities([_selectedFacility!]).first,
+                      onTap: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => BookingDetailsScreen(
+                              facility: _selectedFacility!,
+                              triageResult: widget.triageResult,
                             ),
                           ),
-                          FacilityCard(
-                            facility: _processFacilities([_selectedFacility!]).first,
-                            onTap: () {
-                              Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                  builder: (context) => BookingDetailsScreen(facility: _selectedFacility!),
-                                ),
-                              );
-                            },
-                          ),
-                        ],
-                      ),
+                        );
+                      },
                     ),
                   ),
                 ),

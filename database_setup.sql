@@ -114,6 +114,10 @@ CREATE TABLE public.facility_services (
   CONSTRAINT facility_services_pkey PRIMARY KEY (id)
 );
 
+ALTER TABLE public.facility_services
+ADD COLUMN status text DEFAULT 'operational' CHECK (status IN ('operational', 'maintenance', 'offline'));
+
+
 -- Family Members (for booking on behalf of others)
 CREATE TABLE public.family_members (
   id uuid NOT NULL DEFAULT gen_random_uuid(),
@@ -140,6 +144,9 @@ CREATE TABLE public.bookings (
   CONSTRAINT bookings_pkey PRIMARY KEY (id)
 );
 
+ALTER TABLE public.bookings ADD COLUMN notes text;
+
+
 -- Referrals (Hospital to Hospital)
 CREATE TABLE public.referrals (
   id uuid NOT NULL DEFAULT gen_random_uuid(),
@@ -153,6 +160,9 @@ CREATE TABLE public.referrals (
   created_at timestamp with time zone DEFAULT now(),
   CONSTRAINT referrals_pkey PRIMARY KEY (id)
 );
+ALTER TABLE public.referrals ADD COLUMN attachments text[];
+
+
 -- AI Suggestions
 -- Store AI insights so the dashboard can display "Recommended Referral"
 ALTER TABLE public.referrals
@@ -275,6 +285,9 @@ CREATE TABLE public.clinical_notes (
   created_at timestamp with time zone DEFAULT now()
 );
 
+ALTER TABLE public.clinical_notes ADD COLUMN vital_signs jsonb DEFAULT '{}'::jsonb;
+-- Example data: {"bp": "120/80", "temp": 37.5, "hr": 80}
+
 
 -- Telemed Session Logs (For the Video Pitch Feature)
 CREATE TABLE public.telemed_sessions (
@@ -286,6 +299,26 @@ CREATE TABLE public.telemed_sessions (
   started_at timestamp with time zone,
   ended_at timestamp with time zone
 );
+
+--audit logs
+CREATE TABLE public.audit_logs (
+  id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
+  user_id uuid REFERENCES auth.users(id),
+  facility_id bigint REFERENCES public.facilities(id),
+  action text NOT NULL, -- e.g., "UPDATED_BED_COUNT"
+  details jsonb, -- e.g., {"old": 5, "new": 0}
+  created_at timestamptz DEFAULT now()
+);
+-- Enable RLS so only Admins can see this
+ALTER TABLE public.audit_logs ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Admins view logs" ON public.audit_logs FOR SELECT USING (
+  EXISTS (SELECT 1 FROM public.facility_staff WHERE user_id = auth.uid() AND role = 'ADMIN')
+);
+
+
+
+
+
 
 --Functions, Triggers & RPCs
 --Trigger to Create User Profile on Sign Up

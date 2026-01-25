@@ -13,44 +13,38 @@ class SplashScreen extends StatefulWidget {
 
 class _SplashScreenState extends State<SplashScreen> {
   bool _isNavigated = false;
-  bool _timerFinished = false;
 
   @override
   void initState() {
     super.initState();
-    _startTimer();
-  }
-
-  void _startTimer() async {
-    await Future.delayed(const Duration(milliseconds: 2500));
-    if (!mounted) return;
-    
-    setState(() {
-      _timerFinished = true;
+    // Check the current state
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _checkAndNavigate(context.read<AuthCubit>().state);
     });
-    
-    _checkAndNavigate(context.read<AuthCubit>().state);
   }
 
   void _checkAndNavigate(AuthState state) {
-    if (_isNavigated || !mounted || !_timerFinished) return;
+    if (_isNavigated || !mounted || state is AuthInitial) return;
 
     if (state is Authenticated) {
-      _isNavigated = true;
-      Navigator.pushReplacementNamed(context, AppRoutes.home);
+      _navigate(AppRoutes.home);
     } else if (state is Unauthenticated || state is AuthError) {
-      _isNavigated = true;
-      Navigator.pushReplacementNamed(context, AppRoutes.authSelection);
+      // Unauthenticated or Error: move to selection screen
+      _navigate(AppRoutes.authSelection);
     }
+  }
+
+  void _navigate(String routeName) {
+    if (_isNavigated) return;
+    _isNavigated = true;
+    Navigator.pushReplacementNamed(context, routeName);
   }
 
   @override
   Widget build(BuildContext context) {
     return BlocListener<AuthCubit, AuthState>(
       listener: (context, state) {
-        if (_timerFinished) {
-          _checkAndNavigate(state);
-        }
+        _checkAndNavigate(state);
       },
       child: Scaffold(
         backgroundColor: AppColors.primary,

@@ -20,6 +20,8 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
   late TextEditingController _barangayController;
   late TextEditingController _allergiesController;
   late TextEditingController _conditionsController;
+  late TextEditingController _emergencyNameController;
+  late TextEditingController _emergencyPhoneController;
   String? _selectedBloodType;
   String? _selectedGender;
 
@@ -34,6 +36,8 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     _barangayController = TextEditingController(text: widget.user.barangay);
     _allergiesController = TextEditingController(text: widget.user.allergies);
     _conditionsController = TextEditingController(text: widget.user.medicalConditions);
+    _emergencyNameController = TextEditingController(text: widget.user.emergencyContactName);
+    _emergencyPhoneController = TextEditingController(text: widget.user.emergencyContactPhone);
     _selectedBloodType = widget.user.bloodType;
     _selectedGender = widget.user.gender;
   }
@@ -45,6 +49,8 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     _barangayController.dispose();
     _allergiesController.dispose();
     _conditionsController.dispose();
+    _emergencyNameController.dispose();
+    _emergencyPhoneController.dispose();
     super.dispose();
   }
 
@@ -55,6 +61,8 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
       barangay: _barangayController.text,
       allergies: _allergiesController.text,
       medicalConditions: _conditionsController.text,
+      emergencyContactName: _emergencyNameController.text,
+      emergencyContactPhone: _emergencyPhoneController.text,
       bloodType: _selectedBloodType,
       gender: _selectedGender,
       isProfileComplete: true,
@@ -124,20 +132,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       const Center(
-                        child: Stack(
-                          children: [
-                            AtamanAvatar(radius: 50),
-                            Positioned(
-                              bottom: 0,
-                              right: 0,
-                              child: CircleAvatar(
-                                radius: 18,
-                                backgroundColor: AppColors.primary,
-                                child: Icon(Icons.camera_alt, color: Colors.white, size: 18),
-                              ),
-                            ),
-                          ],
-                        ),
+                        child: AtamanAvatar(radius: 50),
                       ),
                       const SizedBox(height: AppSizes.p32),
                       
@@ -145,14 +140,12 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                       const SizedBox(height: AppSizes.p16),
                       AtamanTextField(
                         label: "Full Name",
-                        hintText: "Enter your full name",
                         prefixIcon: Icons.person_outline_rounded,
                         controller: _nameController,
                       ),
                       const SizedBox(height: AppSizes.p16),
                       AtamanTextField(
                         label: "Phone Number",
-                        hintText: "Enter your phone number",
                         prefixIcon: Icons.phone_android_outlined,
                         controller: _phoneController,
                         keyboardType: TextInputType.phone,
@@ -160,7 +153,6 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                       const SizedBox(height: AppSizes.p16),
                       AtamanTextField(
                         label: "Barangay",
-                        hintText: "Enter your barangay",
                         prefixIcon: Icons.location_on_outlined,
                         controller: _barangayController,
                       ),
@@ -204,6 +196,22 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                         hintText: "e.g. Hypertension, Diabetes",
                         prefixIcon: Icons.medical_information_outlined,
                         controller: _conditionsController,
+                      ),
+
+                      const SizedBox(height: AppSizes.p32),
+                      const _SectionHeader(title: "Emergency Contact"),
+                      const SizedBox(height: AppSizes.p16),
+                      AtamanTextField(
+                        label: "Contact Name",
+                        prefixIcon: Icons.contact_emergency_outlined,
+                        controller: _emergencyNameController,
+                      ),
+                      const SizedBox(height: AppSizes.p16),
+                      AtamanTextField(
+                        label: "Contact Phone",
+                        prefixIcon: Icons.phone_callback_outlined,
+                        controller: _emergencyPhoneController,
+                        keyboardType: TextInputType.phone,
                       ),
                       
                       const SizedBox(height: AppSizes.p32),

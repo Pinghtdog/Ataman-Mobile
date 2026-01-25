@@ -57,7 +57,7 @@ class _TriageInputScreenState extends State<TriageInputScreen> {
                       child: Stack(
                         children: [
                           Align(
-                            alignment: Alignment.centerLeft,
+                            alignment: Alignment.center,
                             child: IconButton(
                               icon: const Icon(Icons.arrow_back_ios_new, color: Colors.white, size: 20),
                               onPressed: () {
