@@ -29,7 +29,7 @@ class HomeScreen extends StatelessWidget {
                   child: Stack(
                     children: [
                       AtamanHeader(
-                        height: 240,
+                        height: 241,
                         child: SafeArea(
                           child: Row(
                             mainAxisAlignment: MainAxisAlignment.spaceBetween,
