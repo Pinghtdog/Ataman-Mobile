@@ -30,6 +30,7 @@ dependencies:
   qr_flutter: ^4.1.0
   flutter_gemini: ^3.0.0
   dotted_border: ^2.1.0
+  add_2_calendar: ^3.0.1
   
   # PDF and Printing
   pdf: ^3.11.1

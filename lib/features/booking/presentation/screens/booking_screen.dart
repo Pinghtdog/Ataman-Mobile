@@ -347,7 +347,7 @@ class _BookingScreenState extends State<BookingScreen> {
                           ),
                           child: TextField(
                             controller: _searchController,
-                            style: const TextStyle(color: Colors.white),
+                            style: const TextStyle(color: Colors.black54),
                             cursorColor: Colors.white,
                             onSubmitted: (_) {
                               // Force selection of the first result if searching in map view
