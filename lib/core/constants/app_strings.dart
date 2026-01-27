@@ -70,6 +70,45 @@ class AppStrings {
   static const String statusStable = "Stable";
   static const String statusCheckup = "Routine Checkup";
 
+  // Vaccination
+  static const String vaccinationServices = "Vaccination Services";
+  static const String myImmunizationCard = "My Immunization Card";
+  static const String viewHistoryAndUpcomingDoses = "View history and upcoming doses";
+  static const String viewRecord = "VIEW RECORD";
+  static const String availableVaccines = "Available Vaccines";
+  static const String all = "All";
+  static const String kids = "Kids";
+  static const String adults = "Adults";
+  static const String seniors = "Seniors";
+  static const String influenzaFluVaccine = "Influenza (Flu) Vaccine";
+  static const String prioritySeniorsIndigents = "Priority: Seniors & Indigents";
+  static const String pneumococcal23 = "Pneumococcal 23";
+  static const String lifetimeProtection = "Lifetime protection";
+  static const String antiRabies = "Anti-Rabies";
+  static const String animalBiteCenterOnly = "Animal Bite Center Only";
+  static const String tetanusToxoid = "Tetanus Toxoid";
+  static const String checkAvailability = "Check availability";
+  static const String inStock = "IN STOCK";
+  static const String limited = "LIMITED";
+  static const String noStock = "NO STOCK";
+
+  // Book Vaccination
+  static const String bookVaccination = "Book Vaccination";
+  static const String stockReservedForBooking = "Stock Reserved for Booking";
+  static const String concepcionPequenaBHC = "Concepcion Pequeña BHC • 120 Left";
+  static const String vaccine = "Vaccine";
+  static const String patient = "Patient";
+  static const String myself = "Myself";
+  static const String miguelSon = "Miguel (Son)";
+  static const String schedule = "Schedule";
+  static const String date = "DATE";
+  static const String time = "TIME";
+  static const String healthScreening = "Health Screening";
+  static const String doYouHaveFever = "Do you have a fever today?";
+  static const String yes = "Yes";
+  static const String no = "No";
+  static const String confirmVaccinationSlot = "Confirm Vaccination Slot";
+
   // Errors
   static const String genericError = "Something went wrong. Please try again.";
   static const String fieldRequired = "This field is required";

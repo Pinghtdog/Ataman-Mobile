@@ -123,7 +123,9 @@ class HomeScreen extends StatelessWidget {
                           },
                         ],
                         onServiceTap: (index) {
-                          // TODO: Handle service navigation
+                          if (index == 3) { // Corresponds to 'Vaccines'
+                            Navigator.of(context).pushNamed(AppRoutes.vaccination);
+                          }
                         },
                       ),
                       const SizedBox(height: AppSizes.p32),
