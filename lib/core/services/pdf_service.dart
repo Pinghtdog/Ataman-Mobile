@@ -2,6 +2,7 @@ import 'package:flutter/services.dart';
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 import 'package:printing/printing.dart';
+import 'package:pdfx/pdfx.dart' as render;
 import '../../features/auth/data/models/user_model.dart';
 
 class PdfService {
@@ -13,20 +14,37 @@ class PdfService {
 
     // Parse birthDate string to DateTime
     DateTime? birthDateTime;
-    if (user.birthDate != null) {
+    if (user.birthDate != null && user.birthDate!.isNotEmpty) {
       try {
         birthDateTime = DateTime.parse(user.birthDate!);
       } catch (e) {
-        // Fallback or handle different formats if necessary
+        // Fallback for other formats
       }
     }
 
-    // Load background images if not cached
-    if (_cachedPage1 == null) {
-      _cachedPage1 = (await rootBundle.load('assets/documents/form1_bg.png')).buffer.asUint8List();
-    }
-    if (_cachedPage2 == null) {
-      _cachedPage2 = (await rootBundle.load('assets/documents/form2_bg.png')).buffer.asUint8List();
+    // Load and render PDF background if not cached
+    if (_cachedPage1 == null || _cachedPage2 == null) {
+      final doc = await render.PdfDocument.openAsset('assets/documents/enrollment_form.pdf');
+      
+      final page1 = await doc.getPage(1);
+      final page1Render = await page1.render(
+        width: page1.width * 2, // High resolution
+        height: page1.height * 2,
+        format: render.PdfPageImageFormat.png,
+      );
+      _cachedPage1 = page1Render!.bytes;
+      await page1.close();
+
+      final page2 = await doc.getPage(2);
+      final page2Render = await page2.render(
+        width: page2.width * 2,
+        height: page2.height * 2,
+        format: render.PdfPageImageFormat.png,
+      );
+      _cachedPage2 = page2Render!.bytes;
+      await page2.close();
+      
+      await doc.close();
     }
 
     final page1Image = pw.MemoryImage(_cachedPage1!);
@@ -40,40 +58,60 @@ class PdfService {
         build: (pw.Context context) {
           return pw.Stack(
             children: [
-              // Background Template
               pw.FullPage(ignoreMargins: true, child: pw.Image(page1Image)),
 
               // I. PATIENT INFORMATION
-              _plot(45, 188, user.lastName.toUpperCase()),
-              _plot(552, 188, user.suffix ?? ''),
-              _plot(45, 212, user.firstName.toUpperCase()),
-              _plot(552, 212, user.maidenName ?? ''),
-              _plot(45, 237, (user.middleName ?? '').toUpperCase()),
-              _plot(715, 266, user.motherName ?? ''), 
+              _plot(45, 160, user.lastName.toUpperCase()),
+              _plot(330, 160, user.suffix ?? ''),
+              _plot(45, 190, user.firstName.toUpperCase()),
+              _plot(330, 190, user.maidenName ?? ''),
+              _plot(45, 220, (user.middleName ?? '').toUpperCase()),
+              _plot(330, 220, user.motherName ?? ''), 
 
               // Sex Checkboxes
-              if (user.gender?.toLowerCase() == 'female') _plot(216, 266, "X", isBold: true),
-              if (user.gender?.toLowerCase() == 'male') _plot(394, 266, "X", isBold: true),
+              if (user.gender?.toLowerCase() == 'female') _plot(100, 245, "X", isBold: true),
+              if (user.gender?.toLowerCase() == 'male') _plot(230, 245, "X", isBold: true),
 
               // Birthdate
-              _plot(195, 291, birthDateTime?.month.toString().padLeft(2, '0') ?? ''),
-              _plot(245, 291, birthDateTime?.day.toString().padLeft(2, '0') ?? ''),
-              _plot(295, 291, birthDateTime?.year.toString() ?? ''),
+              _plot(365, 245, birthDateTime?.month.toString().padLeft(2, '0') ?? ''),
+              _plot(415, 245, birthDateTime?.day.toString().padLeft(2, '0') ?? ''),
+              _plot(465, 245, birthDateTime?.year.toString() ?? ''),
 
-              _plot(45, 316, user.birthplace ?? ''),
-              _plot(552, 340, user.residentialAddress ?? '', width: 250),
-              _plot(45, 341, user.bloodType ?? ''),
+              _plot(45, 275, user.birthplace ?? ''),
+              _plot(330, 275, user.residentialAddress ?? '', width: 250),
+              _plot(45, 305, user.bloodType ?? ''),
 
               // Civil Status
-              if (user.civilStatus == 'Single') _plot(216, 355, "X"),
-              if (user.civilStatus == 'Married') _plot(216, 375, "X"),
+              if (user.civilStatus == 'Single') _plot(115, 325, "X"),
+              if (user.civilStatus == 'Married') _plot(115, 345, "X"),
+              if (user.civilStatus == 'Widow/er') _plot(220, 325, "X"),
+              if (user.civilStatus == 'Separated') _plot(220, 345, "X"),
+              if (user.civilStatus == 'Annulled') _plot(115, 365, "X"),
+              if (user.civilStatus == 'Co-Habitation') _plot(220, 365, "X"),
+
+              // 4Ps Member
+              if (user.is4psMember) _plot(450, 455, "X") else _plot(515, 455, "X"),
 
               // PhilHealth
-              if (user.philhealthId != null && user.philhealthId!.isNotEmpty) _plot(815, 498, "X"),
-              _plot(715, 545, user.philhealthId ?? ''),
+              if (user.philhealthId != null && user.philhealthId!.isNotEmpty) ...[
+                _plot(450, 500, "X"), // Yes
+                if (user.philhealthStatus == 'Member') _plot(450, 525, "X")
+                else if (user.philhealthStatus == 'Dependent') _plot(515, 525, "X"),
+                _plot(330, 550, user.philhealthId ?? ''),
+              ] else ...[
+                _plot(515, 500, "X"), // No
+              ],
 
               // Educational Attainment
-              if (user.education == 'College') _plot(216, 518, "X"),
+              if (user.education == 'No Formal Education') _plot(115, 455, "X"),
+              if (user.education == 'Elementary') _plot(220, 455, "X"),
+              if (user.education == 'High School') _plot(115, 475, "X"),
+              if (user.education == 'Vocational') _plot(220, 475, "X"),
+              if (user.education == 'College') _plot(115, 495, "X"),
+              if (user.education == 'Post Graduate') _plot(220, 495, "X"),
+
+              // Primary Care Benefit (PCB) Member
+              if (user.isPcbMember) _plot(450, 675, "X") else _plot(515, 675, "X"),
             ],
           );
         },
@@ -91,17 +129,17 @@ class PdfService {
               pw.FullPage(ignoreMargins: true, child: pw.Image(page2Image)),
 
               // Header ID
-              _plot(540, 44, user.philhealthId ?? '', size: 14),
+              _plot(450, 40, user.philhealthId ?? '', size: 14),
 
               // Patient Info Section
-              _plot(45, 180, user.lastName.toUpperCase()),
-              _plot(540, 180, user.suffix ?? ''),
-              _plot(710, 180, _calculateAge(birthDateTime)), 
-              _plot(860, 180, user.gender?.toLowerCase() == 'male' ? 'M' : 'F'),
+              _plot(45, 175, user.lastName.toUpperCase()),
+              _plot(330, 175, user.suffix ?? ''),
+              _plot(420, 175, _calculateAge(birthDateTime)), 
+              _plot(510, 175, user.gender?.toLowerCase() == 'male' ? 'M' : 'F'),
 
-              _plot(45, 215, user.firstName.toUpperCase()),
-              _plot(540, 215, user.residentialAddress ?? '', width: 300),
-              _plot(45, 240, (user.middleName ?? '').toUpperCase()),
+              _plot(45, 205, user.firstName.toUpperCase()),
+              _plot(330, 205, user.residentialAddress ?? '', width: 250),
+              _plot(45, 235, (user.middleName ?? '').toUpperCase()),
             ],
           );
         },

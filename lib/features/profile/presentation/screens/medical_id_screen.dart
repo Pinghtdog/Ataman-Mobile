@@ -145,7 +145,7 @@ class MedicalIdScreen extends StatelessWidget {
               
               // Enrollment PDF Action
               AtamanButton(
-                text: "Download DOH Form",
+                text: "Download Form",
                 isOutlined: true,
                 color: Colors.white,
                 icon: Icons.picture_as_pdf,

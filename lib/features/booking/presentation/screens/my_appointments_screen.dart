@@ -46,7 +46,7 @@ class _MyAppointmentsScreenState extends State<MyAppointmentsScreen> with Single
       body: Column(
         children: [
           AtamanSimpleHeader(
-            height: 160,
+            height: 170,
             child: Column(
               mainAxisAlignment: MainAxisAlignment.end,
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -66,13 +66,14 @@ class _MyAppointmentsScreenState extends State<MyAppointmentsScreen> with Single
                     ),
                   ],
                 ),
-                const SizedBox(height: 5),
+                const SizedBox(height: 10),
                 TabBar(
                   controller: _tabController,
                   indicatorColor: Colors.white,
                   indicatorWeight: 3,
                   labelStyle: AppTextStyles.bodyMedium.copyWith(fontWeight: FontWeight.bold),
                   unselectedLabelStyle: AppTextStyles.bodyMedium,
+                  dividerColor: Colors.transparent,
                   tabs: const [
                     Tab(text: "Active"),
                     Tab(text: "History"),
