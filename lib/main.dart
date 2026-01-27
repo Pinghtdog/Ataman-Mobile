@@ -1,3 +1,4 @@
+import 'package:ataman/features/vaccination/presentation/screens/book_vaccination_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'core/constants/constants.dart';
@@ -31,6 +32,7 @@ import 'features/triage/domain/repositories/i_triage_repository.dart';
 import 'features/triage/logic/triage_cubit.dart';
 import 'features/triage/presentation/screens/triage_input_screen.dart';
 import 'features/triage/presentation/screens/triage_result_screen.dart';
+import 'features/vaccination/presentation/screens/vaccination_screen.dart';
 import 'injector.dart';
 
 void main() async {
@@ -122,6 +124,8 @@ class AtamanApp extends StatelessWidget {
       child: const EmergencyRequestScreen(),
     ),
     AppRoutes.myAppointments: (context) => const MyAppointmentsScreen(),
+    AppRoutes.vaccination: (context) => const VaccinationScreen(),
+    AppRoutes.bookVaccination: (context) => const BookVaccinationScreen(),
   };
 }
 

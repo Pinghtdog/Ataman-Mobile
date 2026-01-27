@@ -29,7 +29,7 @@ class HomeScreen extends StatelessWidget {
                   child: Stack(
                     children: [
                       AtamanHeader(
-                        height: 241,
+                        height: 240,
                         child: SafeArea(
                           child: Row(
                             mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -123,7 +123,9 @@ class HomeScreen extends StatelessWidget {
                           },
                         ],
                         onServiceTap: (index) {
-                          // TODO: Handle service navigation
+                          if (index == 3) { // Corresponds to 'Vaccines'
+                            Navigator.of(context).pushNamed(AppRoutes.vaccination);
+                          }
                         },
                       ),
                       const SizedBox(height: AppSizes.p32),
