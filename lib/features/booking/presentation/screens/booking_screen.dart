@@ -7,6 +7,8 @@ import 'package:supabase_flutter/supabase_flutter.dart' as sb;
 import '../../../../core/constants/constants.dart';
 import '../../../../core/widgets/widgets.dart';
 import '../../../../core/services/location_service.dart';
+import '../../../auth/logic/auth_cubit.dart';
+import '../../../auth/presentation/screens/patient_enrollment_screen.dart';
 import '../../../emergency/data/models/ambulance_model.dart';
 import '../../../facility/data/models/facility_model.dart';
 import '../../../facility/logic/facility_cubit.dart';
@@ -53,19 +55,55 @@ class _BookingScreenState extends State<BookingScreen> {
       _searchQuery = widget.triageResult!.specialty.toLowerCase();
     }
 
-    _searchController.addListener(() {
-      setState(() {
-        _searchQuery = _searchController.text.toLowerCase();
-        _refreshMarkers(context.read<FacilityCubit>().state);
-      });
-    });
+    _searchController.addListener(_onSearchChanged);
   }
 
   @override
   void dispose() {
     _ambulanceSubscription?.cancel();
+    _searchController.removeListener(_onSearchChanged);
     _searchController.dispose();
     super.dispose();
+  }
+
+  void _onSearchChanged() {
+    final query = _searchController.text.toLowerCase();
+    final state = context.read<FacilityCubit>().state;
+    
+    setState(() {
+      _searchQuery = query;
+      if (state is FacilityLoaded) {
+        _refreshMarkers(state);
+        
+        // Auto-focus logic when searching in map view
+        if (_isMapView && query.isNotEmpty) {
+          final filtered = _filterFacilities(state.facilities);
+          
+          // If there's exactly one result or a perfect name match, zoom to it and open card
+          Facility? bestMatch;
+          if (filtered.length == 1) {
+            bestMatch = filtered.first;
+          } else {
+            bestMatch = filtered.cast<Facility?>().firstWhere(
+              (f) => f!.name.toLowerCase() == query,
+              orElse: () => null,
+            );
+          }
+
+          if (bestMatch != null && bestMatch.latitude != null && bestMatch.longitude != null) {
+            _selectedFacility = bestMatch;
+            _mapController?.animateCamera(
+              CameraUpdate.newCameraPosition(
+                CameraPosition(
+                  target: LatLng(bestMatch.latitude!, bestMatch.longitude!),
+                  zoom: 16,
+                ),
+              ),
+            );
+          }
+        }
+      }
+    });
   }
 
   Future<void> _initLocation() async {
@@ -210,6 +248,38 @@ class _BookingScreenState extends State<BookingScreen> {
     }).toList();
   }
 
+  void _onFacilitySelected(Facility facility) {
+    final authState = context.read<AuthCubit>().state;
+    
+    if (authState is Authenticated) {
+      if (authState.profile == null || !authState.profile!.isProfileComplete) {
+        if (authState.profile != null) {
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => PatientEnrollmentScreen(user: authState.profile!),
+            ),
+          );
+        } else {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text("Profile not found. Please try again.")),
+          );
+        }
+        return;
+      }
+    }
+
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => BookingDetailsScreen(
+          facility: facility,
+          triageResult: widget.triageResult,
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -279,6 +349,29 @@ class _BookingScreenState extends State<BookingScreen> {
                             controller: _searchController,
                             style: const TextStyle(color: Colors.white),
                             cursorColor: Colors.white,
+                            onSubmitted: (_) {
+                              // Force selection of the first result if searching in map view
+                              if (_isMapView && _searchQuery.isNotEmpty) {
+                                final state = context.read<FacilityCubit>().state;
+                                if (state is FacilityLoaded) {
+                                  final filtered = _filterFacilities(state.facilities);
+                                  if (filtered.isNotEmpty) {
+                                    final match = filtered.first;
+                                    setState(() {
+                                      _selectedFacility = match;
+                                    });
+                                    _mapController?.animateCamera(
+                                      CameraUpdate.newCameraPosition(
+                                        CameraPosition(
+                                          target: LatLng(match.latitude!, match.longitude!),
+                                          zoom: 16,
+                                        ),
+                                      ),
+                                    );
+                                  }
+                                }
+                              }
+                            },
                             decoration: InputDecoration(
                               isDense: true,
                               border: InputBorder.none,
@@ -312,17 +405,7 @@ class _BookingScreenState extends State<BookingScreen> {
                                 ) 
                               : FacilityListView(
                                   facilities: _processFacilities(state.facilities),
-                                  onFacilityTap: (facility) {
-                                    Navigator.push(
-                                      context,
-                                      MaterialPageRoute(
-                                        builder: (context) => BookingDetailsScreen(
-                                          facility: facility,
-                                          triageResult: widget.triageResult,
-                                        ),
-                                      ),
-                                    );
-                                  },
+                                  onFacilityTap: _onFacilitySelected,
                                 )
                             : const SizedBox.shrink(),
                     ),
@@ -374,17 +457,7 @@ class _BookingScreenState extends State<BookingScreen> {
                         margin: const EdgeInsets.fromLTRB(16, 0, 16, 40),
                         child: FacilityCard(
                           facility: _processFacilities([_selectedFacility!]).first,
-                          onTap: () {
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (context) => BookingDetailsScreen(
-                                  facility: _selectedFacility!,
-                                  triageResult: widget.triageResult,
-                                ),
-                              ),
-                            );
-                          },
+                          onTap: () => _onFacilitySelected(_selectedFacility!),
                         ),
                       ),
                     ),

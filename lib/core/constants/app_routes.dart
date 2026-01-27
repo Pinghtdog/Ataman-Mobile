@@ -17,4 +17,17 @@ class AppRoutes {
   static const String notifications = '/notifications';
   static const String vaccination = '/vaccination';
   static const String bookVaccination = '/book-vaccination';
+  
+  // New Routes
+  static const String patientEnrollment = '/patient-enrollment';
+  static const String telemedicine = '/telemedicine';
+  static const String videoCall = '/video-call';
+  static const String reproductiveHealth = '/reproductive-health';
+  static const String generalConsult = '/general-consult';
+  static const String familyMembers = '/family-members';
+  static const String medicalHistory = '/medical-history';
+  static const String settings = '/settings';
+  static const String changePassword = '/change-password';
+  static const String notificationSettings = '/notification-settings';
+  static const String language = '/language';
 }

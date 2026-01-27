@@ -1,16 +1,16 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import '../../../../core/constants/constants.dart';
+import '../../../../core/widgets/widgets.dart';
 import '../../../auth/logic/auth_cubit.dart';
 import '../../logic/profile_cubit.dart';
 import '../../logic/profile_state.dart';
 import '../../../auth/data/models/user_model.dart';
 import '../widgets/profile_feature_card.dart';
-import '../widgets/profile_list_tile.dart';
-import '../../../../core/constants/constants.dart';
-import '../../../../core/widgets/widgets.dart';
 import '../widgets/profile_square_card.dart';
+import '../widgets/profile_list_tile.dart';
 import 'edit_profile_screen.dart';
-import 'medical_id_screen.dart'; // Import MedicalIdScreen
+import 'medical_id_screen.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -68,7 +68,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     : "Naga City Resident";
                 isVerified = user.isProfileComplete;
               } else if (authState is Authenticated) {
-                // Fallback to auth metadata if profile hasn't loaded yet
                 fullName = authState.profile?.fullName ?? 
                           "${authState.user.userMetadata?['first_name'] ?? ''} ${authState.user.userMetadata?['last_name'] ?? ''}".trim();
                 if (fullName.isEmpty) fullName = "User";
@@ -188,7 +187,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                       iconColor: Colors.orange[800]!,
                                       iconBg: Colors.orange[50]!,
                                       onTap: () {
-                                        // Linked to triage history or medical records
+                                        Navigator.pushNamed(context, AppRoutes.medicalHistory);
                                       },
                                     ),
                                   ),
@@ -200,7 +199,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                       icon: Icons.diversity_1_rounded,
                                       iconColor: Colors.blue[800]!,
                                       iconBg: Colors.blue[50]!,
-                                      onTap: () {},
+                                      onTap: () {
+                                        Navigator.pushNamed(context, AppRoutes.familyMembers);
+                                      },
                                     ),
                                   ),
                                 ],
@@ -253,7 +254,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                     ProfileListTile(
                                       title: "Settings",
                                       icon: Icons.settings_outlined,
-                                      onTap: () {},
+                                      onTap: () {
+                                        Navigator.pushNamed(context, AppRoutes.settings);
+                                      },
                                     ),
                                     const Divider(height: 1, indent: 60, endIndent: 20),
                                     ProfileListTile(

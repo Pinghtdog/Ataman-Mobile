@@ -18,12 +18,22 @@ class NotificationCubit extends Cubit<NotificationState> {
     
     _subscription = _repository.subscribeToNotifications().listen(
       (notifications) {
-        emit(NotificationLoaded(notifications: notifications));
+        if (state is NotificationLoaded) {
+          emit((state as NotificationLoaded).copyWith(notifications: notifications));
+        } else {
+          emit(NotificationLoaded(notifications: notifications));
+        }
       },
       onError: (error) {
         emit(NotificationError(error.toString()));
       },
     );
+  }
+
+  void setFilter(String filter) {
+    if (state is NotificationLoaded) {
+      emit((state as NotificationLoaded).copyWith(selectedFilter: filter));
+    }
   }
 
   Future<void> markAsRead(String id) async {

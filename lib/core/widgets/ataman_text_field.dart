@@ -10,6 +10,9 @@ class AtamanTextField extends StatefulWidget {
   final TextInputType keyboardType;
   final String? Function(String?)? validator;
   final bool readOnly;
+  final bool autoFocus;
+  final int? maxLines;
+  final int? minLines;
 
   const AtamanTextField({
     super.key,
@@ -21,6 +24,9 @@ class AtamanTextField extends StatefulWidget {
     this.keyboardType = TextInputType.text,
     this.validator,
     this.readOnly = false,
+    this.autoFocus = false,
+    this.maxLines = 1,
+    this.minLines,
   });
 
   @override
@@ -44,6 +50,9 @@ class _AtamanTextFieldState extends State<AtamanTextField> {
       keyboardType: widget.keyboardType,
       validator: widget.validator,
       readOnly: widget.readOnly,
+      autofocus: widget.autoFocus,
+      maxLines: widget.isPassword ? 1 : widget.maxLines,
+      minLines: widget.minLines,
       decoration: InputDecoration(
         labelText: widget.label,
         hintText: widget.hintText,

@@ -14,21 +14,36 @@ class NotificationLoading extends NotificationState {}
 
 class NotificationLoaded extends NotificationState {
   final List<NotificationModel> notifications;
-  final NotificationType filter;
+  final String selectedFilter;
 
   const NotificationLoaded({
     required this.notifications,
-    this.filter = NotificationType.general, // Using general as 'all' or default
+    this.selectedFilter = 'All',
   });
 
   List<NotificationModel> get filteredNotifications {
-    // In a real app, 'general' might mean 'all' in the UI
-    // For now, let's assume if we want to filter, we'd pass a specific type
-    return notifications; 
+    if (selectedFilter == 'All') return notifications;
+    if (selectedFilter == 'Emergency') {
+      return notifications.where((n) => n.type == NotificationType.emergency).toList();
+    }
+    if (selectedFilter == 'Bookings') {
+      return notifications.where((n) => n.type == NotificationType.booking).toList();
+    }
+    return notifications;
+  }
+
+  NotificationLoaded copyWith({
+    List<NotificationModel>? notifications,
+    String? selectedFilter,
+  }) {
+    return NotificationLoaded(
+      notifications: notifications ?? this.notifications,
+      selectedFilter: selectedFilter ?? this.selectedFilter,
+    );
   }
 
   @override
-  List<Object?> get props => [notifications, filter];
+  List<Object?> get props => [notifications, selectedFilter];
 }
 
 class NotificationError extends NotificationState {

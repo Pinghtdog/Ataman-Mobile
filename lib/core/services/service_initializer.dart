@@ -38,6 +38,7 @@ class ServiceInitializer {
       );
 
       if (geminiApiKey != null) {
+        // Removed modelName as it's not supported in Gemini.init for this package version
         Gemini.init(apiKey: geminiApiKey);
       }
 

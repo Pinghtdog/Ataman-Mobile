@@ -36,6 +36,10 @@ class _BookingDetailsScreenState extends State<BookingDetailsScreen> {
   String _selectedTime = "09:00 AM";
   FacilityService? _selectedService;
   dynamic _bookingFor = "Self";
+  
+  // DOH FORM 2 Fields
+  String _natureOfVisit = "New Consultation/Case";
+  final _complaintController = TextEditingController();
 
   final List<FamilyMember> _mockFamily = [
     FamilyMember(id: '1', userId: 'user1', fullName: 'Maria Dela Cruz', relationship: 'Spouse'),
@@ -53,6 +57,16 @@ class _BookingDetailsScreenState extends State<BookingDetailsScreen> {
     if (_mockServices.isNotEmpty) {
       _selectedService = _mockServices.first;
     }
+    // Pre-fill complaint from triage if available
+    if (widget.triageResult != null) {
+      _complaintController.text = widget.triageResult!.rawSymptoms;
+    }
+  }
+
+  @override
+  void dispose() {
+    _complaintController.dispose();
+    super.dispose();
   }
 
   void _confirmBooking() {
@@ -88,9 +102,13 @@ class _BookingDetailsScreenState extends State<BookingDetailsScreen> {
       createdAt: DateTime.now(),
       serviceId: _selectedService!.id,
       familyMemberId: familyMemberId,
-      // Pass Triage data to the database
       triageResult: widget.triageResult?.summaryForProvider,
       triagePriority: widget.triageResult?.urgency.name,
+      // DOH FORM 2 Data
+      natureOfVisit: _natureOfVisit,
+      chiefComplaint: _complaintController.text,
+      referredFrom: widget.triageResult != null ? "Ataman AI Triage" : null,
+      referredTo: widget.facility.name,
     );
 
     context.read<BookingCubit>().createBooking(booking);
@@ -159,6 +177,25 @@ class _BookingDetailsScreenState extends State<BookingDetailsScreen> {
                       BookingFacilityInfo(facility: widget.facility),
                       const SizedBox(height: 24),
 
+                      const Text("Nature of Visit", style: AppTextStyles.h3),
+                      const SizedBox(height: 12),
+                      _buildNatureOfVisitSelector(),
+                      const SizedBox(height: 24),
+
+                      const Text("Chief Complaint", style: AppTextStyles.h3),
+                      const SizedBox(height: 12),
+                      TextField(
+                        controller: _complaintController,
+                        maxLines: 3,
+                        decoration: InputDecoration(
+                          hintText: "Reason for visit...",
+                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                          filled: true,
+                          fillColor: Colors.white,
+                        ),
+                      ),
+                      const SizedBox(height: 24),
+
                       const Text("Booking For", style: AppTextStyles.h3),
                       const SizedBox(height: 12),
                       BookingMemberSelector(
@@ -209,6 +246,25 @@ class _BookingDetailsScreenState extends State<BookingDetailsScreen> {
           );
         },
       ),
+    );
+  }
+
+  Widget _buildNatureOfVisitSelector() {
+    final options = ["New Consultation/Case", "New Admission", "Follow-up visit"];
+    return Wrap(
+      spacing: 8,
+      children: options.map((option) {
+        final isSelected = _natureOfVisit == option;
+        return ChoiceChip(
+          label: Text(option),
+          selected: isSelected,
+          onSelected: (selected) {
+            if (selected) setState(() => _natureOfVisit = option);
+          },
+          selectedColor: AppColors.primary,
+          labelStyle: TextStyle(color: isSelected ? Colors.white : Colors.black),
+        );
+      }).toList(),
     );
   }
 
