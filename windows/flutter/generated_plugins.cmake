@@ -8,6 +8,7 @@ list(APPEND FLUTTER_PLUGIN_LIST
   firebase_core
   flutter_webrtc
   geolocator_windows
+  pdfx
   permission_handler_windows
   printing
   url_launcher_windows
