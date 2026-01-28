@@ -102,6 +102,42 @@ class AppStrings {
   static const String no = "No";
   static const String confirmVaccinationSlot = "Confirm Vaccination Slot";
 
+  // Reproductive Health
+  static const String reproductiveHealth = "Reproductive Health";
+  static const String confidentialAndSafe = "Confidential & Safe";
+  static const String yourRecordsAreEncrypted = "Your records are encrypted.";
+  static const String noJudgmentJustCare = "No judgment, just care.";
+  static const String whatDoYouNeedHelpWith = "What do you need help with?";
+  static const String familyPlanning = "Family Planning";
+  static const String pillsImplantsIUD = "Pills, Implants, IUD";
+  static const String sexualHealth = "Sexual Health";
+  static const String stiHivScreening = "STI/HIV, Screening";
+  static const String maternalCare = "Maternal Care";
+  static const String prenatalPostnatal = "Prenatal, Postnatal";
+  static const String counseling = "Counseling";
+  static const String guidanceAndSupport = "Guidance & Support";
+  static const String consultationMode = "Consultation Mode";
+  static const String video = "Video";
+  static const String audio = "Audio";
+  static const String connectWithSpecialist = "Connect with Specialist";
+
+  // General Consult
+  static const String generalConsult = "General Consult";
+  static const String nextAvailableGP = "Next Available GP";
+  static const String estWaitTime = "Est. Wait Time: 3-5 mins";
+  static const String whatAreYouFeeling = "What are you feeling?";
+  static const String selectAllThatApply = "Select all that apply.";
+  static const String fever = "Fever";
+  static const String cough = "Cough";
+  static const String headache = "Headache";
+  static const String soreThroat = "Sore Throat";
+  static const String other = "Other";
+  static const String additionalDetails = "Additional Details";
+  static const String additionalDetailsHint = "Temp is 38.5C since last night. Took paracetamol but fever returned.";
+  static const String addPhotoOptional = "Add Photo (Optional)";
+  static const String dataPrivacyAgreement = "By continuing, you agree to the Data Privacy Act of 2012.";
+  static const String joinQueue = "Join Queue (3 min)";
+
   // Errors
   static const String genericError = "Something went wrong. Please try again.";
   static const String fieldRequired = "This field is required";
