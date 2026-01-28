@@ -124,9 +124,13 @@ class HomeScreen extends StatelessWidget {
                           },
                         ],
                         onServiceTap: (index) {
-                          if (index == 2) { // Corresponds to 'Reproductive'
+                          if (index == 0) { // 'Medicine Access'
+                            Navigator.of(context).pushNamed(AppRoutes.medicineAccess);
+                          } else if (index == 1) { // 'Health Alerts'
+                            Navigator.of(context).pushNamed(AppRoutes.healthAlerts);
+                          } else if (index == 2) { // 'Reproductive'
                             Navigator.of(context).pushNamed(AppRoutes.reproductiveHealth);
-                          } else if (index == 3) { // Corresponds to 'Vaccines'
+                          } else if (index == 3) { // 'Vaccines'
                             Navigator.of(context).pushNamed(AppRoutes.vaccination);
                           }
                         },
