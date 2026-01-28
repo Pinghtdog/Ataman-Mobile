@@ -1,3 +1,4 @@
+import 'package:ataman/core/constants/app_routes.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../../../core/constants/constants.dart';
@@ -61,7 +62,7 @@ class HomeScreen extends StatelessWidget {
                                   child: Container(
                                     padding: const EdgeInsets.all(AppSizes.p8),
                                     decoration: BoxDecoration(
-                                      color: Colors.white.withOpacity(0.2),
+                                      color: Colors.white.withAlpha(51),
                                       shape: BoxShape.circle,
                                     ),
                                     child: const Icon(
@@ -123,7 +124,9 @@ class HomeScreen extends StatelessWidget {
                           },
                         ],
                         onServiceTap: (index) {
-                          if (index == 3) { // Corresponds to 'Vaccines'
+                          if (index == 2) { // Corresponds to 'Reproductive'
+                            Navigator.of(context).pushNamed(AppRoutes.reproductiveHealth);
+                          } else if (index == 3) { // Corresponds to 'Vaccines'
                             Navigator.of(context).pushNamed(AppRoutes.vaccination);
                           }
                         },

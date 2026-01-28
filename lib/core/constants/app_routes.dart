@@ -17,4 +17,6 @@ class AppRoutes {
   static const String notifications = '/notifications';
   static const String vaccination = '/vaccination';
   static const String bookVaccination = '/book-vaccination';
+  static const String reproductiveHealth = '/reproductive-health';
+  static const String generalConsult = '/general-consult';
 }

@@ -1,3 +1,5 @@
+import 'package:ataman/features/reproductive_health/presentation/screens/general_consult_screen.dart';
+import 'package:ataman/features/reproductive_health/presentation/screens/reproductive_health_screen.dart';
 import 'package:ataman/features/vaccination/presentation/screens/book_vaccination_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -126,6 +128,8 @@ class AtamanApp extends StatelessWidget {
     AppRoutes.myAppointments: (context) => const MyAppointmentsScreen(),
     AppRoutes.vaccination: (context) => const VaccinationScreen(),
     AppRoutes.bookVaccination: (context) => const BookVaccinationScreen(),
+    AppRoutes.reproductiveHealth: (context) => const ReproductiveHealthScreen(),
+    AppRoutes.generalConsult: (context) => const GeneralConsultScreen(),
   };
 }
 
