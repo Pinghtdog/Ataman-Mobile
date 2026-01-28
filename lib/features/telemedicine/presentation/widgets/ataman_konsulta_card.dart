@@ -5,14 +5,14 @@ class AtamanKonsultaCard extends StatelessWidget {
   final String title;
   final String subtitle;
   final String nextAvailable;
-  final VoidCallback onJoinTap;
+  final VoidCallback? onJoinTap;
 
   const AtamanKonsultaCard({
     super.key,
     required this.title,
     required this.subtitle,
     required this.nextAvailable,
-    required this.onJoinTap,
+    this.onJoinTap,
   });
 
   @override
@@ -85,7 +85,7 @@ class AtamanKonsultaCard extends StatelessWidget {
                 ElevatedButton(
                   onPressed: onJoinTap,
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.white,
+                    backgroundColor: onJoinTap != null ? Colors.white : Colors.white.withOpacity(0.5),
                     foregroundColor: AppColors.primary,
                     padding: const EdgeInsets.symmetric(horizontal: AppSizes.p16),
                     elevation: 0,

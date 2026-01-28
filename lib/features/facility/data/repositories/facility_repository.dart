@@ -1,51 +1,32 @@
-import '../../../../core/data/repositories/base_repository.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import '../models/facility_model.dart';
+import '../models/facility_service_model.dart';
 
-class FacilityRepository extends BaseRepository {
-  
+class FacilityRepository {
+  final SupabaseClient _supabase = Supabase.instance.client;
+
   Future<List<Facility>> getFacilities() async {
-    return await getCached<List<Facility>>(
-      'all_facilities',
-      () async {
-        final response = await safeCall(() => supabase
-            .from('facilities')
-            .select()
-            .order('name'));
-        
-        return (response as List).map((json) => Facility.fromJson(json)).toList();
-      },
-      ttl: const Duration(minutes: 10),
-    );
-  }
-
-  Future<List<Facility>> getFacilitiesByBarangay(String barangay) async {
-    return await getCached<List<Facility>>(
-      'facilities_brgy_$barangay',
-      () async {
-        final response = await safeCall(() => supabase
-            .from('facilities')
-            .select()
-            .eq('barangay', barangay));
-        
-        return (response as List).map((json) => Facility.fromJson(json)).toList();
-      }
-    );
+    final response = await _supabase
+        .from('facilities')
+        .select();
+    
+    return (response as List).map((json) => Facility.fromJson(json)).toList();
   }
 
   Stream<List<Facility>> watchFacilities() {
-    return supabase
+    return _supabase
         .from('facilities')
         .stream(primaryKey: ['id'])
         .map((data) => data.map((json) => Facility.fromJson(json)).toList());
   }
 
-  Future<void> updateQueueCount(String facilityId, int count) async {
-    await safeCall(() => supabase
-        .from('facilities')
-        .update({'current_queue_length': count})
-        .eq('id', facilityId));
+  Future<List<FacilityService>> getFacilityServices(String facilityId) async {
+    final response = await _supabase
+        .from('facility_services')
+        .select()
+        .eq('facility_id', facilityId)
+        .eq('is_available', true);
     
-    // Invalidate relevant caches
-    cache.invalidate('all_facilities');
+    return (response as List).map((json) => FacilityService.fromJson(json)).toList();
   }
 }

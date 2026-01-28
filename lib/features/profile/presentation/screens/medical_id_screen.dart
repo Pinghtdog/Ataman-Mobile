@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 import '../../../../core/constants/constants.dart';
 import '../../../../core/widgets/widgets.dart';
+import '../../../../core/services/pdf_service.dart';
 import '../../../auth/data/models/user_model.dart';
 
 class MedicalIdScreen extends StatelessWidget {
@@ -12,7 +13,7 @@ class MedicalIdScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.primary, // Themed background
+      backgroundColor: AppColors.primary,
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         elevation: 0,
@@ -140,12 +141,24 @@ class MedicalIdScreen extends StatelessWidget {
                   ],
                 ),
               ),
-              const SizedBox(height: AppSizes.p40),
+              const SizedBox(height: AppSizes.p32),
+              
+              // Enrollment PDF Action
+              AtamanButton(
+                text: "Download Form",
+                isOutlined: true,
+                color: Colors.white,
+                icon: Icons.picture_as_pdf,
+                onPressed: () => PdfService.previewPdf(user),
+              ),
+              
+              const SizedBox(height: AppSizes.p20),
               const Text(
                 "Present this QR code to any Naga City Health facility\nstaff for instant record retrieval.",
                 textAlign: TextAlign.center,
                 style: TextStyle(color: Colors.white70, fontSize: 12, height: 1.5),
               ),
+              const SizedBox(height: AppSizes.p40),
             ],
           ),
         ),
@@ -156,7 +169,7 @@ class MedicalIdScreen extends StatelessWidget {
   Widget _buildMiniInfo(String label, String value) {
     return Column(
       children: [
-        Text(label, style: AppTextStyles.caption.copyWith(fontSize: 9, fontWeight: FontWeight.bold)),
+        Text(label, style: AppTextStyles.caption.copyWith(fontSize: 9, fontWeight: FontWeight.bold, color: Colors.grey[600])),
         const SizedBox(height: 4),
         Text(value, style: AppTextStyles.bodyMedium.copyWith(fontWeight: FontWeight.bold)),
       ],

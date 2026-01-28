@@ -12,6 +12,12 @@ class Booking {
   final DateTime createdAt;
   final String? serviceId;
   final String? familyMemberId;
+  
+  // DOH FORM 2 Requirements
+  final String natureOfVisit; // New Consultation/Case, New Admission, Follow-up visit
+  final String? chiefComplaint;
+  final String? referredFrom;
+  final String? referredTo;
 
   Booking({
     required this.id,
@@ -25,6 +31,10 @@ class Booking {
     required this.createdAt,
     this.serviceId,
     this.familyMemberId,
+    this.natureOfVisit = 'New Consultation/Case',
+    this.chiefComplaint,
+    this.referredFrom,
+    this.referredTo,
   });
 
   factory Booking.fromJson(Map<String, dynamic> json) {
@@ -40,6 +50,10 @@ class Booking {
       createdAt: DateTime.parse(json['created_at']),
       serviceId: json['service_id']?.toString(),
       familyMemberId: json['family_member_id']?.toString(),
+      natureOfVisit: json['nature_of_visit'] ?? 'New Consultation/Case',
+      chiefComplaint: json['chief_complaint'],
+      referredFrom: json['referred_from'],
+      referredTo: json['referred_to'],
     );
   }
 
@@ -53,6 +67,10 @@ class Booking {
       'triage_priority': triagePriority,
       'service_id': serviceId,
       'family_member_id': familyMemberId,
+      'nature_of_visit': natureOfVisit,
+      'chief_complaint': chiefComplaint,
+      'referred_from': referredFrom,
+      'referred_to': referredTo,
     };
   }
 

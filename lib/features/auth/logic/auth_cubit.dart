@@ -201,6 +201,18 @@ class AuthCubit extends Cubit<AuthState> {
     }
   }
 
+  Future<void> updateProfile(UserModel user) async {
+    try {
+      await _userRepository.updateProfile(user);
+      final sb.User? currentUser = _authRepository.currentUser;
+      if (currentUser != null) {
+        await _handleUserAuthenticated(currentUser);
+      }
+    } catch (e) {
+      emit(AuthError("Failed to update profile: $e"));
+    }
+  }
+
   Future<void> logout() async {
     try {
       await _authRepository.signOut();

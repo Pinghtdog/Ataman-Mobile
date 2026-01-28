@@ -14,41 +14,67 @@ class BookingDateSelector extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final List<DateTime> dates = List.generate(3, (i) => DateTime.now().add(Duration(days: i)));
-    
     return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-      children: dates.map((date) {
-        final isSelected = DateFormat('dd').format(selectedDate) == DateFormat('dd').format(date);
-        return GestureDetector(
-          onTap: () => onDateSelected(date),
-          child: Container(
-            width: 80,
-            padding: const EdgeInsets.symmetric(vertical: 16),
-            decoration: BoxDecoration(
-              color: isSelected ? AppColors.primary : Colors.white,
-              borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: isSelected ? AppColors.primary : Colors.grey.shade200),
-            ),
-            child: Column(
-              children: [
-                Text(
-                  DateFormat('MMM').format(date).toUpperCase(), 
-                  style: TextStyle(color: isSelected ? Colors.white70 : Colors.grey, fontSize: 12),
-                ),
-                Text(
-                  DateFormat('dd').format(date), 
-                  style: TextStyle(
-                    color: isSelected ? Colors.white : AppColors.textPrimary, 
-                    fontSize: 24, 
-                    fontWeight: FontWeight.bold
+      children: [
+        Expanded(
+          child: GestureDetector(
+            onTap: () async {
+              final DateTime? picked = await showDatePicker(
+                context: context,
+                initialDate: selectedDate,
+                firstDate: DateTime.now(),
+                lastDate: DateTime.now().add(const Duration(days: 30)),
+                builder: (context, child) {
+                  return Theme(
+                    data: Theme.of(context).copyWith(
+                      colorScheme: const ColorScheme.light(
+                        primary: AppColors.primary,
+                        onPrimary: Colors.white,
+                        onSurface: Colors.black,
+                      ),
+                    ),
+                    child: child!,
+                  );
+                },
+              );
+              if (picked != null) {
+                onDateSelected(picked);
+              }
+            },
+            child: Container(
+              padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 20),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(color: Colors.grey.shade200, width: 2),
+              ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        DateFormat('EEEE').format(selectedDate),
+                        style: TextStyle(color: Colors.grey.shade500, fontSize: 12, fontWeight: FontWeight.bold),
+                      ),
+                      Text(
+                        DateFormat('MMMM dd, yyyy').format(selectedDate),
+                        style: const TextStyle(
+                          color: AppColors.textPrimary,
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ],
                   ),
-                ),
-              ],
+                  const Icon(Icons.calendar_month_rounded, color: AppColors.primary),
+                ],
+              ),
             ),
           ),
-        );
-      }).toList(),
+        ),
+      ],
     );
   }
 }

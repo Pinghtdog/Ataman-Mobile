@@ -56,5 +56,14 @@
 	<true/>
 	<key>UIApplicationSupportsIndirectInputEvents</key>
 	<true/>
+
+    <key>NSContactsUsageDescription</key>
+    <string>INSERT_REASON_HERE</string>
+
+    <key>NSCameraUsageDescription</key>
+    <string>Camera access is needed for video consultations.</string>
+    <key>NSMicrophoneUsageDescription</key>
+    <string>Microphone access is needed for video consultations.</string>
+
 </dict>
 </plist>

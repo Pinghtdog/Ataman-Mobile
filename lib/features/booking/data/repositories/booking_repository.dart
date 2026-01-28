@@ -1,3 +1,5 @@
+import 'package:intl/intl.dart';
+
 import '../../../../core/data/repositories/base_repository.dart';
 import '../models/booking_model.dart';
 
@@ -32,6 +34,23 @@ class BookingRepository extends BaseRepository {
         .eq('id', bookingId));
     
     cache.invalidate('user_bookings_$userId');
+  }
+
+  Future<List<String>> getOccupiedSlots(String facilityId, DateTime date) async {
+    final startOfDay = DateTime(date.year, date.month, date.day);
+    final endOfDay = startOfDay.add(const Duration(days: 1));
+
+    final response = await supabase
+        .from('bookings')
+        .select('appointment_time')
+        .eq('facility_id', facilityId)
+        .gte('appointment_time', startOfDay.toIso8601String())
+        .lt('appointment_time', endOfDay.toIso8601String());
+
+    // Return a list of formatted times that are already booked
+    return (response as List).map((b) =>
+        DateFormat('hh:mm a').format(DateTime.parse(b['appointment_time']))
+    ).toList();
   }
 
   Stream<List<Booking>> watchUserBookings(String userId) {

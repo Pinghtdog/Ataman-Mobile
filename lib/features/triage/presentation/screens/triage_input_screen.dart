@@ -17,6 +17,7 @@ class TriageInputScreen extends StatefulWidget {
 
 class _TriageInputScreenState extends State<TriageInputScreen> {
   final TextEditingController _textController = TextEditingController();
+  bool _forceManualInput = false;
 
   @override
   void initState() {
@@ -49,6 +50,12 @@ class _TriageInputScreenState extends State<TriageInputScreen> {
                       ),
                     );
                   }
+                  // Reset manual input flag when a new step is loaded
+                  if (state is TriageStepLoaded) {
+                    setState(() {
+                      _forceManualInput = false;
+                    });
+                  }
                 },
                 child: Column(
                   children: [
@@ -57,7 +64,7 @@ class _TriageInputScreenState extends State<TriageInputScreen> {
                       child: Stack(
                         children: [
                           Align(
-                            alignment: Alignment.center,
+                            alignment: Alignment.centerLeft,
                             child: IconButton(
                               icon: const Icon(Icons.arrow_back_ios_new, color: Colors.white, size: 20),
                               onPressed: () {
@@ -114,6 +121,7 @@ class _TriageInputScreenState extends State<TriageInputScreen> {
 
     if (state is TriageStepLoaded) {
       final step = state.step;
+      final bool showButtons = step.inputType == TriageInputType.buttons && !_forceManualInput;
       
       return Column(
         children: [
@@ -144,12 +152,16 @@ class _TriageInputScreenState extends State<TriageInputScreen> {
                     ),
                   ),
                   const SizedBox(height: AppSizes.p32),
-                  if (step.inputType == TriageInputType.buttons)
+                  if (showButtons) ...[
                     ...step.options.map((option) => Padding(
                           padding: const EdgeInsets.only(bottom: AppSizes.p16),
                           child: AtamanCard(
                             onTap: () {
-                              context.read<TriageCubit>().selectOption(step.question, option);
+                              if (option.toLowerCase().contains("none of the above")) {
+                                setState(() => _forceManualInput = true);
+                              } else {
+                                context.read<TriageCubit>().selectOption(step.question, option);
+                              }
                             },
                             padding: const EdgeInsets.all(AppSizes.p20),
                             child: Text(
@@ -161,17 +173,36 @@ class _TriageInputScreenState extends State<TriageInputScreen> {
                               textAlign: TextAlign.center,
                             ),
                           ),
-                        ))
-                  else ...[
+                        )),
+                    // Fallback "None of the above" if AI didn't provide it
+                    if (!step.options.any((o) => o.toLowerCase().contains("none of the above")))
+                      Padding(
+                        padding: const EdgeInsets.only(bottom: AppSizes.p16),
+                        child: AtamanCard(
+                          onTap: () => setState(() => _forceManualInput = true),
+                          padding: const EdgeInsets.all(AppSizes.p20),
+                          child: Text(
+                            "None of the above / Other",
+                            style: AppTextStyles.bodyLarge.copyWith(
+                              color: AppColors.textSecondary,
+                              fontWeight: FontWeight.w500,
+                              fontStyle: FontStyle.italic,
+                            ),
+                            textAlign: TextAlign.center,
+                          ),
+                        ),
+                      ),
+                  ] else ...[
                     AtamanTextField(
                       label: "Your Response",
                       hintText: "Describe your symptoms or answer the question...",
                       controller: _textController,
                       keyboardType: TextInputType.multiline,
+                      autoFocus: true,
                     ),
-                    const SizedBox(height: AppSizes.p32),
+                    const SizedBox(height: AppSizes.p24),
                     AtamanButton(
-                      text: "Next Step",
+                      text: "Submit Response",
                       onPressed: () {
                         if (_textController.text.trim().isNotEmpty) {
                           context.read<TriageCubit>().selectOption(
@@ -182,6 +213,11 @@ class _TriageInputScreenState extends State<TriageInputScreen> {
                         }
                       },
                     ),
+                    if (step.inputType == TriageInputType.buttons)
+                      TextButton(
+                        onPressed: () => setState(() => _forceManualInput = false),
+                        child: const Center(child: Text("Back to options")),
+                      ),
                   ],
                 ],
               ),
@@ -197,7 +233,7 @@ class _TriageInputScreenState extends State<TriageInputScreen> {
   _TriageErrorDetail _getErrorDetail(String rawError) {
     final String error = rawError.toLowerCase();
     
-    if (error.contains("429") || error.contains("quota") || error.contains("overloaded")) {
+    if (error.contains("429") || error.contains("quota") || error.contains("overloaded") || error.contains("exhausted")) {
       return const _TriageErrorDetail(
         title: "AI is Overloaded",
         description: "The ATAMAN AI engine is handling many requests. Please wait a minute before retrying.",

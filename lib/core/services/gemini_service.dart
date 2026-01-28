@@ -1,4 +1,6 @@
 import 'dart:convert';
+import 'dart:async';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_gemini/flutter_gemini.dart';
 import '../constants/app_strings.dart';
 
@@ -22,32 +24,58 @@ class GeminiService {
     required int stepCount,
     Map<String, dynamic>? userProfile,
   }) async {
-    try {
-      final String contextBlock = '''
-        [DYNAMIC CONTEXT]
-        - Current Step: $stepCount of 7. (If Step >= 6, you MUST reach a final decision).
-        - Patient Age: \${userProfile?['birth_date'] ?? 'Unknown'}
-        - Medical History: \${userProfile?['medical_conditions'] ?? 'None reported'}
-        - Patient Language: The user may speak Bicolano, Tagalog, or English.
-        
-        [CONVERSATION HISTORY]
-        $history
-        
-        [LATEST USER INPUT]
-        $userMessage
-      ''';
+    // Retry logic for "Too Many Requests" (429)
+    int retryCount = 0;
+    const int maxRetries = 3; // Increased retries
 
-      final response = await _gemini.prompt(parts: [
-        Part.text(AppStrings.triageSystemPrompt),
-        Part.text(contextBlock),
-      ]);
+    while (retryCount <= maxRetries) {
+      try {
+        final String contextBlock = '''
+          [DYNAMIC CONTEXT]
+          - Current Step: $stepCount of 7.
+          - Patient Age: ${userProfile?['birth_date'] ?? 'Unknown'}
+          - Medical History: ${userProfile?['medical_conditions'] ?? 'None reported'}
+          
+          [CONVERSATION HISTORY]
+          $history
+          
+          [LATEST USER INPUT]
+          $userMessage
+        ''';
 
-      final responseText = response?.output;
-      if (responseText == null) throw Exception('No response from Gemini');
+        // Use a faster model if possible, although flutter_gemini 
+        // usually defaults to what is configured in Gemini.init or 
+        // doesn't expose model per-request easily without a different method.
+        // We will focus on prompt efficiency and error handling.
+        final response = await _gemini.prompt(parts: [
+          Part.text(AppStrings.triageSystemPrompt),
+          Part.text(contextBlock),
+        ]);
 
-      return jsonDecode(_cleanJsonResponse(responseText));
-    } catch (e) {
-      rethrow;
+        final responseText = response?.output;
+        if (responseText == null) throw Exception('No response from Gemini');
+
+        return jsonDecode(_cleanJsonResponse(responseText));
+      } catch (e) {
+        final errorStr = e.toString().toLowerCase();
+        // Handle common rate limiting or overloaded errors
+        if (errorStr.contains('429') || 
+            errorStr.contains('overloaded') || 
+            errorStr.contains('too many requests') ||
+            errorStr.contains('resource_exhausted')) {
+          
+          if (retryCount < maxRetries) {
+            retryCount++;
+            // Exponential backoff: 1s, 2s, 4s
+            final waitTime = Duration(seconds: retryCount * retryCount);
+            debugPrint('Gemini Overloaded. Retrying in ${waitTime.inSeconds} seconds...');
+            await Future.delayed(waitTime);
+            continue; 
+          }
+        }
+        rethrow;
+      }
     }
+    throw Exception('Gemini is currently overloaded. Please try again in a few moments.');
   }
 }
