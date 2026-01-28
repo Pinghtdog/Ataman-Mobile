@@ -22,17 +22,22 @@ class TriageService {
         }
       }
 
-      // FETCH DIVERSION CONTEXT: Identify congested facilities to inform the AI
-      final facilitiesResponse = await _supabase
+      // FETCH LIVE INFRASTRUCTURE CONTEXT
+      // Fetching facilities along with their operational services to give AI full visibility
+      final List<dynamic> facilitiesData = await _supabase
           .from('facilities')
-          .select('name, status, is_diversion_active')
-          .or('status.eq.congested,is_diversion_active.eq.true');
+          .select('name, status, is_diversion_active, current_queue_length, has_doctor_on_site, facility_services(name, is_available)');
       
-      String diversionContext = "";
-      if (facilitiesResponse.isNotEmpty) {
-        diversionContext = "\n[DIVERSION ALERT] The following facilities are CONGESTED. Suggest alternatives if relevant: ";
-        diversionContext += facilitiesResponse.map((f) => f['name']).join(", ");
-      }
+      final List<Map<String, dynamic>> liveFacilities = facilitiesData.map((f) {
+        return {
+          'name': f['name'],
+          'status': f['status'],
+          'is_diversion_active': f['is_diversion_active'],
+          'queue': f['current_queue_length'],
+          'has_doctor': f['has_doctor_on_site'],
+          'services': f['facility_services'],
+        };
+      }).toList();
 
       String historyText = "";
       for (var turn in history) {
@@ -42,10 +47,11 @@ class TriageService {
       final String lastAnswer = history.isNotEmpty ? history.last['answer']! : "Start Triage";
 
       final data = await _geminiService.getTriageResponse(
-        userMessage: lastAnswer + diversionContext, // Inject diversion info
+        userMessage: lastAnswer,
         history: historyText,
         stepCount: history.length + 1,
         userProfile: userProfileData,
+        liveFacilities: liveFacilities, // AI now sees the real-time state of the city
       );
 
       if (data['is_final'] == true && data['result'] != null) {
@@ -94,11 +100,26 @@ class TriageService {
     try {
       final profile = await _userRepository.getUserProfile(user.id);
       
+      // Fetch live context for direct triage as well
+      final List<dynamic> facilitiesData = await _supabase
+          .from('facilities')
+          .select('name, status, is_diversion_active, current_queue_length, has_doctor_on_site, facility_services(name, is_available)');
+      
+      final List<Map<String, dynamic>> liveFacilities = facilitiesData.map((f) {
+        return {
+          'name': f['name'],
+          'status': f['status'],
+          'is_diversion_active': f['is_diversion_active'],
+          'services': f['facility_services'],
+        };
+      }).toList();
+
       final data = await _geminiService.getTriageResponse(
         userMessage: symptoms,
         history: "Direct triage bypass.",
         stepCount: 7,
         userProfile: profile?.toMap(),
+        liveFacilities: liveFacilities,
       );
       
       final resultData = data['is_final'] == true ? data['result'] : data;

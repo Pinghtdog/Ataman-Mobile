@@ -26,6 +26,7 @@ import 'features/facility/data/repositories/facility_repository.dart';
 import 'features/facility/logic/facility_cubit.dart';
 import 'features/facility/logic/facility_state.dart';
 import 'features/home/presentation/screens/ataman_base_screen.dart';
+import 'features/medical_records/data/repositories/referral_repository.dart';
 import 'features/medical_records/presentation/screens/medical_history_screen.dart';
 import 'features/notification/data/repositories/notification_repository.dart';
 import 'features/notification/logic/notification_cubit.dart';
@@ -83,7 +84,10 @@ class AtamanApp extends StatelessWidget {
           create: (context) => ProfileCubit(userRepository: getIt<IUserRepository>()),
         ),
         BlocProvider<BookingCubit>(
-          create: (context) => BookingCubit(bookingRepository: getIt<BookingRepository>()),
+          create: (context) => BookingCubit(
+            bookingRepository: getIt<BookingRepository>(),
+            referralRepository: getIt<ReferralRepository>(),
+          ),
         ),
         BlocProvider<NotificationCubit>(
           create: (context) => NotificationCubit(repository: getIt<NotificationRepository>())..loadNotifications(),

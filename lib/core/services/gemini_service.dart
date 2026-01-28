@@ -23,18 +23,33 @@ class GeminiService {
     required String history,
     required int stepCount,
     Map<String, dynamic>? userProfile,
+    List<Map<String, dynamic>>? liveFacilities,
   }) async {
-    // Retry logic for "Too Many Requests" (429)
     int retryCount = 0;
-    const int maxRetries = 3; // Increased retries
+    const int maxRetries = 3;
 
     while (retryCount <= maxRetries) {
       try {
+        // Construct Facility Context
+        String facilityBlock = "LIVE FACILITY STATUS:\n";
+        if (liveFacilities != null && liveFacilities.isNotEmpty) {
+          for (var f in liveFacilities) {
+            facilityBlock += "- ${f['name']}: Status=${f['status']}, Diversion=${f['is_diversion_active']}\n";
+            if (f['services'] != null) {
+              facilityBlock += "  Services: ${f['services'].map((s) => s['name']).join(', ')}\n";
+            }
+          }
+        } else {
+          facilityBlock += "No live data available.\n";
+        }
+
         final String contextBlock = '''
           [DYNAMIC CONTEXT]
           - Current Step: $stepCount of 7.
           - Patient Age: ${userProfile?['birth_date'] ?? 'Unknown'}
           - Medical History: ${userProfile?['medical_conditions'] ?? 'None reported'}
+          
+          $facilityBlock
           
           [CONVERSATION HISTORY]
           $history
@@ -43,10 +58,6 @@ class GeminiService {
           $userMessage
         ''';
 
-        // Use a faster model if possible, although flutter_gemini 
-        // usually defaults to what is configured in Gemini.init or 
-        // doesn't expose model per-request easily without a different method.
-        // We will focus on prompt efficiency and error handling.
         final response = await _gemini.prompt(parts: [
           Part.text(AppStrings.triageSystemPrompt),
           Part.text(contextBlock),
@@ -58,7 +69,6 @@ class GeminiService {
         return jsonDecode(_cleanJsonResponse(responseText));
       } catch (e) {
         final errorStr = e.toString().toLowerCase();
-        // Handle common rate limiting or overloaded errors
         if (errorStr.contains('429') || 
             errorStr.contains('overloaded') || 
             errorStr.contains('too many requests') ||
@@ -66,7 +76,6 @@ class GeminiService {
           
           if (retryCount < maxRetries) {
             retryCount++;
-            // Exponential backoff: 1s, 2s, 4s
             final waitTime = Duration(seconds: retryCount * retryCount);
             debugPrint('Gemini Overloaded. Retrying in ${waitTime.inSeconds} seconds...');
             await Future.delayed(waitTime);

@@ -71,6 +71,8 @@ class _MyAppointmentsScreenState extends State<MyAppointmentsScreen> with Single
                   controller: _tabController,
                   indicatorColor: Colors.white,
                   indicatorWeight: 3,
+                  labelColor: Colors.white,
+                  unselectedLabelColor: Colors.white70,
                   labelStyle: AppTextStyles.bodyMedium.copyWith(fontWeight: FontWeight.bold),
                   unselectedLabelStyle: AppTextStyles.bodyMedium,
                   dividerColor: Colors.transparent,
@@ -89,7 +91,6 @@ class _MyAppointmentsScreenState extends State<MyAppointmentsScreen> with Single
                 if (state is BookingLoading) {
                   return const Center(child: CircularProgressIndicator(color: AppColors.primary));
                 } else if (state is BookingLoaded) {
-                  // Dynamic Filtering based on SQL status
                   final activeBookings = state.bookings
                       .where((b) => b.status == BookingStatus.pending || b.status == BookingStatus.confirmed)
                       .toList();
@@ -148,7 +149,6 @@ class _MyAppointmentsScreenState extends State<MyAppointmentsScreen> with Single
       itemCount: bookings.length,
       itemBuilder: (context, index) {
         final booking = bookings[index];
-        // UI Feedback: Using AtamanBookingTicket which handles dynamic display
         return AtamanBookingTicket(
           booking: booking,
           onTap: () {
@@ -159,7 +159,6 @@ class _MyAppointmentsScreenState extends State<MyAppointmentsScreen> with Single
               );
             }
           },
-          // Action Integration: Cancel functionality
           onCancel: isActive ? () => _confirmCancel(booking) : null,
         );
       },

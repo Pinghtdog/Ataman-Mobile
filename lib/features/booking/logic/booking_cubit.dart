@@ -2,20 +2,34 @@ import 'dart:async';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../data/models/booking_model.dart';
 import '../data/repositories/booking_repository.dart';
+import '../../medical_records/data/repositories/referral_repository.dart';
 import 'booking_state.dart';
 
 class BookingCubit extends Cubit<BookingState> {
   final BookingRepository _bookingRepository;
+  final ReferralRepository _referralRepository;
   StreamSubscription? _bookingsSubscription;
 
-  BookingCubit({required BookingRepository bookingRepository})
-      : _bookingRepository = bookingRepository,
+  BookingCubit({
+    required BookingRepository bookingRepository,
+    required ReferralRepository referralRepository,
+  })  : _bookingRepository = bookingRepository,
+        _referralRepository = referralRepository,
         super(BookingInitial());
 
-  Future<void> createBooking(Booking booking) async {
+  Future<void> createBooking(Booking booking, {bool isEmergencyReferral = false}) async {
     emit(BookingLoading());
     try {
       await _bookingRepository.createBooking(booking);
+      
+      // Automatic Rapid Referral logic for Booking
+      if (isEmergencyReferral) {
+        await _referralRepository.createRapidReferralFromBooking(
+          userId: booking.userId,
+          booking: booking,
+        );
+      }
+      
       emit(BookingLoaded([booking]));
     } catch (e) {
       emit(BookingError(e.toString()));
