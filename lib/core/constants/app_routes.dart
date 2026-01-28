@@ -30,4 +30,6 @@ class AppRoutes {
   static const String changePassword = '/change-password';
   static const String notificationSettings = '/notification-settings';
   static const String language = '/language';
+  static const String medicineAccess = '/medicine-access';
+  static const String healthAlerts = '/health-alerts';
 }
