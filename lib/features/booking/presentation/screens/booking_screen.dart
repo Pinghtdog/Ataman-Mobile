@@ -75,11 +75,9 @@ class _BookingScreenState extends State<BookingScreen> {
       if (state is FacilityLoaded) {
         _refreshMarkers(state);
         
-        // Auto-focus logic when searching in map view
         if (_isMapView && query.isNotEmpty) {
           final filtered = _filterFacilities(state.facilities);
           
-          // If there's exactly one result or a perfect name match, zoom to it and open card
           Facility? bestMatch;
           if (filtered.length == 1) {
             bestMatch = filtered.first;
@@ -348,9 +346,8 @@ class _BookingScreenState extends State<BookingScreen> {
                           child: TextField(
                             controller: _searchController,
                             style: const TextStyle(color: Colors.black54),
-                            cursorColor: Colors.white,
+                            cursorColor: Colors.black54,
                             onSubmitted: (_) {
-                              // Force selection of the first result if searching in map view
                               if (_isMapView && _searchQuery.isNotEmpty) {
                                 final state = context.read<FacilityCubit>().state;
                                 if (state is FacilityLoaded) {
@@ -376,8 +373,8 @@ class _BookingScreenState extends State<BookingScreen> {
                               isDense: true,
                               border: InputBorder.none,
                               hintText: "Search health centers, hospitals...",
-                              hintStyle: TextStyle(color: Colors.black45.withOpacity(0.6)),
-                              prefixIcon: const Icon(Icons.search_rounded, color: Colors.white),
+                              hintStyle: TextStyle(color: Colors.black54.withOpacity(0.6)),
+                              prefixIcon: const Icon(Icons.search_rounded, color: AppColors.primary),
                               contentPadding: const EdgeInsets.symmetric(vertical: 15),
                             ),
                           ),
@@ -426,7 +423,7 @@ class _BookingScreenState extends State<BookingScreen> {
 
               if (state is FacilityLoaded)
                 Positioned(
-                  bottom: _selectedFacility != null ? 320 : AppSizes.p24,
+                  bottom: _selectedFacility != null ? 240 : AppSizes.p24,
                   right: 24,
                   child: FloatingActionButton.extended(
                     onPressed: () {
@@ -443,8 +440,10 @@ class _BookingScreenState extends State<BookingScreen> {
                 ),
 
               if (_isMapView && _selectedFacility != null)
-                Align(
-                  alignment: Alignment.bottomCenter,
+                Positioned(
+                  bottom: 24,
+                  left: 16,
+                  right: 16,
                   child: GestureDetector(
                     onVerticalDragUpdate: (details) {
                       if (details.primaryDelta! > 10) {
@@ -454,7 +453,6 @@ class _BookingScreenState extends State<BookingScreen> {
                     child: Center(
                       child: Container(
                         constraints: const BoxConstraints(maxWidth: 450),
-                        margin: const EdgeInsets.fromLTRB(16, 0, 16, 40),
                         child: FacilityCard(
                           facility: _processFacilities([_selectedFacility!]).first,
                           onTap: () => _onFacilitySelected(_selectedFacility!),
