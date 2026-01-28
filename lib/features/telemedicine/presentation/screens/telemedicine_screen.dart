@@ -10,9 +10,6 @@ import '../../../../core/widgets/widgets.dart';
 import '../widgets/telemed_doctor_section.dart';
 import '../widgets/telemed_prescription_section.dart';
 import '../widgets/prescription_details_modal.dart';
-import 'video_call_screen.dart';
-import 'reproductive_health_screen.dart';
-import 'general_consult_screen.dart';
 
 class TelemedicineScreen extends StatefulWidget {
   const TelemedicineScreen({super.key});
@@ -27,7 +24,7 @@ class _TelemedicineScreenState extends State<TelemedicineScreen> {
     super.initState();
     final authState = context.read<AuthCubit>().state;
     if (authState is Authenticated) {
-      context.read<PrescriptionCubit>().startWatchingPrescriptions(authState.user!.id);
+      context.read<PrescriptionCubit>().startWatchingPrescriptions(authState.user.id);
       context.read<TelemedicineCubit>().startWatchingDoctors();
     }
   }
@@ -99,15 +96,9 @@ class _TelemedicineScreenState extends State<TelemedicineScreen> {
                             ],
                             onServiceTap: (index) {
                               if (index == 0) {
-                                Navigator.push(
-                                  context,
-                                  MaterialPageRoute(builder: (context) => const GeneralConsultScreen()),
-                                );
+                                Navigator.pushNamed(context, AppRoutes.generalConsult);
                               } else if (index == 1) {
-                                Navigator.push(
-                                  context,
-                                  MaterialPageRoute(builder: (context) => const ReproductiveHealthScreen()),
-                                );
+                                Navigator.pushNamed(context, AppRoutes.reproductiveHealth);
                               }
                             },
                           ),
@@ -163,20 +154,20 @@ class _TelemedicineScreenState extends State<TelemedicineScreen> {
     if (authState is Authenticated) {
       try {
         final callId = await context.read<TelemedicineCubit>().initiateCall(
-          authState.user!.id,
+          authState.user.id,
           doctorId,
         );
 
         if (mounted) {
-          Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder: (context) => VideoCallScreen(
-                callId: callId,
-                userId: authState.user!.id,
-                isCaller: true,
-              ),
-            ),
+          // Use named route for consistency
+          Navigator.pushNamed(
+            context, 
+            AppRoutes.videoCall, 
+            arguments: {
+              'callId': callId,
+              'userId': authState.user.id,
+              'isCaller': true,
+            }
           );
         }
       } catch (e) {
