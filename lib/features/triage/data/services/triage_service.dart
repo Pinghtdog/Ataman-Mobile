@@ -51,7 +51,7 @@ class TriageService {
         history: historyText,
         stepCount: history.length + 1,
         userProfile: userProfileData,
-        liveFacilities: liveFacilities, // AI now sees the real-time state of the city
+        liveFacilities: liveFacilities,
       );
 
       if (data['is_final'] == true && data['result'] != null) {

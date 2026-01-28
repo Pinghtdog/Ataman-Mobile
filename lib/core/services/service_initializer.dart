@@ -1,5 +1,4 @@
 import 'dart:io';
-import 'dart:developer' as dev;
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
@@ -38,13 +37,19 @@ class ServiceInitializer {
       );
 
       if (geminiApiKey != null) {
-        // Removed modelName as it's not supported in Gemini.init for this package version
         Gemini.init(apiKey: geminiApiKey);
       }
 
-      await Firebase.initializeApp();
-      await NotificationService.initialize();
-      
+      // Safe initialization for Firebase/Notifications
+      // This prevents the app from crashing on devices without Google Play Services (like some Huawei phones)
+      try {
+        await Firebase.initializeApp();
+        await NotificationService.initialize();
+      } catch (e) {
+        debugPrint("FIREBASE/NOTIFICATION INITIALIZATION WARNING: $e");
+        debugPrint("The app will continue without push notification support.");
+      }
+
       await initInjector();
 
       await SystemChrome.setPreferredOrientations([
@@ -54,7 +59,7 @@ class ServiceInitializer {
 
       return true;
     } catch (e) {
-      debugPrint("INITIALIZATION ERROR: $e");
+      debugPrint("CRITICAL INITIALIZATION ERROR: $e");
       return false;
     }
   }

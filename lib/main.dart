@@ -1,3 +1,4 @@
+import 'package:ataman/features/health_alerts/presentation/screens/health_alerts_screen.dart';
 import 'package:ataman/features/vaccination/presentation/screens/book_vaccination_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -28,6 +29,8 @@ import 'features/facility/logic/facility_state.dart';
 import 'features/home/presentation/screens/ataman_base_screen.dart';
 import 'features/medical_records/data/repositories/referral_repository.dart';
 import 'features/medical_records/presentation/screens/medical_history_screen.dart';
+import 'features/medicine_access/presentation/screens/hospital_availability_screen.dart';
+import 'features/medicine_access/presentation/screens/medicine_access_screen.dart';
 import 'features/notification/data/repositories/notification_repository.dart';
 import 'features/notification/logic/notification_cubit.dart';
 import 'features/notification/notifications_screen.dart';
@@ -149,6 +152,11 @@ class AtamanApp extends StatelessWidget {
             triageResult: args['triageResult'] as TriageResult?,
           ),
         );
+      case AppRoutes.hospitalAvailability:
+        final medicineName = settings.arguments as String;
+        return MaterialPageRoute(
+          builder: (context) => HospitalAvailabilityScreen(medicineName: medicineName),
+        );
       default:
         return null;
     }
@@ -182,6 +190,8 @@ class AtamanApp extends StatelessWidget {
     AppRoutes.changePassword: (context) => const ChangePasswordScreen(),
     AppRoutes.notificationSettings: (context) => const NotificationsSettingsScreen(),
     AppRoutes.language: (context) => const LanguageScreen(),
+    AppRoutes.medicineAccess: (context) => const MedicineAccessScreen(),
+    AppRoutes.healthAlerts: (context) => const HealthAlertsScreen(),
   };
 }
 
