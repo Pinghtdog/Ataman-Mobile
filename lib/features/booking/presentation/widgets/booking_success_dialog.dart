@@ -17,8 +17,8 @@ class BookingSuccessDialog extends StatelessWidget {
 
   void _addToCalendar() {
     final Event event = Event(
-      title: 'Medical Appointment: ${booking.facilityName}',
-      description: 'Service: General Checkup\nPatient: $patientName\nReference: BHC-${_formatRef(booking.id)}',
+      title: 'Medical Appointment: \${booking.facilityName}',
+      description: 'Service: General Checkup\\nPatient: \$patientName\\nReference: BHC-\${_formatRef(booking.id)}',
       location: booking.facilityName,
       startDate: booking.appointmentTime,
       endDate: booking.appointmentTime.add(const Duration(minutes: 30)),
@@ -91,7 +91,7 @@ class BookingSuccessDialog extends StatelessWidget {
                       borderRadius: BorderRadius.circular(20),
                     ),
                     child: Text(
-                      "REF: BHC-${_formatRef(booking.id)}",
+                      "REF: BHC-\${_formatRef(booking.id)}",
                       style: const TextStyle(
                         fontWeight: FontWeight.bold,
                         fontSize: 14,
@@ -192,7 +192,7 @@ class BookingSuccessDialog extends StatelessWidget {
                 border: Border.all(color: Colors.white, width: 4), 
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.black.withOpacity(0.15),
+                    color: Colors.black.withAlpha(38),
                     blurRadius: 12,
                     offset: const Offset(0, 6),
                   ),
