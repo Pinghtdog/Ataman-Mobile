@@ -26,26 +26,31 @@ class _VideoCallScreenState extends State<VideoCallScreen> {
   StreamSubscription? _callSubscription;
   String? _roomID;
   bool _isLoading = true;
+  bool _isEngineCreated = false;
   
   Widget? _localView;
   Widget? _remoteView;
   int? _remoteViewID;
 
-  // These must match your ZegoCloud console keys
+  // IMPORTANT: Replace this 32-char Secret with the 64-char AppSign from Zego Console
   final int appID = 1673152262;
-  // NOTE: If this is 32 characters, it might be the Server Secret. 
-  // Native SDKs usually require the 64-character AppSign.
   final String appSign = "a19851b6acec66db9bff65413ffc2c2c";
 
   @override
   void initState() {
     super.initState();
-    _initZego();
-    _waitForRoomID();
+    _initializeAll();
+  }
+
+  Future<void> _initializeAll() async {
+    await _initZego();
+    if (_isEngineCreated) {
+      _waitForRoomID();
+    }
   }
 
   Future<void> _initZego() async {
-    // 1. Request permissions first
+    // 1. Request permissions
     Map<Permission, PermissionStatus> statuses = await [
       Permission.camera,
       Permission.microphone,
@@ -62,7 +67,7 @@ class _VideoCallScreenState extends State<VideoCallScreen> {
       return;
     }
 
-    // 2. Create ZegoExpressEngine
+    // 2. Create Engine
     try {
       await ZegoExpressEngine.createEngineWithProfile(ZegoEngineProfile(
         appID,
@@ -70,9 +75,9 @@ class _VideoCallScreenState extends State<VideoCallScreen> {
         appSign: appSign,
       ));
       
+      setState(() => _isEngineCreated = true);
       debugPrint("Zego Engine Created Successfully");
 
-      // Listen for remote stream events
       ZegoExpressEngine.onRoomStreamUpdate = (roomID, updateType, streamList, extendedData) {
         if (updateType == ZegoUpdateType.Add) {
           _startListeningToRemoteStream(streamList.first.streamID);
@@ -80,6 +85,11 @@ class _VideoCallScreenState extends State<VideoCallScreen> {
       };
     } catch (e) {
       debugPrint("Failed to create Zego Engine: $e");
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text("Internal Error: Check Zego AppSign configuration")),
+        );
+      }
     }
   }
 
@@ -102,47 +112,46 @@ class _VideoCallScreenState extends State<VideoCallScreen> {
   }
 
   Future<void> _joinRoom() async {
-    if (_roomID == null) return;
+    if (_roomID == null || !_isEngineCreated) return;
 
-    // Login to room
+    // Safe username generation
+    String displayName = "Patient_${widget.userId.length > 4 ? widget.userId.substring(0, 4) : widget.userId}";
+
     await ZegoExpressEngine.instance.loginRoom(
       _roomID!,
-      ZegoUser(widget.userId, "Patient_${widget.userId.substring(0, 4)}"),
+      ZegoUser(widget.userId, displayName),
     );
 
-    // Create local view
     final view = await ZegoExpressEngine.instance.createCanvasView((viewID) {
       ZegoExpressEngine.instance.startPreview(canvas: ZegoCanvas(viewID));
     });
 
-    setState(() {
-      _localView = view;
-    });
-
-    // Start publishing local stream
+    setState(() => _localView = view);
     ZegoExpressEngine.instance.startPublishingStream("stream_${widget.userId}");
   }
 
   Future<void> _startListeningToRemoteStream(String streamID) async {
+    if (!_isEngineCreated) return;
+    
     final view = await ZegoExpressEngine.instance.createCanvasView((viewID) {
       _remoteViewID = viewID;
       ZegoExpressEngine.instance.startPlayingStream(streamID, canvas: ZegoCanvas(viewID));
     });
 
-    setState(() {
-      _remoteView = view;
-    });
+    setState(() => _remoteView = view);
   }
 
   void _endCall() async {
-    await ZegoExpressEngine.instance.logoutRoom(_roomID!);
-    await ZegoExpressEngine.destroyEngine();
+    if (_roomID != null && _isEngineCreated) {
+      await ZegoExpressEngine.instance.logoutRoom(_roomID!);
+      await ZegoExpressEngine.destroyEngine();
+      setState(() => _isEngineCreated = false);
+    }
     _showPostCallSummary();
   }
 
   void _showPostCallSummary() {
     if (!mounted) return;
-    
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
@@ -157,7 +166,9 @@ class _VideoCallScreenState extends State<VideoCallScreen> {
   @override
   void dispose() {
     _callSubscription?.cancel();
-    ZegoExpressEngine.destroyEngine();
+    if (_isEngineCreated) {
+      ZegoExpressEngine.destroyEngine();
+    }
     super.dispose();
   }
 
@@ -167,12 +178,10 @@ class _VideoCallScreenState extends State<VideoCallScreen> {
       backgroundColor: Colors.black,
       body: Stack(
         children: [
-          // Remote Video
           _remoteView ?? const Center(
             child: Text("Waiting for doctor...", style: TextStyle(color: Colors.white)),
           ),
 
-          // Local Video (PIP)
           Positioned(
             top: 50,
             right: 20,
@@ -182,12 +191,11 @@ class _VideoCallScreenState extends State<VideoCallScreen> {
               borderRadius: BorderRadius.circular(12),
               child: Container(
                 color: Colors.grey[900],
-                child: _localView ?? const Center(child: CircularProgressIndicator()),
+                child: _localView ?? const Center(child: CircularProgressIndicator(color: Color(0xFF1976D2))),
               ),
             ),
           ),
 
-          // Controls
           Positioned(
             bottom: 40,
             left: 0,
@@ -198,7 +206,7 @@ class _VideoCallScreenState extends State<VideoCallScreen> {
                 FloatingActionButton(
                   onPressed: _endCall,
                   backgroundColor: Colors.red,
-                  child: const Icon(Icons.call_end),
+                  child: const Icon(Icons.call_end, color: Colors.white),
                 ),
               ],
             ),
@@ -207,7 +215,7 @@ class _VideoCallScreenState extends State<VideoCallScreen> {
           if (_isLoading)
             Container(
               color: Colors.black,
-              child: const Center(child: CircularProgressIndicator()),
+              child: const Center(child: CircularProgressIndicator(color: Color(0xFF1976D2))),
             ),
         ],
       ),
