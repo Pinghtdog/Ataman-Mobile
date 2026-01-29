@@ -45,7 +45,8 @@ class _MyAppointmentsScreenState extends State<MyAppointmentsScreen> with Single
       backgroundColor: AppColors.background,
       body: Column(
         children: [
-          AtamanSimpleHeader(
+          AtamanHeader(
+            isSimple: true,
             height: 170,
             child: Column(
               mainAxisAlignment: MainAxisAlignment.end,

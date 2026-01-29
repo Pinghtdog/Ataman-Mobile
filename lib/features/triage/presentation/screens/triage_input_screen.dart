@@ -50,7 +50,6 @@ class _TriageInputScreenState extends State<TriageInputScreen> {
                       ),
                     );
                   }
-                  // Reset manual input flag when a new step is loaded
                   if (state is TriageStepLoaded) {
                     setState(() {
                       _forceManualInput = false;
@@ -59,7 +58,8 @@ class _TriageInputScreenState extends State<TriageInputScreen> {
                 },
                 child: Column(
                   children: [
-                    AtamanSimpleHeader(
+                    AtamanHeader(
+                      isSimple: true,
                       height: 120,
                       child: Stack(
                         children: [
@@ -174,7 +174,6 @@ class _TriageInputScreenState extends State<TriageInputScreen> {
                             ),
                           ),
                         )),
-                    // Fallback "None of the above" if AI didn't provide it
                     if (!step.options.any((o) => o.toLowerCase().contains("none of the above")))
                       Padding(
                         padding: const EdgeInsets.only(bottom: AppSizes.p16),

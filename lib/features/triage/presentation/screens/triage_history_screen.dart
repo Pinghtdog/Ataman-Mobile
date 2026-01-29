@@ -29,7 +29,8 @@ class _TriageHistoryScreenState extends State<TriageHistoryScreen> {
       backgroundColor: AppColors.background,
       body: Column(
         children: [
-          AtamanSimpleHeader(
+          AtamanHeader(
+            isSimple: true,
             height: 120,
             child: Row(
               children: [

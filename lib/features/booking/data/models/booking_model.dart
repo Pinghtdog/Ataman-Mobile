@@ -1,6 +1,8 @@
+import 'package:equatable/equatable.dart';
+
 enum BookingStatus { pending, confirmed, completed, cancelled, missed }
 
-class Booking {
+class Booking extends Equatable {
   final String id;
   final String userId;
   final String facilityId;
@@ -19,7 +21,7 @@ class Booking {
   final String? referredFrom;
   final String? referredTo;
 
-  Booking({
+  const Booking({
     required this.id,
     required this.userId,
     required this.facilityId,
@@ -36,6 +38,13 @@ class Booking {
     this.referredFrom,
     this.referredTo,
   });
+
+  @override
+  List<Object?> get props => [
+    id, userId, facilityId, facilityName, appointmentTime, status,
+    triageResult, triagePriority, createdAt, serviceId, familyMemberId,
+    natureOfVisit, chiefComplaint, referredFrom, referredTo,
+  ];
 
   factory Booking.fromJson(Map<String, dynamic> json) {
     return Booking(
@@ -82,5 +91,41 @@ class Booking {
       case 'missed': return BookingStatus.missed;
       default: return BookingStatus.pending;
     }
+  }
+
+  Booking copyWith({
+    String? id,
+    String? userId,
+    String? facilityId,
+    String? facilityName,
+    DateTime? appointmentTime,
+    BookingStatus? status,
+    String? triageResult,
+    String? triagePriority,
+    DateTime? createdAt,
+    String? serviceId,
+    String? familyMemberId,
+    String? natureOfVisit,
+    String? chiefComplaint,
+    String? referredFrom,
+    String? referredTo,
+  }) {
+    return Booking(
+      id: id ?? this.id,
+      userId: userId ?? this.userId,
+      facilityId: facilityId ?? this.facilityId,
+      facilityName: facilityName ?? this.facilityName,
+      appointmentTime: appointmentTime ?? this.appointmentTime,
+      status: status ?? this.status,
+      triageResult: triageResult ?? this.triageResult,
+      triagePriority: triagePriority ?? this.triagePriority,
+      createdAt: createdAt ?? this.createdAt,
+      serviceId: serviceId ?? this.serviceId,
+      familyMemberId: familyMemberId ?? this.familyMemberId,
+      natureOfVisit: natureOfVisit ?? this.natureOfVisit,
+      chiefComplaint: chiefComplaint ?? this.chiefComplaint,
+      referredFrom: referredFrom ?? this.referredFrom,
+      referredTo: referredTo ?? this.referredTo,
+    );
   }
 }

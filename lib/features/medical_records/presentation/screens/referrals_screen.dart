@@ -33,7 +33,8 @@ class _ReferralsScreenState extends State<ReferralsScreen> {
       backgroundColor: AppColors.background,
       body: Column(
         children: [
-          AtamanSimpleHeader(
+          AtamanHeader(
+            isSimple: true,
             height: 120,
             child: Row(
               children: [

@@ -201,6 +201,14 @@ class AuthCubit extends Cubit<AuthState> {
     }
   }
 
+  /// Refreshes the local profile in the auth state
+  void refreshProfile(UserModel profile) {
+    final currentState = state;
+    if (currentState is Authenticated) {
+      emit(Authenticated(currentState.user, profile: profile));
+    }
+  }
+
   Future<void> updateProfile(UserModel user) async {
     try {
       await _userRepository.updateProfile(user);

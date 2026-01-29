@@ -1,5 +1,6 @@
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../models/doctor_model.dart';
+import '../models/telemedicine_service_model.dart';
 import '../../domain/repositories/i_telemedicine_repository.dart';
 
 class TelemedicineRepository implements ITelemedicineRepository {
@@ -17,11 +18,24 @@ class TelemedicineRepository implements ITelemedicineRepository {
   }
 
   @override
+  Future<List<TelemedicineService>> getServicesByCategory(String category) async {
+    final response = await _supabase
+        .from('telemedicine_services')
+        .select()
+        .eq('category', category)
+        .eq('is_active', true);
+    
+    return (response as List).map((map) => TelemedicineService.fromMap(map)).toList();
+  }
+
+  @override
   Future<String> initiateCall(String patientId, String doctorId, {Map<String, dynamic>? metadata}) async {
-    final response = await _supabase.from('video_calls').insert({
+    // We now insert into telemed_sessions to match the Web Console
+    final response = await _supabase.from('telemed_sessions').insert({
       'patient_id': patientId,
       'doctor_id': doctorId,
-      'status': 'calling',
+      'status': 'scheduled', // Web app looks for 'scheduled' or 'PENDING'
+      'started_at': DateTime.now().toIso8601String(),
       if (metadata != null) 'metadata': metadata,
     }).select().single();
     
@@ -30,46 +44,23 @@ class TelemedicineRepository implements ITelemedicineRepository {
 
   @override
   Future<void> updateCallStatus(String callId, String status) async {
-    await _supabase.from('video_calls').update({'status': status}).eq('id', callId);
-  }
-
-  @override
-  Future<void> addIceCandidate(String callId, Map<String, dynamic> candidate, String type) async {
-    await _supabase.from('ice_candidates').insert({
-      'call_id': callId,
-      'candidate': candidate,
-      'type': type,
-    });
-  }
-
-  @override
-  Future<void> updateCallOffer(String callId, Map<String, dynamic> offer) async {
-    await _supabase.from('video_calls').update({
-      'offer': offer
-    }).eq('id', callId);
-  }
-
-  @override
-  Future<void> updateCallAnswer(String callId, Map<String, dynamic> answer, String status) async {
-    await _supabase.from('video_calls').update({
-      'answer': answer,
-      'status': status
-    }).eq('id', callId);
+    await _supabase.from('telemed_sessions').update({'status': status}).eq('id', callId);
   }
 
   @override
   Stream<List<Map<String, dynamic>>> watchCall(String callId) {
     return _supabase
-        .from('video_calls')
+        .from('telemed_sessions')
         .stream(primaryKey: ['id'])
         .eq('id', callId);
   }
 
-  @override
-  Stream<List<Map<String, dynamic>>> watchIceCandidates(String callId) {
+  Stream<List<Map<String, dynamic>>> watchCallSession(String patientId) {
     return _supabase
-        .from('ice_candidates')
+        .from('telemed_sessions')
         .stream(primaryKey: ['id'])
-        .eq('call_id', callId);
+        .eq('patient_id', patientId)
+        .order('started_at', ascending: false)
+        .limit(1);
   }
 }

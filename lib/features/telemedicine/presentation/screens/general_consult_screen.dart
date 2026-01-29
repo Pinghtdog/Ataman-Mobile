@@ -33,7 +33,8 @@ class _GeneralConsultScreenState extends State<GeneralConsultScreen> {
       backgroundColor: AppColors.background,
       body: Column(
         children: [
-          AtamanSimpleHeader(
+          AtamanHeader(
+            isSimple: true,
             height: 120,
             padding: const EdgeInsets.only(top: 50, left: 16, right: 16),
             child: Row(

@@ -17,6 +17,8 @@ class AppRoutes {
   static const String notifications = '/notifications';
   static const String vaccination = '/vaccination';
   static const String bookVaccination = '/book-vaccination';
+  static const String vaccinationRecord = '/vaccination-record';
+  static const String vaccinationConfirmation = '/vaccination-confirmation';
   
   // New Routes
   static const String patientEnrollment = '/patient-enrollment';
@@ -26,6 +28,7 @@ class AppRoutes {
   static const String generalConsult = '/general-consult';
   static const String familyMembers = '/family-members';
   static const String medicalHistory = '/medical-history';
+  static const String referrals = '/referrals';
   static const String settings = '/settings';
   static const String changePassword = '/change-password';
   static const String notificationSettings = '/notification-settings';

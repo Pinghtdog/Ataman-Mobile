@@ -12,6 +12,14 @@ class FamilyRepository {
         .select()
         .eq('user_id', userId);
     
-    return (response as List).map((json) => FamilyMember.fromMap(json)).toList();
+    return (response as List).map((json) => FamilyMember.fromJson(json)).toList();
+  }
+
+  Future<void> addFamilyMember(FamilyMember member) async {
+    await _supabase.from('family_members').insert(member.toJson());
+  }
+
+  Future<void> deleteFamilyMember(String memberId) async {
+    await _supabase.from('family_members').delete().eq('id', memberId);
   }
 }

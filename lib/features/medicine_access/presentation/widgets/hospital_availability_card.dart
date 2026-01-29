@@ -67,7 +67,7 @@ class HospitalAvailabilityCard extends StatelessWidget {
                     ),
                     const SizedBox(height: AppSizes.p4),
                     Container(
-                      padding: EdgeInsets.symmetric(
+                      padding: const EdgeInsets.symmetric(
                         horizontal: AppSizes.p8,
                         vertical: AppSizes.p4,
                       ),
@@ -127,6 +127,8 @@ class HospitalAvailabilityCard extends StatelessWidget {
                 style: ElevatedButton.styleFrom(
                   backgroundColor: AppColors.primary,
                   foregroundColor: Colors.white,
+                  minimumSize: Size.zero, // Overrides global double.infinity
+                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(AppSizes.p20),
                   ),
@@ -135,7 +137,10 @@ class HospitalAvailabilityCard extends StatelessWidget {
                     vertical: AppSizes.p8,
                   ),
                 ),
-                child: const Text('View on Map'),
+                child: const Text(
+                  'View on Map',
+                  style: TextStyle(fontSize: 12),
+                ),
               ),
             ],
           ),

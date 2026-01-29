@@ -15,7 +15,7 @@ class UserRepository extends BaseRepository implements IUserRepository {
             .eq('id', userId)
             .single());
         
-        return UserModel.fromMap(data);
+        return UserModel.fromJson(data);
       },
       ttl: const Duration(minutes: 15),
     );
@@ -25,7 +25,7 @@ class UserRepository extends BaseRepository implements IUserRepository {
   Future<void> updateProfile(UserModel user) async {
     await safeCall(() => supabase
         .from('users')
-        .upsert(user.toMap()));
+        .upsert(user.toJson()));
     
     cache.invalidate('user_profile_${user.id}');
   }

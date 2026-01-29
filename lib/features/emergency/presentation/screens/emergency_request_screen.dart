@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
@@ -17,15 +18,46 @@ class EmergencyRequestScreen extends StatefulWidget {
   State<EmergencyRequestScreen> createState() => _EmergencyRequestScreenState();
 }
 
-class _EmergencyRequestScreenState extends State<EmergencyRequestScreen> {
+class _EmergencyRequestScreenState extends State<EmergencyRequestScreen> with SingleTickerProviderStateMixin {
   Position? _currentPosition;
   bool _isRequesting = false;
   EmergencyType _selectedType = EmergencyType.sos;
+  
+  AnimationController? _animationController;
+  Animation<double>? _growAnimation;
+  bool _isGrowing = false;
+  
+  final Set<Marker> _markers = {};
+  GoogleMapController? _mapController;
 
   @override
   void initState() {
     super.initState();
     _initLocation();
+    _initAnimation();
+  }
+
+  void _initAnimation() {
+    _animationController = AnimationController(
+      vsync: this,
+      duration: const Duration(seconds: 1, milliseconds: 500),
+    );
+    
+    _growAnimation = Tween<double>(begin: 1.0, end: 12.0).animate(
+      CurvedAnimation(parent: _animationController!, curve: Curves.easeInOutCubic),
+    );
+
+    _animationController!.addStatusListener((status) {
+      if (status == AnimationStatus.completed) {
+        _sendEmergencyRequest();
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    _animationController?.dispose();
+    super.dispose();
   }
 
   Future<void> _initLocation() async {
@@ -33,18 +65,29 @@ class _EmergencyRequestScreenState extends State<EmergencyRequestScreen> {
     if (pos != null && mounted) {
       setState(() {
         _currentPosition = pos;
+        _markers.add(
+          Marker(
+            markerId: const MarkerId('user_location'),
+            position: LatLng(pos.latitude, pos.longitude),
+            infoWindow: const InfoWindow(title: 'My Location'),
+          ),
+        );
       });
     }
   }
 
-  void _sendEmergencyRequest() {
+  void _startSosAnimation() {
     if (_currentPosition == null) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text("Unable to get your location. Please try again.")),
       );
       return;
     }
+    setState(() => _isGrowing = true);
+    _animationController?.forward();
+  }
 
+  void _sendEmergencyRequest() {
     final authState = context.read<AuthCubit>().state;
     if (authState is! Authenticated) return;
 
@@ -61,6 +104,18 @@ class _EmergencyRequestScreenState extends State<EmergencyRequestScreen> {
     );
 
     context.read<EmergencyCubit>().requestEmergency(request);
+    
+    // For demo: Mocking nearby ambulance markers
+    setState(() {
+      _markers.add(
+        Marker(
+          markerId: const MarkerId('ambulance_1'),
+          position: LatLng(_currentPosition!.latitude + 0.005, _currentPosition!.longitude + 0.005),
+          icon: BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueAzure),
+          infoWindow: const InfoWindow(title: 'Ambulance 01'),
+        ),
+      );
+    });
   }
 
   @override
@@ -70,8 +125,15 @@ class _EmergencyRequestScreenState extends State<EmergencyRequestScreen> {
       body: BlocConsumer<EmergencyCubit, EmergencyState>(
         listener: (context, state) {
           if (state is EmergencyActive) {
-            setState(() => _isRequesting = true);
+            setState(() {
+              _isRequesting = true;
+              _isGrowing = false;
+            });
           } else if (state is EmergencyError) {
+            setState(() {
+              _isGrowing = false;
+              _animationController?.reset();
+            });
             ScaffoldMessenger.of(context).showSnackBar(
               SnackBar(content: Text(state.message)),
             );
@@ -89,126 +151,208 @@ class _EmergencyRequestScreenState extends State<EmergencyRequestScreen> {
   }
 
   Widget _buildInitialView() {
-    return Column(
+    if (_growAnimation == null || _animationController == null) {
+      return const Center(child: CircularProgressIndicator());
+    }
+
+    return Stack(
       children: [
-        AtamanSimpleHeader(
-          height: 120,
-          child: Stack(
-            children: [
-              Align(
-                alignment: Alignment.centerLeft,
-                child: IconButton(
-                  icon: const Icon(Icons.arrow_back_ios_new, color: Colors.white, size: 20),
-                  onPressed: () => Navigator.pop(context),
-                ),
-              ),
-              const Center(
-                child: Text(
-                  "Emergency Assistance",
-                  style: TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold),
-                ),
-              ),
-            ],
-          ),
-        ),
-        Expanded(
-          child: Padding(
-            padding: const EdgeInsets.all(AppSizes.p24),
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                const Text(
-                  "Choose emergency type",
-                  style: AppTextStyles.h3,
-                ),
-                const SizedBox(height: AppSizes.p24),
-                _buildTypeSelector(),
-                const SizedBox(height: AppSizes.p48),
-                GestureDetector(
-                  onTap: _sendEmergencyRequest,
-                  child: Container(
-                    width: 200,
-                    height: 200,
-                    decoration: BoxDecoration(
-                      color: AppColors.danger,
-                      shape: BoxShape.circle,
-                      boxShadow: [
-                        BoxShadow(
-                          color: AppColors.danger.withOpacity(0.3),
-                          blurRadius: 20,
-                          spreadRadius: 10,
-                        ),
-                      ],
-                    ),
-                    child: const Center(
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Icon(Icons.sos, color: Colors.white, size: 60),
-                          Text(
-                            "PRESS FOR HELP",
-                            style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
-                          ),
-                        ],
-                      ),
+        Column(
+          children: [
+            AtamanHeader(
+              isSimple: true,
+              height: 120,
+              child: Stack(
+                children: [
+                  Align(
+                    alignment: Alignment.centerLeft,
+                    child: IconButton(
+                      icon: const Icon(Icons.arrow_back_ios_new, color: Colors.white, size: 20),
+                      onPressed: () => Navigator.pop(context),
                     ),
                   ),
-                ),
-                const SizedBox(height: AppSizes.p24),
-                const Text(
-                  "Hold for 3 seconds to cancel",
-                  style: AppTextStyles.bodySmall,
-                ),
-              ],
+                  const Center(
+                    child: Text(
+                      "Emergency Assistance",
+                      style: TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold),
+                    ),
+                  ),
+                ],
+              ),
             ),
-          ),
+            Expanded(
+              child: Padding(
+                padding: const EdgeInsets.all(AppSizes.p24),
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    const Text(
+                      "Choose emergency type",
+                      style: AppTextStyles.h3,
+                    ),
+                    const SizedBox(height: AppSizes.p24),
+                    _buildTypeSelector(),
+                    const SizedBox(height: AppSizes.p48),
+                    Center(
+                      child: AnimatedBuilder(
+                        animation: _growAnimation!,
+                        builder: (context, child) {
+                          return Transform.scale(
+                            scale: _growAnimation!.value,
+                            child: GestureDetector(
+                              onTap: _isGrowing ? null : _startSosAnimation,
+                              child: Container(
+                                width: 200,
+                                height: 200,
+                                decoration: BoxDecoration(
+                                  color: AppColors.danger,
+                                  shape: BoxShape.circle,
+                                  boxShadow: [
+                                    BoxShadow(
+                                      color: AppColors.danger.withOpacity(0.3),
+                                      blurRadius: 20,
+                                      spreadRadius: 10,
+                                    ),
+                                  ],
+                                ),
+                                child: Center(
+                                  child: Opacity(
+                                    opacity: _isGrowing ? (1.0 - (_animationController!.value * 2.5)).clamp(0.0, 1.0) : 1.0,
+                                    child: const Column(
+                                      mainAxisAlignment: MainAxisAlignment.center,
+                                      children: [
+                                        Icon(Icons.sos, color: Colors.white, size: 60),
+                                        Text(
+                                          "PRESS FOR HELP",
+                                          style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ),
+                          );
+                        },
+                      ),
+                    ),
+                    const SizedBox(height: AppSizes.p24),
+                    Opacity(
+                      opacity: _isGrowing ? (1.0 - (_animationController!.value * 5.0)).clamp(0.0, 1.0) : 1.0,
+                      child: const Text(
+                        "Press once to activate emergency SOS",
+                        style: AppTextStyles.bodySmall,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ],
         ),
       ],
     );
   }
 
   Widget _buildTypeSelector() {
-    return Wrap(
-      spacing: 12,
-      runSpacing: 12,
-      children: EmergencyType.values.map((type) {
-        final isSelected = _selectedType == type;
-        return ChoiceChip(
-          label: Text(type.name.toUpperCase()),
-          selected: isSelected,
-          onSelected: (selected) {
-            if (selected) setState(() => _selectedType = type);
-          },
-          selectedColor: AppColors.danger,
-          labelStyle: TextStyle(color: isSelected ? Colors.white : Colors.black),
-        );
-      }).toList(),
+    return Opacity(
+      opacity: _isGrowing ? (1.0 - (_animationController!.value * 4.0)).clamp(0.0, 1.0) : 1.0,
+      child: Wrap(
+        spacing: 12,
+        runSpacing: 12,
+        children: EmergencyType.values.map((type) {
+          final isSelected = _selectedType == type;
+          return ChoiceChip(
+            label: Text(type.name.toUpperCase()),
+            selected: isSelected,
+            onSelected: (selected) {
+              if (selected && !_isGrowing) setState(() => _selectedType = type);
+            },
+            selectedColor: AppColors.danger,
+            labelStyle: TextStyle(color: isSelected ? Colors.white : Colors.black),
+          );
+        }).toList(),
+      ),
     );
   }
 
-  //for demo
   Widget _buildActiveRequestView(EmergencyRequest request) {
-    return Column(
+    return Stack(
       children: [
-        const AtamanSimpleHeader(height: 100, child: Center(child: Text("Request Active", style: TextStyle(color: Colors.white)))),
-        Expanded(
-          child: Padding(
-            padding: const EdgeInsets.all(24.0),
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
+        GoogleMap(
+          initialCameraPosition: CameraPosition(
+            target: LatLng(request.latitude, request.longitude),
+            zoom: 15,
+          ),
+          markers: _markers,
+          onMapCreated: (controller) => _mapController = controller,
+          myLocationEnabled: true,
+          myLocationButtonEnabled: true,
+        ),
+        Positioned(
+          top: 0,
+          left: 0,
+          right: 0,
+          child: AtamanHeader(
+            isSimple: true,
+            height: 100,
+            child: Row(
               children: [
-                const CircularProgressIndicator(color: AppColors.danger),
+                IconButton(
+                  icon: const Icon(Icons.arrow_back, color: Colors.white),
+                  onPressed: () {
+                    context.read<EmergencyCubit>().cancelRequest(request.id);
+                    setState(() {
+                      _isRequesting = false;
+                      _isGrowing = false;
+                      _animationController?.reset();
+                    });
+                  },
+                ),
+                const Text("Tracking Emergency Response", style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)),
+              ],
+            ),
+          ),
+        ),
+        Positioned(
+          bottom: 0,
+          left: 0,
+          right: 0,
+          child: Container(
+            padding: const EdgeInsets.all(24),
+            decoration: const BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+              boxShadow: [BoxShadow(color: Colors.black12, blurRadius: 10)],
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Row(
+                  children: [
+                    const CircularProgressIndicator(color: AppColors.danger, strokeWidth: 3),
+                    const SizedBox(width: 16),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text("Emergency ${request.type.name.toUpperCase()} Active", style: AppTextStyles.bodyLarge.copyWith(fontWeight: FontWeight.bold)),
+                          Text("Nearest ambulance is being notified...", style: AppTextStyles.bodySmall),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
                 const SizedBox(height: 24),
-                Text("Emergency ${request.type.name.toUpperCase()} Requested", style: AppTextStyles.h2),
-                const SizedBox(height: 8),
-                Text("Status: ${request.status.name.toUpperCase()}", style: AppTextStyles.h3.copyWith(color: AppColors.primary)),
-                const SizedBox(height: 32),
-                const Text("An ambulance and responders are being dispatched to your location.", textAlign: TextAlign.center),
-                const SizedBox(height: 48),
                 ElevatedButton(
                   onPressed: () => context.read<EmergencyCubit>().cancelRequest(request.id),
-                  style: ElevatedButton.styleFrom(backgroundColor: Colors.grey),
-                  child: const Text("Cancel Request"),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.grey.shade200,
+                    foregroundColor: Colors.black,
+                    minimumSize: const Size(double.infinity, 50),
+                    elevation: 0,
+                  ),
+                  child: const Text("Cancel Emergency"),
                 ),
               ],
             ),

@@ -198,7 +198,8 @@ class _BookingDetailsScreenState extends State<BookingDetailsScreen> {
 
           return Column(
             children: [
-              AtamanSimpleHeader(
+              AtamanHeader(
+                isSimple: true,
                 height: 120,
                 child: Row(
                   children: [

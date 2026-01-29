@@ -18,6 +18,7 @@ import 'features/telemedicine/domain/repositories/i_telemedicine_repository.dart
 import 'features/triage/data/repositories/triage_repository.dart';
 import 'features/triage/data/services/triage_service.dart';
 import 'features/triage/domain/repositories/i_triage_repository.dart';
+import 'features/vaccination/data/repositories/vaccine_repository.dart';
 
 final getIt = GetIt.instance;
 
@@ -55,4 +56,5 @@ Future<void> initInjector() async {
   getIt.registerLazySingleton<NotificationRepository>(() => NotificationRepository());
   getIt.registerLazySingleton<FamilyRepository>(() => FamilyRepository(getIt<SupabaseClient>()));
   getIt.registerLazySingleton<ReferralRepository>(() => ReferralRepository(getIt<SupabaseClient>()));
+  getIt.registerLazySingleton<VaccineRepository>(() => VaccineRepository());
 }

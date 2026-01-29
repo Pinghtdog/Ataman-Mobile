@@ -65,10 +65,12 @@ class AppStrings {
 
   // Vaccination
   static const String vaccinationServices = "Vaccination Services";
+  static const String immunizationRecord = "Immunization Record";
   static const String myImmunizationCard = "My Immunization Card";
   static const String viewHistoryAndUpcomingDoses = "View history and upcoming doses";
   static const String viewRecord = "VIEW RECORD";
   static const String availableVaccines = "Available Vaccines";
+  static const String vaccinationHistory = "Vaccination History";
   static const String all = "All";
   static const String kids = "Kids";
   static const String adults = "Adults";
@@ -84,6 +86,15 @@ class AppStrings {
   static const String inStock = "IN STOCK";
   static const String limited = "LIMITED";
   static const String noStock = "NO STOCK";
+  static const String completed = "Completed";
+  static const String due = "Due";
+  static const String patientName = "PATIENT NAME";
+  static const String dob = "DOB";
+  static const String birthdate = "BIRTHDATE";
+  static const String immunizationId = "IMMUNIZATION ID";
+  static const String verified = "VERIFIED";
+  static const String recommendedNextMonth = "Recommended next month";
+  static const String addNewRecord = "Add New Record";
 
   // Book Vaccination
   static const String bookVaccination = "Book Vaccination";
@@ -94,13 +105,20 @@ class AppStrings {
   static const String myself = "Myself";
   static const String miguelSon = "Miguel (Son)";
   static const String schedule = "Schedule";
-  static const String date = "DATE";
-  static const String time = "TIME";
+  static const String dateLabel = "DATE";
+  static const String timeLabel = "TIME";
+  static const String locationLabel = "LOCATION";
   static const String healthScreening = "Health Screening";
   static const String doYouHaveFever = "Do you have a fever today?";
   static const String yes = "Yes";
   static const String no = "No";
   static const String confirmVaccinationSlot = "Confirm Vaccination Slot";
+  static const String vaccinationConfirmed = "Vaccination Confirmed";
+  static const String stockReserved = "STOCK RESERVED";
+  static const String addToCalendar = "Add to Calendar";
+  static const String backToHome = "Back to Home";
+  static const String inventoryClaimCode = "Inventory Claim Code";
+  static const String presentThisToClaim = "Present this to claim vaccine.";
 
   // Reproductive Health
   static const String reproductiveHealth = "Reproductive Health";
@@ -137,6 +155,36 @@ class AppStrings {
   static const String addPhotoOptional = "Add Photo (Optional)";
   static const String dataPrivacyAgreement = "By continuing, you agree to the Data Privacy Act of 2012.";
   static const String joinQueue = "Join Queue (3 min)";
+
+  // Health Alerts
+  static const String healthAlerts = "Health Alerts";
+  static const String mentalHealth = "Mental Health";
+  static const String lifestyle = "Lifestyle";
+  static const String vaccines = "Vaccines";
+  static const String readMore = "Read More";
+
+  // Medicine Access
+  static const String medicineAccess = "Medicine Access";
+  static const String searchMedicines = "Search medicines...";
+  static const String inStockStatus = "In Stock";
+  static const String outOfStockStatus = "Out of Stock";
+  static const String hospitalAvailability = "Hospital Availability";
+  static const String selectedMedicine = "Selected Medicine";
+  static const String viewOnMap = "View on Map";
+  static const String perPill = "pill";
+
+  // Family Members
+  static const String familyMembers = "Family Members";
+  static const String addFamilyMember = "Add Family Member";
+  static const String saveFamilyMember = "Save Family Member";
+  static const String primaryProfile = "PRIMARY PROFILE";
+  static const String dependents = "DEPENDENTS";
+  static const String viewId = "View ID";
+  static const String relationship = "Relationship";
+  static const String fullName = "Full Name";
+  static const String birthDate = "Birth Date";
+  static const String gender = "Gender";
+  static const String verifiedStatus = "VERIFIED";
 
   // Errors
   static const String genericError = "Something went wrong. Please try again.";

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:ataman/core/constants/app_strings.dart';
+import '../../../../core/constants/app_routes.dart';
+import '../../../../core/constants/app_strings.dart';
 
 class ImmunizationCard extends StatelessWidget {
   const ImmunizationCard({super.key});
@@ -30,7 +31,9 @@ class ImmunizationCard extends StatelessWidget {
           ),
           const SizedBox(height: 16),
           ElevatedButton(
-            onPressed: () {},
+            onPressed: () {
+              Navigator.pushNamed(context, AppRoutes.vaccinationRecord);
+            },
             style: ElevatedButton.styleFrom(
               backgroundColor: Colors.white,
               foregroundColor: Theme.of(context).primaryColor,

@@ -4,6 +4,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../logic/profile_cubit.dart';
 import '../../logic/profile_state.dart';
 import '../../../auth/data/models/user_model.dart';
+import '../../../auth/logic/auth_cubit.dart'; // Added AuthCubit
 import '../../../../core/constants/constants.dart';
 import '../../../../core/widgets/widgets.dart';
 import '../../../../core/services/address_service.dart';
@@ -115,6 +116,9 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
       body: BlocConsumer<ProfileCubit, ProfileState>(
         listener: (context, state) {
           if (state is ProfileSuccess) {
+            // CRITICAL: Update AuthCubit so the rest of the app sees the changes
+            context.read<AuthCubit>().refreshProfile(state.user);
+            
             UiUtils.showSuccess(context, "Profile updated successfully!");
             if (Navigator.canPop(context)) Navigator.of(context).pop();
           } else if (state is ProfileError) {
@@ -124,7 +128,8 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
         builder: (context, state) {
           return Column(
             children: [
-              AtamanSimpleHeader(
+              AtamanHeader(
+                isSimple: true,
                 height: 120,
                 child: Row(
                   children: [

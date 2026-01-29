@@ -73,7 +73,7 @@ class _PatientEnrollmentFormState extends State<PatientEnrollmentForm> {
                       text: "Preview Enrollment Form",
                       isOutlined: true,
                       icon: Icons.picture_as_pdf,
-                      onPressed: () => PdfService.previewPdf(_updatedUser),
+                      onPressed: () => PdfService.previewMedicalIdForm(_updatedUser),
                     ),
                   ),
                 Row(

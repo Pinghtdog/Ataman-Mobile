@@ -37,8 +37,8 @@ dependencies:
   printing: ^5.13.2
   pdfx: ^2.4.0
 
-  # WebRTC for Video Calls
-  flutter_webrtc: ^1.3.0
+  # ZegoCloud for Video Calls (Low-level Engine)
+  zego_express_engine: ^3.23.0
   permission_handler: ^11.3.1
 
   # Offline Storage

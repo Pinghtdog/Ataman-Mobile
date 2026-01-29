@@ -6,12 +6,12 @@ list(APPEND FLUTTER_PLUGIN_LIST
   app_links
   connectivity_plus
   firebase_core
-  flutter_webrtc
   geolocator_windows
   pdfx
   permission_handler_windows
   printing
   url_launcher_windows
+  zego_express_engine
 )
 
 list(APPEND FLUTTER_FFI_PLUGIN_LIST

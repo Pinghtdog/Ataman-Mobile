@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../logic/telemedicine_cubit.dart';
+import '../../data/models/doctor_model.dart';
 import 'ataman_konsulta_card.dart';
 
 class TelemedDoctorSection extends StatelessWidget {
@@ -21,8 +22,14 @@ class TelemedDoctorSection extends StatelessWidget {
       ));
     }
 
+    List<DoctorModel>? doctors;
     if (state is TelemedicineDoctorsLoaded) {
-      final doctors = (state as TelemedicineDoctorsLoaded).doctors;
+      doctors = (state as TelemedicineDoctorsLoaded).doctors;
+    } else if (state is TelemedicineDataLoaded) {
+      doctors = (state as TelemedicineDataLoaded).doctors;
+    }
+
+    if (doctors != null) {
       if (doctors.isEmpty) {
         return const AtamanKonsultaCard(
           title: "No Doctors Online",
@@ -31,7 +38,9 @@ class TelemedDoctorSection extends StatelessWidget {
         );
       }
 
-      final doctor = doctors.first;
+      // Find the first online doctor, or fallback to the first one in the list
+      final doctor = doctors.firstWhere((d) => d.isOnline, orElse: () => doctors!.first);
+      
       return AtamanKonsultaCard(
         title: "PhilHealth Konsulta",
         subtitle: doctor.fullName,

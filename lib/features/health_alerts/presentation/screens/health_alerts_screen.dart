@@ -15,33 +15,38 @@ class _HealthAlertsScreenState extends State<HealthAlertsScreen> {
   String _selectedCategory = 'All';
   final List<String> _categories = ['All', 'Vaccines', 'Mental Health', 'Lifestyle'];
 
+  // Using relevant placeholder images for each category
   final List<Map<String, dynamic>> _alerts = [
     {
-      'title': 'Dengue Alert: Prevention Tips',
-      'description': 'Cases are rising in the metro. Learn how to protect your home and family with 5 simple steps...',
-      'imageUrl': 'https://images.unsplash.com/photo-1584622650111-993a426fbf0a?auto=format&fit=crop&w=800&q=80',
+      'title': 'DOH, NNC launch Philippine Plan of Action for Nutrition 2023-2028',
+      'description': 'The Department of Health and the National Nutrition Council officially launched the PPAN in Naga City.',
+      'imageUrl': 'https://images.unsplash.com/photo-1490645935967-10de6ba17061?auto=format&fit=crop&w=800&q=80',
+      'url': 'https://www2.naga.gov.ph/doh-nnc-launch-philippine-plan-of-action-for-nutrition-2023-2028/',
       'category': 'Lifestyle',
-      'isNew': false,
-    },
-    {
-      'title': 'Flu Season Prep',
-      'description': 'Schedule your annual flu shot today at any partner clinic to stay protected.',
-      'imageUrl': 'https://images.unsplash.com/photo-1584036561566-baf8f5f1b144?auto=format&fit=crop&w=800&q=80',
-      'category': 'Vaccines',
       'isNew': true,
     },
     {
-      'title': 'Mental Wellness Tip',
-      'description': 'How 10 minutes of daily meditation can help lower stress and improve focus.',
-      'imageUrl': 'https://images.unsplash.com/photo-1506126613408-eca07ce68773?auto=format&fit=crop&w=800&q=80',
-      'category': 'Mental Health',
+      'title': 'Naga City bags Galing Pook Award for Health program',
+      'description': 'Naga City has been recognized for its innovative "Naga City Health Emergency Response" initiative.',
+      'imageUrl': 'https://images.unsplash.com/photo-1576091160550-2173dad99961?auto=format&fit=crop&w=800&q=80',
+      'url': 'https://www2.naga.gov.ph/naga-city-bags-galing-pook-award-for-health-program/',
+      'category': 'All',
       'isNew': false,
     },
     {
-      'title': 'New Vaccine Guidelines',
-      'description': 'Latest DOH updated protocols for pediatric vaccinations and booster shots.',
-      'imageUrl': 'https://images.unsplash.com/photo-1583947215259-38e31be8751f?auto=format&fit=crop&w=800&q=80',
+      'title': 'Naga Intensifies Vaccination Campaign against Measles and Polio',
+      'description': 'City Health Office targets 100% coverage for children aged 0-59 months in recent Chikiting Ligtas campaign.',
+      'imageUrl': 'https://images.unsplash.com/photo-1584036561566-baf8f5f1b144?auto=format&fit=crop&w=800&q=80',
+      'url': 'https://www2.naga.gov.ph/naga-intensifies-vaccination-campaign-against-measles-and-polio/',
       'category': 'Vaccines',
+      'isNew': false,
+    },
+    {
+      'title': 'Mental Health Awareness Month observed in Naga City',
+      'description': 'Naga City conducts various seminars and activities to promote mental wellness among its residents.',
+      'imageUrl': 'https://images.unsplash.com/photo-1527137341206-193427974360?auto=format&fit=crop&w=800&q=80',
+      'url': 'https://www2.naga.gov.ph/mental-health-awareness-month-observed-in-naga-city/',
+      'category': 'Mental Health',
       'isNew': false,
     },
   ];
@@ -74,6 +79,7 @@ class _HealthAlertsScreenState extends State<HealthAlertsScreen> {
                   title: alert['title'],
                   description: alert['description'],
                   imageUrl: alert['imageUrl'],
+                  url: alert['url'],
                   isNew: alert['isNew'],
                 );
               },

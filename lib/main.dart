@@ -1,5 +1,7 @@
 import 'package:ataman/features/health_alerts/presentation/screens/health_alerts_screen.dart';
 import 'package:ataman/features/vaccination/presentation/screens/book_vaccination_screen.dart';
+import 'package:ataman/features/vaccination/presentation/screens/vaccination_confirmation_screen.dart';
+import 'package:ataman/features/vaccination/presentation/screens/vaccination_record_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'core/constants/constants.dart';
@@ -157,6 +159,11 @@ class AtamanApp extends StatelessWidget {
         return MaterialPageRoute(
           builder: (context) => HospitalAvailabilityScreen(medicineName: medicineName),
         );
+      case AppRoutes.vaccinationConfirmation:
+        final args = settings.arguments as Map<String, dynamic>;
+        return MaterialPageRoute(
+          builder: (context) => VaccinationConfirmationScreen(bookingData: args),
+        );
       default:
         return null;
     }
@@ -181,6 +188,7 @@ class AtamanApp extends StatelessWidget {
     AppRoutes.myAppointments: (context) => const MyAppointmentsScreen(),
     AppRoutes.vaccination: (context) => const VaccinationScreen(),
     AppRoutes.bookVaccination: (context) => const BookVaccinationScreen(),
+    AppRoutes.vaccinationRecord: (context) => const VaccinationRecordScreen(),
     AppRoutes.telemedicine: (context) => const TelemedicineScreen(),
     AppRoutes.reproductiveHealth: (context) => const ReproductiveHealthScreen(),
     AppRoutes.generalConsult: (context) => const GeneralConsultScreen(),

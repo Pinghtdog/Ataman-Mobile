@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../../../core/constants/constants.dart';
+import '../../../../core/widgets/widgets.dart';
 import '../widgets/medicine_card.dart';
 import '../widgets/medicine_search_header.dart';
 
@@ -11,34 +13,47 @@ class MedicineAccessScreen extends StatefulWidget {
 }
 
 class _MedicineAccessScreenState extends State<MedicineAccessScreen> {
+  final _supabase = Supabase.instance.client;
   final TextEditingController _searchController = TextEditingController();
-  
-  final List<Map<String, dynamic>> _medicines = [
-    {
-      'name': 'Amoxicillin',
-      'description': '500mg Capsule',
-      'inStock': true,
-      'icon': Icons.medication_rounded,
-    },
-    {
-      'name': 'Paracetamol',
-      'description': '500mg Tablet',
-      'inStock': true,
-      'icon': Icons.grid_view_rounded,
-    },
-    {
-      'name': 'Insulin Glargine',
-      'description': '100 units/mL',
-      'inStock': false,
-      'icon': Icons.colorize_rounded,
-    },
-    {
-      'name': 'Salbutamol',
-      'description': '100mcg Inhaler',
-      'inStock': true,
-      'icon': Icons.air_rounded,
-    },
-  ];
+  List<Map<String, dynamic>> _medications = [];
+  bool _isLoading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadMedications();
+  }
+
+  Future<void> _loadMedications() async {
+    try {
+      // Fetching from facility_medicines which links the medicines catalog to specific facilities
+      final response = await _supabase
+          .from('facility_medicines')
+          .select('''
+            *,
+            medicines (
+              name,
+              description,
+              icon_name,
+              category
+            ),
+            facilities (
+              name
+            )
+          ''')
+          .gt('stock_count', 0);
+
+      if (mounted) {
+        setState(() {
+          _medications = List<Map<String, dynamic>>.from(response);
+          _isLoading = false;
+        });
+      }
+    } catch (e) {
+      debugPrint('Error loading medications: $e');
+      if (mounted) setState(() => _isLoading = false);
+    }
+  }
 
   @override
   void dispose() {
@@ -54,32 +69,42 @@ class _MedicineAccessScreenState extends State<MedicineAccessScreen> {
         children: [
           MedicineSearchHeader(controller: _searchController),
           Expanded(
-            child: GridView.builder(
-              padding: const EdgeInsets.all(AppSizes.p16),
-              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                crossAxisCount: 2,
-                childAspectRatio: 0.85,
-                crossAxisSpacing: AppSizes.p16,
-                mainAxisSpacing: AppSizes.p16,
-              ),
-              itemCount: _medicines.length,
-              itemBuilder: (context, index) {
-                final medicine = _medicines[index];
-                return MedicineCard(
-                  name: medicine['name'],
-                  description: medicine['description'],
-                  inStock: medicine['inStock'],
-                  icon: medicine['icon'],
-                  onTap: () {
-                    Navigator.pushNamed(
-                      context,
-                      AppRoutes.hospitalAvailability,
-                      arguments: medicine['name'],
-                    );
-                  },
-                );
-              },
-            ),
+            child: _isLoading 
+              ? const Center(child: CircularProgressIndicator())
+              : _medications.isEmpty
+                ? const AtamanEmptyState(
+                    title: "No Medicines Found",
+                    message: "There are currently no medicines listed as available in the network.",
+                  )
+                : GridView.builder(
+                    padding: const EdgeInsets.all(AppSizes.p16),
+                    gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                      crossAxisCount: 2,
+                      childAspectRatio: 0.85,
+                      crossAxisSpacing: AppSizes.p16,
+                      mainAxisSpacing: AppSizes.p16,
+                    ),
+                    itemCount: _medications.length,
+                    itemBuilder: (context, index) {
+                      final item = _medications[index];
+                      final med = item['medicines'] as Map<String, dynamic>;
+                      final facility = item['facilities'] as Map<String, dynamic>;
+                      
+                      return MedicineCard(
+                        name: med['name'] ?? 'Unknown',
+                        description: "Available at: ${facility['name']}",
+                        inStock: (item['stock_count'] ?? 0) > 0,
+                        icon: Icons.medication_rounded,
+                        onTap: () {
+                          Navigator.pushNamed(
+                            context,
+                            AppRoutes.hospitalAvailability,
+                            arguments: med['name'],
+                          );
+                        },
+                      );
+                    },
+                  ),
           ),
         ],
       ),

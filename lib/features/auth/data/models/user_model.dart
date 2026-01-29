@@ -1,4 +1,6 @@
-class UserModel {
+import 'package:equatable/equatable.dart';
+
+class UserModel extends Equatable {
   final String id;
   final String email;
   final String firstName;
@@ -13,6 +15,7 @@ class UserModel {
   final String? barangay;
   final String? residentialAddress;
   final String? philhealthId;
+  final String? medicalId;
   final String? fcmToken;
   final bool isProfileComplete;
   
@@ -33,7 +36,7 @@ class UserModel {
   final String? allergies;
   final String? medicalConditions;
 
-  UserModel({
+  const UserModel({
     required this.id,
     required this.email,
     required this.firstName,
@@ -48,6 +51,7 @@ class UserModel {
     this.barangay,
     this.residentialAddress,
     this.philhealthId,
+    this.medicalId,
     this.fcmToken,
     this.isProfileComplete = false,
     this.gender,
@@ -65,6 +69,16 @@ class UserModel {
     this.medicalConditions,
   });
 
+  @override
+  List<Object?> get props => [
+    id, email, firstName, middleName, lastName, suffix, maidenName,
+    phoneNumber, birthDate, birthplace, motherName, barangay,
+    residentialAddress, philhealthId, medicalId, fcmToken, isProfileComplete,
+    gender, bloodType, civilStatus, education, employmentStatus, is4psMember,
+    philhealthStatus, familyPosition, isPcbMember, emergencyContactName,
+    emergencyContactPhone, allergies, medicalConditions,
+  ];
+
   // Computed property for UI display (PH Standard: First Middle Last)
   String get fullName {
     String name = firstName;
@@ -78,7 +92,7 @@ class UserModel {
     return name;
   }
 
-  factory UserModel.fromMap(Map<String, dynamic> map) {
+  factory UserModel.fromJson(Map<String, dynamic> map) {
     return UserModel(
       id: map['id'] ?? '',
       email: map['email'] ?? '',
@@ -94,6 +108,7 @@ class UserModel {
       barangay: map['barangay'],
       residentialAddress: map['residential_address'],
       philhealthId: map['philhealth_id'],
+      medicalId: map['medical_id'],
       fcmToken: map['fcm_token'],
       isProfileComplete: map['is_profile_complete'] ?? false,
       gender: map['gender'],
@@ -112,7 +127,7 @@ class UserModel {
     );
   }
 
-  Map<String, dynamic> toMap() {
+  Map<String, dynamic> toJson() {
     return {
       'id': id,
       'email': email,
@@ -128,6 +143,7 @@ class UserModel {
       'barangay': barangay,
       'residential_address': residentialAddress,
       'philhealth_id': philhealthId,
+      'medical_id': medicalId,
       'fcm_token': fcmToken,
       'is_profile_complete': isProfileComplete,
       'gender': gender,
@@ -162,6 +178,7 @@ class UserModel {
     String? barangay,
     String? residentialAddress,
     String? philhealthId,
+    String? medicalId,
     String? fcmToken,
     bool? isProfileComplete,
     String? gender,
@@ -193,6 +210,7 @@ class UserModel {
       barangay: barangay ?? this.barangay,
       residentialAddress: residentialAddress ?? this.residentialAddress,
       philhealthId: philhealthId ?? this.philhealthId,
+      medicalId: medicalId ?? this.medicalId,
       fcmToken: fcmToken ?? this.fcmToken,
       isProfileComplete: isProfileComplete ?? this.isProfileComplete,
       gender: gender ?? this.gender,

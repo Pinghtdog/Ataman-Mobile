@@ -35,15 +35,20 @@ class _TelemedicineScreenState extends State<TelemedicineScreen> {
       backgroundColor: AppColors.background,
       body: Column(
         children: [
-          const AtamanSimpleHeader(
-            height: 115,
-            child: Align(
-              alignment: Alignment.bottomLeft,
-              child: Padding(
-                padding: EdgeInsets.only(bottom: 16),
+          AtamanHeader(
+            isSimple: true,
+            height: 120,
+            padding: const EdgeInsets.only(left: 24, right: 24, bottom: 16),
+            child: const SafeArea(
+              child: Align(
+                alignment: Alignment.bottomLeft,
                 child: Text(
                   "Tele-Ataman",
-                  style: TextStyle(color: Colors.white, fontSize: 24, fontWeight: FontWeight.bold),
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 24,
+                    fontWeight: FontWeight.bold,
+                  ),
                 ),
               ),
             ),

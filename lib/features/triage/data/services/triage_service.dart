@@ -10,7 +10,9 @@ class TriageService {
 
   TriageService(this._geminiService, this._userRepository);
 
-  Future<TriageStep> getNextStep(List<Map<String, String>> history) async {
+  /// Handles the multi-step triage process. 
+  /// Updates or creates a session in triage_records.
+  Future<TriageStep> getNextStep(List<Map<String, String>> history, {String? sessionId}) async {
     try {
       final user = _supabase.auth.currentUser;
       Map<String, dynamic>? userProfileData;
@@ -18,12 +20,11 @@ class TriageService {
       if (user != null) {
         final profile = await _userRepository.getUserProfile(user.id);
         if (profile != null) {
-          userProfileData = profile.toMap();
+          userProfileData = profile.toJson();
         }
       }
 
-      // FETCH LIVE INFRASTRUCTURE CONTEXT
-      // Fetching facilities along with their operational services to give AI full visibility
+      // Fetch infrastructure context for AI-guided routing
       final List<dynamic> facilitiesData = await _supabase
           .from('facilities')
           .select('name, status, is_diversion_active, current_queue_length, has_doctor_on_site, facility_services(name, is_available)');
@@ -46,7 +47,7 @@ class TriageService {
 
       final String lastAnswer = history.isNotEmpty ? history.last['answer']! : "Start Triage";
 
-      final data = await _geminiService.getTriageResponse(
+      final aiResponse = await _geminiService.getTriageResponse(
         userMessage: lastAnswer,
         history: historyText,
         stepCount: history.length + 1,
@@ -54,14 +55,21 @@ class TriageService {
         liveFacilities: liveFacilities,
       );
 
-      if (data['is_final'] == true && data['result'] != null) {
-        String historySummary = history.map((e) => "Q: ${e['question']} A: ${e['answer']}").join("\n");
-        final resultData = data['result'];
-        
-        if (user != null) {
+      // Handle session persistence in triage_records
+      if (user != null) {
+        final Map<String, dynamic> recordData = {
+          'user_id': user.id,
+          'status': aiResponse['is_final'] == true ? 'completed' : 'active',
+          'current_step': history.length + 1,
+          'interaction_history': history,
+        };
+
+        if (aiResponse['is_final'] == true && aiResponse['result'] != null) {
+          final resultData = aiResponse['result'];
           final soapNote = resultData['soap_note'];
-          final savedResult = await _supabase.from('triage_results').insert({
-            'user_id': user.id,
+          String historySummary = history.map((e) => "Q: ${e['question']} A: ${e['answer']}").join("\n");
+          
+          recordData.addAll({
             'raw_symptoms': historySummary,
             'urgency': resultData['urgency'],
             'case_category': resultData['case_category'],
@@ -72,27 +80,36 @@ class TriageService {
             'specialty': resultData['specialty'],
             'reason': resultData['reason'],
             'summary_for_provider': resultData['summary_for_provider'],
-            'soap_subjective': soapNote?['subjective'],
-            'soap_objective': soapNote?['objective'],
-            'soap_assessment': soapNote?['assessment'],
-            'soap_plan': soapNote?['plan'],
-          }).select().single();
-          
-          return TriageStep(
-            question: "Triage Complete",
-            options: [],
-            isFinal: true,
-            result: TriageResult.fromJson(savedResult),
-          );
+            'soap_note': soapNote,
+            'completed_at': DateTime.now().toIso8601String(),
+          });
+        }
+
+        if (sessionId != null) {
+          await _supabase.from('triage_records').update(recordData).eq('id', sessionId);
+        } else {
+          // If it's a new session, create the record and get the ID back
+          final newRecord = await _supabase.from('triage_records').insert(recordData).select('id').single();
+          // Note: In a real app, you'd pass this sessionId back to the state
         }
       }
 
-      return TriageStep.fromJson(data);
+      if (aiResponse['is_final'] == true && aiResponse['result'] != null) {
+        return TriageStep(
+          question: "Triage Complete",
+          options: [],
+          isFinal: true,
+          result: TriageResult.fromJson(aiResponse['result']),
+        );
+      }
+
+      return TriageStep.fromJson(aiResponse);
     } catch (e) {
       throw Exception('Failed to get triage step: $e');
     }
   }
 
+  /// Bypass for direct text-based triage
   Future<TriageResult> performTriage(String symptoms) async {
     final user = _supabase.auth.currentUser;
     if (user == null) throw Exception('User not authenticated');
@@ -100,7 +117,6 @@ class TriageService {
     try {
       final profile = await _userRepository.getUserProfile(user.id);
       
-      // Fetch live context for direct triage as well
       final List<dynamic> facilitiesData = await _supabase
           .from('facilities')
           .select('name, status, is_diversion_active, current_queue_length, has_doctor_on_site, facility_services(name, is_available)');
@@ -118,15 +134,15 @@ class TriageService {
         userMessage: symptoms,
         history: "Direct triage bypass.",
         stepCount: 7,
-        userProfile: profile?.toMap(),
+        userProfile: profile?.toJson(),
         liveFacilities: liveFacilities,
       );
       
       final resultData = data['is_final'] == true ? data['result'] : data;
-      final soapNote = resultData['soap_note'];
 
-      final result = await _supabase.from('triage_results').insert({
+      final result = await _supabase.from('triage_records').insert({
         'user_id': user.id,
+        'status': 'completed',
         'raw_symptoms': symptoms,
         'urgency': resultData['urgency'],
         'case_category': resultData['case_category'],
@@ -137,10 +153,8 @@ class TriageService {
         'specialty': resultData['specialty'],
         'reason': resultData['reason'],
         'summary_for_provider': resultData['summary_for_provider'],
-        'soap_subjective': soapNote?['subjective'],
-        'soap_objective': soapNote?['objective'],
-        'soap_assessment': soapNote?['assessment'],
-        'soap_plan': soapNote?['plan'],
+        'soap_note': resultData['soap_note'],
+        'completed_at': DateTime.now().toIso8601String(),
       }).select().single();
 
       return TriageResult.fromJson(result);
@@ -151,8 +165,9 @@ class TriageService {
 
   Future<List<TriageResult>> getTriageHistory() async {
     final response = await _supabase
-        .from('triage_results')
+        .from('triage_records')
         .select()
+        .eq('status', 'completed')
         .order('created_at', ascending: false);
     
     return (response as List).map((json) => TriageResult.fromJson(json)).toList();

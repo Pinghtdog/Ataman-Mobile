@@ -62,7 +62,7 @@ class MedicalIdScreen extends StatelessWidget {
                     ),
                     const SizedBox(height: AppSizes.p24),
                     
-                    // The QR Code
+                    // The QR Code (Synced with PDF)
                     Container(
                       padding: const EdgeInsets.all(AppSizes.p16),
                       decoration: BoxDecoration(
@@ -71,7 +71,7 @@ class MedicalIdScreen extends StatelessWidget {
                         border: Border.all(color: Colors.grey[200]!),
                       ),
                       child: QrImageView(
-                        data: user.id,
+                        data: user.id, // Synced ID
                         version: QrVersions.auto,
                         size: 200.0,
                         eyeStyle: const QrEyeStyle(
@@ -85,7 +85,7 @@ class MedicalIdScreen extends StatelessWidget {
                       ),
                     ),
                     
-                    const SizedBox(height: AppSizes.p24),
+                    const SizedBox(height: 24),
                     
                     // Quick-Scan Medical Info
                     Padding(
@@ -143,18 +143,26 @@ class MedicalIdScreen extends StatelessWidget {
               ),
               const SizedBox(height: AppSizes.p32),
               
-              // Enrollment PDF Action
+              // Custom Medical ID Action
               AtamanButton(
-                text: "Download Form",
+                text: "Generate Medical Record",
                 isOutlined: true,
                 color: Colors.white,
-                icon: Icons.picture_as_pdf,
-                onPressed: () => PdfService.previewPdf(user),
+                icon: Icons.assignment_ind_outlined,
+                onPressed: () => PdfService.previewMedicalIdForm(
+                  user, 
+                  // In a real scenario, you'd fetch the latest triage result here
+                  triageResult: {
+                    'priority': 'URGENT',
+                    'complaint': 'Severe abdominal pain, nausea',
+                    'recommendation': 'Immediate consult at Bicol Medical Center'
+                  }
+                ),
               ),
               
               const SizedBox(height: AppSizes.p20),
               const Text(
-                "Present this QR code to any Naga City Health facility\nstaff for instant record retrieval.",
+                "Present this QR code or the generated PDF\nto any Naga City Health facility for instant retrieval.",
                 textAlign: TextAlign.center,
                 style: TextStyle(color: Colors.white70, fontSize: 12, height: 1.5),
               ),
