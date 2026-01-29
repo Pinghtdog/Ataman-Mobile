@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:zego_express_engine/zego_express_engine.dart';
 import 'dart:async';
+import 'package:permission_handler/permission_handler.dart';
 import '../widgets/post_call_summary_sheet.dart';
 
 class VideoCallScreen extends StatefulWidget {
@@ -32,6 +33,8 @@ class _VideoCallScreenState extends State<VideoCallScreen> {
 
   // These must match your ZegoCloud console keys
   final int appID = 1673152262;
+  // NOTE: If this is 32 characters, it might be the Server Secret. 
+  // Native SDKs usually require the 64-character AppSign.
   final String appSign = "a19851b6acec66db9bff65413ffc2c2c";
 
   @override
@@ -42,31 +45,51 @@ class _VideoCallScreenState extends State<VideoCallScreen> {
   }
 
   Future<void> _initZego() async {
-    // Create ZegoExpressEngine
-    await ZegoExpressEngine.createEngineWithProfile(ZegoEngineProfile(
-      appID,
-      ZegoScenario.StandardVideoCall,
-      appSign: appSign,
-    ));
+    // 1. Request permissions first
+    Map<Permission, PermissionStatus> statuses = await [
+      Permission.camera,
+      Permission.microphone,
+    ].request();
 
-    // Listen for remote stream events
-    ZegoExpressEngine.onRoomStreamUpdate = (roomID, updateType, streamList, extendedData) {
-      if (updateType == ZegoUpdateType.Add) {
-        _startListeningToRemoteStream(streamList.first.streamID);
+    if (statuses[Permission.camera] != PermissionStatus.granted ||
+        statuses[Permission.microphone] != PermissionStatus.granted) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text("Camera and Microphone permissions are required")),
+        );
+        Navigator.pop(context);
       }
-    };
+      return;
+    }
+
+    // 2. Create ZegoExpressEngine
+    try {
+      await ZegoExpressEngine.createEngineWithProfile(ZegoEngineProfile(
+        appID,
+        ZegoScenario.Default,
+        appSign: appSign,
+      ));
+      
+      debugPrint("Zego Engine Created Successfully");
+
+      // Listen for remote stream events
+      ZegoExpressEngine.onRoomStreamUpdate = (roomID, updateType, streamList, extendedData) {
+        if (updateType == ZegoUpdateType.Add) {
+          _startListeningToRemoteStream(streamList.first.streamID);
+        }
+      };
+    } catch (e) {
+      debugPrint("Failed to create Zego Engine: $e");
+    }
   }
 
   void _waitForRoomID() {
-    // We check the video_calls table for the offer/room setup
     _callSubscription = _supabase
         .from('video_calls')
         .stream(primaryKey: ['id'])
         .eq('id', widget.callId)
         .listen((data) async {
       if (data.isNotEmpty) {
-        final call = data.first;
-        // In this implementation, the callId itself serves as the roomID
         if (_roomID == null) {
           setState(() {
             _roomID = widget.callId;
@@ -144,7 +167,7 @@ class _VideoCallScreenState extends State<VideoCallScreen> {
       backgroundColor: Colors.black,
       body: Stack(
         children: [
-          // Remote Video (Full Screen)
+          // Remote Video
           _remoteView ?? const Center(
             child: Text("Waiting for doctor...", style: TextStyle(color: Colors.white)),
           ),
