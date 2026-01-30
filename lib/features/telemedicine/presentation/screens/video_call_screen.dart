@@ -35,7 +35,6 @@ class _VideoCallScreenState extends State<VideoCallScreen> {
 
   // CREDENTIALS FOR TOKEN MODE
   final int appID = 1673152262; 
-  // In Token Mode, appSign MUST be an empty string for mobile.
   final String appSign = "";
   final String tempToken = "e797bb341fb0d52fbf25a00bbbc834e53e00679a6626f9a16f08534347b95812";
 
@@ -70,7 +69,6 @@ class _VideoCallScreenState extends State<VideoCallScreen> {
     }
 
     try {
-      // Create engine with empty appSign for Token Mode
       await ZegoExpressEngine.createEngineWithProfile(ZegoEngineProfile(
         appID,
         ZegoScenario.Default,
@@ -78,7 +76,7 @@ class _VideoCallScreenState extends State<VideoCallScreen> {
       ));
       
       setState(() => _isEngineCreated = true);
-      debugPrint("Zego Engine Created Successfully (Token Mode)");
+      debugPrint("Zego Engine Created Successfully");
 
       ZegoExpressEngine.onRoomStreamUpdate = (roomID, updateType, streamList, extendedData) {
         if (updateType == ZegoUpdateType.Add) {
@@ -91,21 +89,36 @@ class _VideoCallScreenState extends State<VideoCallScreen> {
   }
 
   void _waitForRoomID() {
+    // Changed 'video_calls' to 'telemed_sessions' to match repository
     _callSubscription = _supabase
-        .from('video_calls')
+        .from('telemed_sessions')
         .stream(primaryKey: ['id'])
         .eq('id', widget.callId)
-        .listen((data) async {
-      if (data.isNotEmpty) {
-        if (_roomID == null) {
-          setState(() {
-            _roomID = widget.callId;
-            _isLoading = false;
-          });
-          _joinRoom();
+        .listen(
+      (data) async {
+        if (data.isNotEmpty) {
+          if (_roomID == null) {
+            setState(() {
+              _roomID = widget.callId;
+              _isLoading = false;
+            });
+            _joinRoom();
+          }
         }
-      }
-    });
+      },
+      onError: (error) {
+        debugPrint("Supabase Realtime Timeout or Error: $error");
+        if (mounted) {
+          setState(() => _isLoading = false);
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text("Connection timed out. Please check your internet or Supabase Realtime settings."),
+              action: SnackBarAction(label: "Retry", onPressed: _waitForRoomID),
+            ),
+          );
+        }
+      },
+    );
   }
 
   Future<void> _joinRoom() async {
@@ -113,7 +126,6 @@ class _VideoCallScreenState extends State<VideoCallScreen> {
 
     String displayName = "User_${widget.userId.length > 4 ? widget.userId.substring(0, 4) : widget.userId}";
 
-    // Set Token in Room Config
     ZegoRoomConfig config = ZegoRoomConfig.defaultConfig();
     config.token = tempToken; 
 
@@ -157,7 +169,9 @@ class _VideoCallScreenState extends State<VideoCallScreen> {
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.white,
-      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
       builder: (context) => PostCallSummarySheet(callId: widget.callId),
     ).then((_) {
       if (mounted) Navigator.pop(context);
@@ -180,7 +194,7 @@ class _VideoCallScreenState extends State<VideoCallScreen> {
       body: Stack(
         children: [
           _remoteView ?? const Center(
-            child: Text("Connecting...", style: TextStyle(color: Colors.white)),
+            child: Text("Waiting for other participant...", style: TextStyle(color: Colors.white70)),
           ),
           Positioned(
             top: 50,
@@ -191,7 +205,7 @@ class _VideoCallScreenState extends State<VideoCallScreen> {
               borderRadius: BorderRadius.circular(12),
               child: Container(
                 color: Colors.grey[900],
-                child: _localView ?? const Center(child: CircularProgressIndicator(color: Colors.blue)),
+                child: _localView ?? const Center(child: CircularProgressIndicator(color: Colors.blue, strokeWidth: 2)),
               ),
             ),
           ),
@@ -213,7 +227,16 @@ class _VideoCallScreenState extends State<VideoCallScreen> {
           if (_isLoading)
             Container(
               color: Colors.black,
-              child: const Center(child: CircularProgressIndicator()),
+              child: const Center(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    CircularProgressIndicator(),
+                    SizedBox(height: 16),
+                    Text("Connecting to session...", style: TextStyle(color: Colors.white)),
+                  ],
+                ),
+              ),
             ),
         ],
       ),
