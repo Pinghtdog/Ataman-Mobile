@@ -77,6 +77,8 @@ class HomeScreen extends StatelessWidget {
                           ),
                         ),
                       ),
+                      const SizedBox(height: AppSizes.p24),
+
                       Positioned(
                         bottom: 0,
                         left: 0,
