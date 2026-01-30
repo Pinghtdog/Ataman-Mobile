@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:zego_express_engine/zego_express_engine.dart';
 import 'dart:async';
@@ -32,9 +33,11 @@ class _VideoCallScreenState extends State<VideoCallScreen> {
   Widget? _remoteView;
   int? _remoteViewID;
 
-  // IMPORTANT: Replace this 32-char Secret with the 64-char AppSign from Zego Console
-  final int appID = 1673152262;
-  final String appSign = "a19851b6acec66db9bff65413ffc2c2c";
+  // CREDENTIALS FOR TOKEN MODE
+  final int appID = 1673152262; 
+  // In Token Mode, appSign MUST be an empty string for mobile.
+  final String appSign = "";
+  final String tempToken = "e797bb341fb0d52fbf25a00bbbc834e53e00679a6626f9a16f08534347b95812";
 
   @override
   void initState() {
@@ -50,7 +53,6 @@ class _VideoCallScreenState extends State<VideoCallScreen> {
   }
 
   Future<void> _initZego() async {
-    // 1. Request permissions
     Map<Permission, PermissionStatus> statuses = await [
       Permission.camera,
       Permission.microphone,
@@ -67,16 +69,16 @@ class _VideoCallScreenState extends State<VideoCallScreen> {
       return;
     }
 
-    // 2. Create Engine
     try {
+      // Create engine with empty appSign for Token Mode
       await ZegoExpressEngine.createEngineWithProfile(ZegoEngineProfile(
         appID,
         ZegoScenario.Default,
-        appSign: appSign,
+        appSign: kIsWeb ? null : appSign, 
       ));
       
       setState(() => _isEngineCreated = true);
-      debugPrint("Zego Engine Created Successfully");
+      debugPrint("Zego Engine Created Successfully (Token Mode)");
 
       ZegoExpressEngine.onRoomStreamUpdate = (roomID, updateType, streamList, extendedData) {
         if (updateType == ZegoUpdateType.Add) {
@@ -85,11 +87,6 @@ class _VideoCallScreenState extends State<VideoCallScreen> {
       };
     } catch (e) {
       debugPrint("Failed to create Zego Engine: $e");
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text("Internal Error: Check Zego AppSign configuration")),
-        );
-      }
     }
   }
 
@@ -114,12 +111,16 @@ class _VideoCallScreenState extends State<VideoCallScreen> {
   Future<void> _joinRoom() async {
     if (_roomID == null || !_isEngineCreated) return;
 
-    // Safe username generation
-    String displayName = "Patient_${widget.userId.length > 4 ? widget.userId.substring(0, 4) : widget.userId}";
+    String displayName = "User_${widget.userId.length > 4 ? widget.userId.substring(0, 4) : widget.userId}";
+
+    // Set Token in Room Config
+    ZegoRoomConfig config = ZegoRoomConfig.defaultConfig();
+    config.token = tempToken; 
 
     await ZegoExpressEngine.instance.loginRoom(
       _roomID!,
       ZegoUser(widget.userId, displayName),
+      config: config,
     );
 
     final view = await ZegoExpressEngine.instance.createCanvasView((viewID) {
@@ -179,9 +180,8 @@ class _VideoCallScreenState extends State<VideoCallScreen> {
       body: Stack(
         children: [
           _remoteView ?? const Center(
-            child: Text("Waiting for doctor...", style: TextStyle(color: Colors.white)),
+            child: Text("Connecting...", style: TextStyle(color: Colors.white)),
           ),
-
           Positioned(
             top: 50,
             right: 20,
@@ -191,11 +191,10 @@ class _VideoCallScreenState extends State<VideoCallScreen> {
               borderRadius: BorderRadius.circular(12),
               child: Container(
                 color: Colors.grey[900],
-                child: _localView ?? const Center(child: CircularProgressIndicator(color: Color(0xFF1976D2))),
+                child: _localView ?? const Center(child: CircularProgressIndicator(color: Colors.blue)),
               ),
             ),
           ),
-
           Positioned(
             bottom: 40,
             left: 0,
@@ -211,11 +210,10 @@ class _VideoCallScreenState extends State<VideoCallScreen> {
               ],
             ),
           ),
-          
           if (_isLoading)
             Container(
               color: Colors.black,
-              child: const Center(child: CircularProgressIndicator(color: Color(0xFF1976D2))),
+              child: const Center(child: CircularProgressIndicator()),
             ),
         ],
       ),
