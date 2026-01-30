@@ -4,6 +4,8 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:zego_express_engine/zego_express_engine.dart';
 import 'dart:async';
 import 'package:permission_handler/permission_handler.dart';
+import 'package:flutter/services.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 import '../widgets/post_call_summary_sheet.dart';
 
 class VideoCallScreen extends StatefulWidget {
@@ -28,15 +30,15 @@ class _VideoCallScreenState extends State<VideoCallScreen> {
   String? _roomID;
   bool _isLoading = true;
   bool _isEngineCreated = false;
+  Map<String, dynamic>? _sessionData;
   
   Widget? _localView;
   Widget? _remoteView;
   int? _remoteViewID;
 
-  // CREDENTIALS FOR TOKEN MODE
-  final int appID = 1673152262; 
-  final String appSign = "";
-  final String tempToken = "e797bb341fb0d52fbf25a00bbbc834e53e00679a6626f9a16f08534347b95812";
+  // CREDENTIALS (Dynamic from .env)
+  final int appID = int.parse(dotenv.env['ZEGO_APP_ID'] ?? '0');
+  final String appSign = dotenv.env['ZEGO_APP_SIGN'] ?? '';
 
   @override
   void initState() {
@@ -47,11 +49,28 @@ class _VideoCallScreenState extends State<VideoCallScreen> {
   Future<void> _initializeAll() async {
     await _initZego();
     if (_isEngineCreated) {
-      _waitForRoomID();
+      setState(() {
+        _roomID = widget.callId;
+        _isLoading = false;
+      });
+      
+      _joinRoom();
+      _listenToSessionMetadata();
     }
   }
 
   Future<void> _initZego() async {
+    if (appID == 0 || appSign.isEmpty) {
+      debugPrint("Zego Credentials missing in .env");
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text("Video call service not configured")),
+        );
+        Navigator.pop(context);
+      }
+      return;
+    }
+
     Map<Permission, PermissionStatus> statuses = await [
       Permission.camera,
       Permission.microphone,
@@ -88,8 +107,7 @@ class _VideoCallScreenState extends State<VideoCallScreen> {
     }
   }
 
-  void _waitForRoomID() {
-    // Changed 'video_calls' to 'telemed_sessions' to match repository
+  void _listenToSessionMetadata() {
     _callSubscription = _supabase
         .from('telemed_sessions')
         .stream(primaryKey: ['id'])
@@ -97,26 +115,13 @@ class _VideoCallScreenState extends State<VideoCallScreen> {
         .listen(
       (data) async {
         if (data.isNotEmpty) {
-          if (_roomID == null) {
-            setState(() {
-              _roomID = widget.callId;
-              _isLoading = false;
-            });
-            _joinRoom();
-          }
+          setState(() {
+            _sessionData = data.first;
+          });
         }
       },
       onError: (error) {
-        debugPrint("Supabase Realtime Timeout or Error: $error");
-        if (mounted) {
-          setState(() => _isLoading = false);
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text("Connection timed out. Please check your internet or Supabase Realtime settings."),
-              action: SnackBarAction(label: "Retry", onPressed: _waitForRoomID),
-            ),
-          );
-        }
+        debugPrint("Supabase Metadata Stream Error: $error");
       },
     );
   }
@@ -127,8 +132,9 @@ class _VideoCallScreenState extends State<VideoCallScreen> {
     String displayName = "User_${widget.userId.length > 4 ? widget.userId.substring(0, 4) : widget.userId}";
 
     ZegoRoomConfig config = ZegoRoomConfig.defaultConfig();
-    config.token = tempToken; 
 
+    debugPrint("Joining Room: $_roomID");
+    
     await ZegoExpressEngine.instance.loginRoom(
       _roomID!,
       ZegoUser(widget.userId, displayName),
@@ -196,6 +202,67 @@ class _VideoCallScreenState extends State<VideoCallScreen> {
           _remoteView ?? const Center(
             child: Text("Waiting for other participant...", style: TextStyle(color: Colors.white70)),
           ),
+          
+          // Debug/Session Info Overlay
+          Positioned(
+            top: 50,
+            left: 20,
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              decoration: BoxDecoration(
+                color: Colors.black54,
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: Colors.white24),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Text(
+                    "Session Debug Info",
+                    style: TextStyle(color: Colors.white70, fontSize: 10, fontWeight: FontWeight.bold),
+                  ),
+                  const SizedBox(height: 4),
+                  Row(
+                    children: [
+                      Text(
+                        "Room ID: $_roomID",
+                        style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.bold),
+                      ),
+                      const SizedBox(width: 8),
+                      GestureDetector(
+                        onTap: () {
+                          if (_roomID != null) {
+                            Clipboard.setData(ClipboardData(text: _roomID!));
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(content: Text("Room ID copied"), duration: Duration(seconds: 1)),
+                            );
+                          }
+                        },
+                        child: const Icon(Icons.copy, color: Colors.blue, size: 14),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    "Session Key: ${widget.callId.substring(0, 8)}...",
+                    style: const TextStyle(color: Colors.white60, fontSize: 10),
+                  ),
+                  if (_sessionData != null) ...[
+                    const SizedBox(height: 2),
+                    Text(
+                      "DB Status: ${_sessionData!['status'] ?? 'unknown'}",
+                      style: TextStyle(
+                        color: _sessionData!['status'] == 'ongoing' ? Colors.green : Colors.orange,
+                        fontSize: 11,
+                      ),
+                    ),
+                  ],
+                ],
+              ),
+            ),
+          ),
+
           Positioned(
             top: 50,
             right: 20,
@@ -233,7 +300,7 @@ class _VideoCallScreenState extends State<VideoCallScreen> {
                   children: [
                     CircularProgressIndicator(),
                     SizedBox(height: 16),
-                    Text("Connecting to session...", style: TextStyle(color: Colors.white)),
+                    Text("Initialising Video...", style: TextStyle(color: Colors.white)),
                   ],
                 ),
               ),
