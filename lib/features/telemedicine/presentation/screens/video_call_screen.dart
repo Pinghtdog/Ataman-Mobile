@@ -35,8 +35,9 @@ class _VideoCallScreenState extends State<VideoCallScreen> {
   @override
   void initState() {
     super.initState();
-    _initializeSession();
-  }
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _initializeSession();
+    });  }
 
   Future<void> _initializeSession() async {
     // Verify credentials
@@ -139,39 +140,47 @@ class _VideoCallScreenState extends State<VideoCallScreen> {
   }
 
   @override
+  @override
   Widget build(BuildContext context) {
+    if (appID == 0 || appSign.isEmpty) {
+      return const Scaffold(
+        body: Center(child: CircularProgressIndicator()),
+      );
+    }
+
     return ZegoUIKitPrebuiltCall(
       appID: appID,
       appSign: appSign,
       userID: widget.userId,
       userName: widget.userName,
       callID: widget.callId,
+
+      // 1. Move the events parameter out of config and into the main constructor
+      events: ZegoUIKitPrebuiltCallEvents(
+        onCallEnd: (ZegoCallEndEvent event, VoidCallback defaultAction) {
+          // 2. Updated the callback signature to use ZegoCallEndEvent
+          _endCall();
+          // If you want the default behavior (navigation back), call defaultAction()
+          // defaultAction();
+        },
+      ),
+
       config: ZegoUIKitPrebuiltCallConfig.oneOnOneVideoCall()
-        ..onOnlySelfInRoom = (context) => _endCall()
-          ..onCallEnd = (List<String> callIDList, String userID) async {
-            await _endCall();
-          }
-          ..bottomMenuBarConfig = ZegoBottomMenuBarConfig(
-            maxShowCount: 5,
-            extendButtons: [
-              ElevatedButton(
-                onPressed: () => _endCall(),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.red,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                ),
-                child: const Text('End Call',
-                    style: TextStyle(color: Colors.white)),
-              ),
-            ],
-          )
-          ..topMenuBarConfig = ZegoTopMenuBarConfig(
-            title:
-                '${widget.isCaller ? "Patient" : "Doctor"} - Ataman Telemedicine',
-            isVisible: true,
-          ),
+        ..bottomMenuBarConfig = ZegoBottomMenuBarConfig(
+          buttons: [
+            ZegoMenuBarButtonName.toggleCameraButton,
+            ZegoMenuBarButtonName.toggleMicrophoneButton,
+            ZegoMenuBarButtonName.hangUpButton,
+            ZegoMenuBarButtonName.switchAudioOutputButton,
+            ZegoMenuBarButtonName.switchCameraButton,
+          ],
+        )
+        ..topMenuBarConfig = ZegoTopMenuBarConfig(
+          title: '${widget.isCaller ? "Patient" : "Doctor"} - Ataman Telemedicine',
+          isVisible: true,
+        )
+      // 3. Renamed confirmDialogInfo to hangUpConfirmDialogInfo
+        ..hangUpConfirmDialogInfo = null,
     );
   }
 }

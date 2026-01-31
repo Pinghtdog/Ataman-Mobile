@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:gotrue/src/types/user.dart';
 import 'package:permission_handler/permission_handler.dart';
 import '../../../../core/constants/constants.dart';
 import '../../../../core/widgets/widgets.dart';
@@ -317,7 +318,7 @@ class _ReproductiveHealthScreenState extends State<ReproductiveHealthScreen> {
               builder: (context) => VideoCallScreen(
                 callId: callId,
                 userId: authState.user!.id,
-                userName: authState.user!.fullName ?? 'Patient',
+                userName: authState.user!.userMetadata?['full_name'] ?? 'Patient',
                 isCaller: true,
               ),
             ),
@@ -333,3 +334,5 @@ class _ReproductiveHealthScreenState extends State<ReproductiveHealthScreen> {
     }
   }
 }
+
+

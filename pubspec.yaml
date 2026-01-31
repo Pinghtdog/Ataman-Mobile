@@ -39,8 +39,8 @@ dependencies:
   pdfx: ^2.4.0
 
   # ZegoCloud for Video Calls (UIKit Prebuilt)
-  zego_uikit_prebuilt_call: ^4.17.13
-  permission_handler: ^11.3.1
+  zego_uikit_prebuilt_call: ^4.22.2
+  permission_handler: ^12.0.1
 
   # Offline Storage
   hive: ^2.2.3
@@ -64,7 +64,6 @@ flutter:
   uses-material-design: true
   assets:
     - .env
-    - assets/images/
     - assets/icon/
     - assets/documents/
     - assets/

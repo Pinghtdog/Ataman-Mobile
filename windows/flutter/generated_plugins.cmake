@@ -12,6 +12,8 @@ list(APPEND FLUTTER_PLUGIN_LIST
   pdfx
   permission_handler_windows
   printing
+  screen_brightness_windows
+  share_plus
   url_launcher_windows
   zego_express_engine
   zego_zim

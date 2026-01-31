@@ -271,7 +271,7 @@ class _GeneralConsultScreenState extends State<GeneralConsultScreen> {
               builder: (context) => VideoCallScreen(
                 callId: callId,
                 userId: authState.user!.id,
-                userName: authState.user!.fullName ?? 'Patient',
+                userName: authState.user!.userMetadata?['full_name'] ?? 'Patient',
                 isCaller: true,
               ),
             ),
