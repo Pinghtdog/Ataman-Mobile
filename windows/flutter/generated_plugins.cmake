@@ -4,14 +4,17 @@
 
 list(APPEND FLUTTER_PLUGIN_LIST
   app_links
+  audioplayers_windows
   connectivity_plus
   firebase_core
+  flutter_volume_controller
   geolocator_windows
   pdfx
   permission_handler_windows
   printing
   url_launcher_windows
   zego_express_engine
+  zego_zim
 )
 
 list(APPEND FLUTTER_FFI_PLUGIN_LIST

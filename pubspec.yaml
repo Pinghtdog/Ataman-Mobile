@@ -1,6 +1,6 @@
 name: ataman
 description: "ATAMAN is a comprehensive healthcare module designed to upgrade the MyNaga App."
-publish_to: 'none'
+publish_to: "none"
 version: 1.0.0+1
 
 environment:
@@ -32,14 +32,14 @@ dependencies:
   dotted_border: ^2.1.0
   add_2_calendar: ^3.0.1
   shared_preferences: ^2.5.4
-  
+
   # PDF and Printing
   pdf: ^3.11.1
   printing: ^5.13.2
   pdfx: ^2.4.0
 
-  # ZegoCloud for Video Calls (Low-level Engine)
-  zego_express_engine: ^3.23.0
+  # ZegoCloud for Video Calls (UIKit Prebuilt)
+  zego_uikit_prebuilt_call: ^4.17.13
   permission_handler: ^11.3.1
 
   # Offline Storage

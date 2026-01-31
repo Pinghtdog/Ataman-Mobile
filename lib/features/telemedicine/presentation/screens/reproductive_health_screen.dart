@@ -12,7 +12,8 @@ class ReproductiveHealthScreen extends StatefulWidget {
   const ReproductiveHealthScreen({super.key});
 
   @override
-  State<ReproductiveHealthScreen> createState() => _ReproductiveHealthScreenState();
+  State<ReproductiveHealthScreen> createState() =>
+      _ReproductiveHealthScreenState();
 }
 
 class _ReproductiveHealthScreenState extends State<ReproductiveHealthScreen> {
@@ -40,13 +41,17 @@ class _ReproductiveHealthScreenState extends State<ReproductiveHealthScreen> {
             child: Row(
               children: [
                 IconButton(
-                  icon: const Icon(Icons.arrow_back_ios_new_rounded, color: Colors.white, size: 20),
+                  icon: const Icon(Icons.arrow_back_ios_new_rounded,
+                      color: Colors.white, size: 20),
                   onPressed: () => Navigator.pop(context),
                 ),
                 const SizedBox(width: 8),
                 const Text(
                   AppStrings.reproductiveHealth,
-                  style: TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold),
+                  style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 20,
+                      fontWeight: FontWeight.bold),
                 ),
               ],
             ),
@@ -65,13 +70,14 @@ class _ReproductiveHealthScreenState extends State<ReproductiveHealthScreen> {
                 if (state is TelemedicineDataLoaded) {
                   final services = state.services;
                   final doctors = state.doctors;
-                  
+
                   // Auto-select first service if none selected
                   if (_selectedServiceTitle == null && services.isNotEmpty) {
                     _selectedServiceTitle = services.first.title;
                   }
 
-                  final onlineDoctor = doctors.where((d) => d.isOnline).firstOrNull;
+                  final onlineDoctor =
+                      doctors.where((d) => d.isOnline).firstOrNull;
                   final doctorId = onlineDoctor?.id;
 
                   return ListView(
@@ -79,13 +85,15 @@ class _ReproductiveHealthScreenState extends State<ReproductiveHealthScreen> {
                     children: [
                       _buildConfidentialityBanner(),
                       const SizedBox(height: 32),
-                      Text(AppStrings.whatDoYouNeedHelpWith, style: AppTextStyles.h3.copyWith(color: AppColors.textPrimary, fontSize: 18)),
+                      Text(AppStrings.whatDoYouNeedHelpWith,
+                          style: AppTextStyles.h3.copyWith(
+                              color: AppColors.textPrimary, fontSize: 18)),
                       const SizedBox(height: 24),
-                      
                       GridView.builder(
                         shrinkWrap: true,
                         physics: const NeverScrollableScrollPhysics(),
-                        gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                        gridDelegate:
+                            const SliverGridDelegateWithFixedCrossAxisCount(
                           crossAxisCount: 2,
                           crossAxisSpacing: 16,
                           mainAxisSpacing: 16,
@@ -94,19 +102,21 @@ class _ReproductiveHealthScreenState extends State<ReproductiveHealthScreen> {
                         itemCount: services.length,
                         itemBuilder: (context, index) {
                           final service = services[index];
-                          final isSelected = _selectedServiceTitle == service.title;
-                          
+                          final isSelected =
+                              _selectedServiceTitle == service.title;
+
                           return _buildServiceCard(service, isSelected);
                         },
                       ),
-                      
                       const SizedBox(height: 32),
                       _buildConsultationModeSelector(),
                       const SizedBox(height: 32),
                       AtamanButton(
                         text: AppStrings.connectWithSpecialist,
                         isLoading: _isLoading,
-                        onPressed: doctorId == null ? null : () => _handleConnect(doctorId),
+                        onPressed: doctorId == null
+                            ? null
+                            : () => _handleConnect(doctorId),
                       ),
                       const SizedBox(height: 20),
                     ],
@@ -141,12 +151,15 @@ class _ReproductiveHealthScreenState extends State<ReproductiveHealthScreen> {
           children: [
             Container(
               padding: const EdgeInsets.all(8),
-              decoration: BoxDecoration(color: service.bgColor, shape: BoxShape.circle),
-              child: Icon(_getIconData(service.iconName), color: service.iconColor, size: 24),
+              decoration:
+                  BoxDecoration(color: service.bgColor, shape: BoxShape.circle),
+              child: Icon(_getIconData(service.iconName),
+                  color: service.iconColor, size: 24),
             ),
             Text(
               service.title,
-              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15, height: 1.2),
+              style: const TextStyle(
+                  fontWeight: FontWeight.bold, fontSize: 15, height: 1.2),
             ),
           ],
         ),
@@ -156,11 +169,16 @@ class _ReproductiveHealthScreenState extends State<ReproductiveHealthScreen> {
 
   IconData _getIconData(String name) {
     switch (name) {
-      case 'more_horiz': return Icons.more_horiz_rounded;
-      case 'add': return Icons.add_rounded;
-      case 'circle_outlined': return Icons.circle_outlined;
-      case 'drag_handle': return Icons.drag_handle_rounded;
-      default: return Icons.help_outline_rounded;
+      case 'more_horiz':
+        return Icons.more_horiz_rounded;
+      case 'add':
+        return Icons.add_rounded;
+      case 'circle_outlined':
+        return Icons.circle_outlined;
+      case 'drag_handle':
+        return Icons.drag_handle_rounded;
+      default:
+        return Icons.help_outline_rounded;
     }
   }
 
@@ -179,7 +197,8 @@ class _ReproductiveHealthScreenState extends State<ReproductiveHealthScreen> {
               color: Colors.white.withOpacity(0.1),
               shape: BoxShape.circle,
             ),
-            child: const Icon(Icons.lock_rounded, color: Colors.white, size: 24),
+            child:
+                const Icon(Icons.lock_rounded, color: Colors.white, size: 24),
           ),
           const SizedBox(width: 16),
           const Expanded(
@@ -188,7 +207,10 @@ class _ReproductiveHealthScreenState extends State<ReproductiveHealthScreen> {
               children: [
                 Text(
                   AppStrings.confidentialAndSafe,
-                  style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold),
+                  style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold),
                 ),
                 SizedBox(height: 4),
                 Text(
@@ -215,7 +237,8 @@ class _ReproductiveHealthScreenState extends State<ReproductiveHealthScreen> {
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
           const Expanded(
-            child: Text(AppStrings.consultationMode, 
+            child: Text(
+              AppStrings.consultationMode,
               style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
               overflow: TextOverflow.ellipsis,
             ),
@@ -223,12 +246,16 @@ class _ReproductiveHealthScreenState extends State<ReproductiveHealthScreen> {
           const SizedBox(width: 8),
           Container(
             padding: const EdgeInsets.all(4),
-            decoration: BoxDecoration(color: Colors.grey.shade100, borderRadius: BorderRadius.circular(30)),
+            decoration: BoxDecoration(
+                color: Colors.grey.shade100,
+                borderRadius: BorderRadius.circular(30)),
             child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                _buildModeToggle(AppStrings.video, _isVideoMode, () => setState(() => _isVideoMode = true)),
-                _buildModeToggle(AppStrings.audio, !_isVideoMode, () => setState(() => _isVideoMode = false)),
+                _buildModeToggle(AppStrings.video, _isVideoMode,
+                    () => setState(() => _isVideoMode = true)),
+                _buildModeToggle(AppStrings.audio, !_isVideoMode,
+                    () => setState(() => _isVideoMode = false)),
               ],
             ),
           ),
@@ -248,7 +275,10 @@ class _ReproductiveHealthScreenState extends State<ReproductiveHealthScreen> {
         ),
         child: Text(
           text,
-          style: TextStyle(color: active ? Colors.white : Colors.grey, fontWeight: FontWeight.bold, fontSize: 13),
+          style: TextStyle(
+              color: active ? Colors.white : Colors.grey,
+              fontWeight: FontWeight.bold,
+              fontSize: 13),
         ),
       ),
     );
@@ -256,14 +286,18 @@ class _ReproductiveHealthScreenState extends State<ReproductiveHealthScreen> {
 
   Future<void> _handleConnect(String doctorId) async {
     final status = await [Permission.camera, Permission.microphone].request();
-    if (_isVideoMode && (!status[Permission.camera]!.isGranted || !status[Permission.microphone]!.isGranted)) {
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Permissions required for call")));
+    if (_isVideoMode &&
+        (!status[Permission.camera]!.isGranted ||
+            !status[Permission.microphone]!.isGranted)) {
+      if (mounted)
+        ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text("Permissions required for call")));
       return;
     }
 
     setState(() => _isLoading = true);
     final authState = context.read<AuthCubit>().state;
-    
+
     if (authState is Authenticated) {
       try {
         final callId = await context.read<TelemedicineCubit>().initiateCall(
@@ -283,13 +317,16 @@ class _ReproductiveHealthScreenState extends State<ReproductiveHealthScreen> {
               builder: (context) => VideoCallScreen(
                 callId: callId,
                 userId: authState.user!.id,
+                userName: authState.user!.fullName ?? 'Patient',
                 isCaller: true,
               ),
             ),
           );
         }
       } catch (e) {
-        if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Failed to connect: $e")));
+        if (mounted)
+          ScaffoldMessenger.of(context)
+              .showSnackBar(SnackBar(content: Text("Failed to connect: $e")));
       } finally {
         if (mounted) setState(() => _isLoading = false);
       }

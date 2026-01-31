@@ -49,19 +49,19 @@ class AppRouter {
     switch (settings.name) {
       case AppRoutes.splash:
         return MaterialPageRoute(builder: (_) => const SplashScreen());
-      
+
       case AppRoutes.authSelection:
         return MaterialPageRoute(builder: (_) => const AuthSelectionScreen());
-      
+
       case AppRoutes.login:
         return MaterialPageRoute(builder: (_) => const LoginScreen());
-      
+
       case AppRoutes.register:
         return MaterialPageRoute(builder: (_) => const RegisterScreen());
-      
+
       case AppRoutes.verifyId:
         return MaterialPageRoute(builder: (_) => const IdVerificationScreen());
-      
+
       case AppRoutes.registerEmail:
         return MaterialPageRoute(builder: (_) => const RegisterEmailScreen());
 
@@ -69,8 +69,12 @@ class AppRouter {
         return MaterialPageRoute(
           builder: (_) => MultiBlocProvider(
             providers: [
-              BlocProvider(create: (context) => FacilityCubit(facilityRepository: getIt<FacilityRepository>())),
-              BlocProvider(create: (context) => PrescriptionCubit(prescriptionRepository: getIt<PrescriptionRepository>())),
+              BlocProvider(
+                  create: (context) => FacilityCubit(
+                      facilityRepository: getIt<FacilityRepository>())),
+              BlocProvider(
+                  create: (context) => PrescriptionCubit(
+                      prescriptionRepository: getIt<PrescriptionRepository>())),
             ],
             child: const AtamanBaseScreen(),
           ),
@@ -79,7 +83,8 @@ class AppRouter {
       case AppRoutes.triage:
         return MaterialPageRoute(
           builder: (_) => BlocProvider(
-            create: (context) => TriageCubit(triageRepository: getIt<ITriageRepository>()),
+            create: (context) =>
+                TriageCubit(triageRepository: getIt<ITriageRepository>()),
             child: const TriageInputScreen(),
           ),
         );
@@ -88,7 +93,8 @@ class AppRouter {
         final result = settings.arguments as dynamic; // TriageResult
         return MaterialPageRoute(
           builder: (_) => BlocProvider(
-            create: (context) => TriageCubit(triageRepository: getIt<ITriageRepository>()),
+            create: (context) =>
+                TriageCubit(triageRepository: getIt<ITriageRepository>()),
             child: TriageResultScreen(result: result),
           ),
         );
@@ -96,7 +102,8 @@ class AppRouter {
       case AppRoutes.emergency:
         return MaterialPageRoute(
           builder: (_) => BlocProvider(
-            create: (context) => EmergencyCubit(emergencyRepository: getIt<EmergencyRepository>()),
+            create: (context) => EmergencyCubit(
+                emergencyRepository: getIt<EmergencyRepository>()),
             child: const EmergencyRequestScreen(),
           ),
         );
@@ -107,13 +114,15 @@ class AppRouter {
           builder: (_) => VideoCallScreen(
             callId: args['callId'],
             userId: args['userId'],
+            userName: args['userName'] ?? 'User',
             isCaller: args['isCaller'],
           ),
         );
 
       case AppRoutes.patientEnrollment:
         final user = settings.arguments as dynamic; // UserModel
-        return MaterialPageRoute(builder: (_) => PatientEnrollmentScreen(user: user));
+        return MaterialPageRoute(
+            builder: (_) => PatientEnrollmentScreen(user: user));
 
       case AppRoutes.bookingDetails:
         final args = settings.arguments as Map<String, dynamic>;
@@ -126,60 +135,66 @@ class AppRouter {
 
       case AppRoutes.hospitalAvailability:
         final medicineName = settings.arguments as String;
-        return MaterialPageRoute(builder: (_) => HospitalAvailabilityScreen(medicineName: medicineName));
+        return MaterialPageRoute(
+            builder: (_) =>
+                HospitalAvailabilityScreen(medicineName: medicineName));
 
       case AppRoutes.vaccinationConfirmation:
         final args = settings.arguments as Map<String, dynamic>;
-        return MaterialPageRoute(builder: (_) => VaccinationConfirmationScreen(bookingData: args));
+        return MaterialPageRoute(
+            builder: (_) => VaccinationConfirmationScreen(bookingData: args));
 
       case AppRoutes.myAppointments:
         return MaterialPageRoute(builder: (_) => const MyAppointmentsScreen());
-      
+
       case AppRoutes.vaccination:
         return MaterialPageRoute(builder: (_) => const VaccinationScreen());
-      
+
       case AppRoutes.bookVaccination:
         return MaterialPageRoute(builder: (_) => const BookVaccinationScreen());
-      
+
       case AppRoutes.vaccinationRecord:
-        return MaterialPageRoute(builder: (_) => const VaccinationRecordScreen());
-      
+        return MaterialPageRoute(
+            builder: (_) => const VaccinationRecordScreen());
+
       case AppRoutes.telemedicine:
         return MaterialPageRoute(builder: (_) => const TelemedicineScreen());
-      
+
       case AppRoutes.reproductiveHealth:
-        return MaterialPageRoute(builder: (_) => const ReproductiveHealthScreen());
-      
+        return MaterialPageRoute(
+            builder: (_) => const ReproductiveHealthScreen());
+
       case AppRoutes.generalConsult:
         return MaterialPageRoute(builder: (_) => const GeneralConsultScreen());
-      
+
       case AppRoutes.familyMembers:
         return MaterialPageRoute(builder: (_) => const FamilyMembersScreen());
-      
+
       case AppRoutes.medicalHistory:
         return MaterialPageRoute(builder: (_) => const MedicalHistoryScreen());
 
       case AppRoutes.referrals:
         return MaterialPageRoute(builder: (_) => const ReferralsScreen());
-      
+
       case AppRoutes.settings:
         return MaterialPageRoute(builder: (_) => const SettingsScreen());
-      
+
       case AppRoutes.changePassword:
         return MaterialPageRoute(builder: (_) => const ChangePasswordScreen());
-      
+
       case AppRoutes.notificationSettings:
-        return MaterialPageRoute(builder: (_) => const NotificationsSettingsScreen());
-      
+        return MaterialPageRoute(
+            builder: (_) => const NotificationsSettingsScreen());
+
       case AppRoutes.language:
         return MaterialPageRoute(builder: (_) => const LanguageScreen());
-      
+
       case AppRoutes.notifications:
         return MaterialPageRoute(builder: (_) => const NotificationsScreen());
-      
+
       case AppRoutes.medicineAccess:
         return MaterialPageRoute(builder: (_) => const MedicineAccessScreen());
-      
+
       case AppRoutes.healthAlerts:
         return MaterialPageRoute(builder: (_) => const HealthAlertsScreen());
 

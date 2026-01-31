@@ -61,7 +61,7 @@ import 'injector.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  
+
   final bool isInitialized = await ServiceInitializer.initialize();
 
   runApp(AtamanApp(isInitialized: isInitialized));
@@ -86,7 +86,8 @@ class AtamanApp extends StatelessWidget {
           ),
         ),
         BlocProvider<ProfileCubit>(
-          create: (context) => ProfileCubit(userRepository: getIt<IUserRepository>()),
+          create: (context) =>
+              ProfileCubit(userRepository: getIt<IUserRepository>()),
         ),
         BlocProvider<BookingCubit>(
           create: (context) => BookingCubit(
@@ -95,10 +96,13 @@ class AtamanApp extends StatelessWidget {
           ),
         ),
         BlocProvider<NotificationCubit>(
-          create: (context) => NotificationCubit(repository: getIt<NotificationRepository>())..loadNotifications(),
+          create: (context) =>
+              NotificationCubit(repository: getIt<NotificationRepository>())
+                ..loadNotifications(),
         ),
         BlocProvider<TelemedicineCubit>(
-          create: (context) => TelemedicineCubit(getIt<ITelemedicineRepository>()),
+          create: (context) =>
+              TelemedicineCubit(getIt<ITelemedicineRepository>()),
         ),
       ],
       child: MaterialApp(
@@ -118,7 +122,8 @@ class AtamanApp extends StatelessWidget {
         final result = settings.arguments as TriageResult;
         return MaterialPageRoute(
           builder: (context) => BlocProvider(
-            create: (context) => TriageCubit(triageRepository: getIt<ITriageRepository>()),
+            create: (context) =>
+                TriageCubit(triageRepository: getIt<ITriageRepository>()),
             child: TriageResultScreen(result: result),
           ),
         );
@@ -126,8 +131,12 @@ class AtamanApp extends StatelessWidget {
         return MaterialPageRoute(
           builder: (context) => MultiBlocProvider(
             providers: [
-              BlocProvider(create: (context) => FacilityCubit(facilityRepository: getIt<FacilityRepository>())),
-              BlocProvider(create: (context) => PrescriptionCubit(prescriptionRepository: getIt<PrescriptionRepository>())),
+              BlocProvider(
+                  create: (context) => FacilityCubit(
+                      facilityRepository: getIt<FacilityRepository>())),
+              BlocProvider(
+                  create: (context) => PrescriptionCubit(
+                      prescriptionRepository: getIt<PrescriptionRepository>())),
             ],
             child: const AtamanBaseScreen(),
           ),
@@ -138,6 +147,7 @@ class AtamanApp extends StatelessWidget {
           builder: (context) => VideoCallScreen(
             callId: args['callId'],
             userId: args['userId'],
+            userName: args['userName'] ?? 'User',
             isCaller: args['isCaller'],
           ),
         );
@@ -157,12 +167,14 @@ class AtamanApp extends StatelessWidget {
       case AppRoutes.hospitalAvailability:
         final medicineName = settings.arguments as String;
         return MaterialPageRoute(
-          builder: (context) => HospitalAvailabilityScreen(medicineName: medicineName),
+          builder: (context) =>
+              HospitalAvailabilityScreen(medicineName: medicineName),
         );
       case AppRoutes.vaccinationConfirmation:
         final args = settings.arguments as Map<String, dynamic>;
         return MaterialPageRoute(
-          builder: (context) => VaccinationConfirmationScreen(bookingData: args),
+          builder: (context) =>
+              VaccinationConfirmationScreen(bookingData: args),
         );
       default:
         return null;
@@ -170,37 +182,42 @@ class AtamanApp extends StatelessWidget {
   }
 
   Map<String, WidgetBuilder> get _appRoutes => {
-    AppRoutes.splash: (context) => const SplashScreen(),
-    AppRoutes.authSelection: (context) => const AuthSelectionScreen(),
-    AppRoutes.login: (context) => const LoginScreen(),
-    AppRoutes.register: (context) => const RegisterScreen(),
-    AppRoutes.verifyId: (context) => const IdVerificationScreen(),
-    AppRoutes.registerEmail: (context) => const RegisterEmailScreen(),
-    AppRoutes.notifications: (context) => const NotificationsScreen(),
-    AppRoutes.triage: (context) => BlocProvider(
-      create: (context) => TriageCubit(triageRepository: getIt<ITriageRepository>()),
-      child: const TriageInputScreen(),
-    ),
-    AppRoutes.emergency: (context) => BlocProvider(
-      create: (context) => EmergencyCubit(emergencyRepository: getIt<EmergencyRepository>()),
-      child: const EmergencyRequestScreen(),
-    ),
-    AppRoutes.myAppointments: (context) => const MyAppointmentsScreen(),
-    AppRoutes.vaccination: (context) => const VaccinationScreen(),
-    AppRoutes.bookVaccination: (context) => const BookVaccinationScreen(),
-    AppRoutes.vaccinationRecord: (context) => const VaccinationRecordScreen(),
-    AppRoutes.telemedicine: (context) => const TelemedicineScreen(),
-    AppRoutes.reproductiveHealth: (context) => const ReproductiveHealthScreen(),
-    AppRoutes.generalConsult: (context) => const GeneralConsultScreen(),
-    AppRoutes.familyMembers: (context) => const FamilyMembersScreen(),
-    AppRoutes.medicalHistory: (context) => const MedicalHistoryScreen(),
-    AppRoutes.settings: (context) => const SettingsScreen(),
-    AppRoutes.changePassword: (context) => const ChangePasswordScreen(),
-    AppRoutes.notificationSettings: (context) => const NotificationsSettingsScreen(),
-    AppRoutes.language: (context) => const LanguageScreen(),
-    AppRoutes.medicineAccess: (context) => const MedicineAccessScreen(),
-    AppRoutes.healthAlerts: (context) => const HealthAlertsScreen(),
-  };
+        AppRoutes.splash: (context) => const SplashScreen(),
+        AppRoutes.authSelection: (context) => const AuthSelectionScreen(),
+        AppRoutes.login: (context) => const LoginScreen(),
+        AppRoutes.register: (context) => const RegisterScreen(),
+        AppRoutes.verifyId: (context) => const IdVerificationScreen(),
+        AppRoutes.registerEmail: (context) => const RegisterEmailScreen(),
+        AppRoutes.notifications: (context) => const NotificationsScreen(),
+        AppRoutes.triage: (context) => BlocProvider(
+              create: (context) =>
+                  TriageCubit(triageRepository: getIt<ITriageRepository>()),
+              child: const TriageInputScreen(),
+            ),
+        AppRoutes.emergency: (context) => BlocProvider(
+              create: (context) => EmergencyCubit(
+                  emergencyRepository: getIt<EmergencyRepository>()),
+              child: const EmergencyRequestScreen(),
+            ),
+        AppRoutes.myAppointments: (context) => const MyAppointmentsScreen(),
+        AppRoutes.vaccination: (context) => const VaccinationScreen(),
+        AppRoutes.bookVaccination: (context) => const BookVaccinationScreen(),
+        AppRoutes.vaccinationRecord: (context) =>
+            const VaccinationRecordScreen(),
+        AppRoutes.telemedicine: (context) => const TelemedicineScreen(),
+        AppRoutes.reproductiveHealth: (context) =>
+            const ReproductiveHealthScreen(),
+        AppRoutes.generalConsult: (context) => const GeneralConsultScreen(),
+        AppRoutes.familyMembers: (context) => const FamilyMembersScreen(),
+        AppRoutes.medicalHistory: (context) => const MedicalHistoryScreen(),
+        AppRoutes.settings: (context) => const SettingsScreen(),
+        AppRoutes.changePassword: (context) => const ChangePasswordScreen(),
+        AppRoutes.notificationSettings: (context) =>
+            const NotificationsSettingsScreen(),
+        AppRoutes.language: (context) => const LanguageScreen(),
+        AppRoutes.medicineAccess: (context) => const MedicineAccessScreen(),
+        AppRoutes.healthAlerts: (context) => const HealthAlertsScreen(),
+      };
 }
 
 class _ErrorApp extends StatelessWidget {
@@ -216,7 +233,8 @@ class _ErrorApp extends StatelessWidget {
             child: Text(
               "Configuration Error\nPlease ensure all environment variables are set correctly in your .env file.",
               textAlign: TextAlign.center,
-              style: TextStyle(color: Colors.red, fontSize: 16, fontWeight: FontWeight.bold),
+              style: TextStyle(
+                  color: Colors.red, fontSize: 16, fontWeight: FontWeight.bold),
             ),
           ),
         ),
