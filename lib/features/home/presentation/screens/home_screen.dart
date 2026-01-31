@@ -10,6 +10,17 @@ import '../widgets/smart_triage_card.dart';
 class HomeScreen extends StatelessWidget {
   const HomeScreen({super.key});
 
+  String _getGreeting() {
+    final hour = DateTime.now().hour;
+    if (hour < 12) {
+      return "Maogmang Aga"; // Good Morning
+    } else if (hour < 18) {
+      return "Maogmang Hapon"; // Good Afternoon
+    } else {
+      return "Maogmang Banggi"; // Good Evening
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return BlocBuilder<AuthCubit, AuthState>(
@@ -26,11 +37,11 @@ class HomeScreen extends StatelessWidget {
             child: Column(
               children: [
                 SizedBox(
-                  height: 340,
+                  height: 360, // Increased height to push card lower
                   child: Stack(
                     children: [
                       AtamanHeader(
-                        height: 240,
+                        height: 220, // Slightly reduced header height to show more background
                         child: SafeArea(
                           child: Row(
                             mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -39,7 +50,7 @@ class HomeScreen extends StatelessWidget {
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
                                   Text(
-                                    "Maogmang Aga,",
+                                    "${_getGreeting()},",
                                     style: AppTextStyles.bodySmall.copyWith(
                                       color: Colors.white70,
                                     ),
@@ -51,7 +62,6 @@ class HomeScreen extends StatelessWidget {
                                     ),
                                   ),
                                   const SizedBox(height: AppSizes.p24),
-
                                 ],
                               ),
                               Align(
@@ -80,7 +90,7 @@ class HomeScreen extends StatelessWidget {
                         ),
                       ),
                       Positioned(
-                        bottom: 0,
+                        bottom: 10, // Added 10px buffer from bottom
                         left: 0,
                         right: 0,
                         child: SmartTriageCard(

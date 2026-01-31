@@ -15,16 +15,38 @@ class TriageCubit extends Cubit<TriageState> {
   List<Map<String, String>> _history = [];
 
   Future<void> startTriage() async {
-    _history = [];
-    _fetchNextStep();
+    if (state is TriageLoading) return; // Prevent double-start
+    
+    emit(TriageLoading());
+    try {
+      _history = [];
+      // Initialize profile context ONCE at the start
+      await _triageRepository.initializeSession();
+      
+      await _fetchNextStep();
+    } catch (e) {
+      final String message = e is Failure ? e.message : e.toString();
+      emit(TriageError(message));
+    }
   }
 
   Future<void> selectOption(String question, String answer) async {
+    if (state is TriageLoading) return; // IGNORE CLICKS WHILE LOADING
+
     _history.add({'question': question, 'answer': answer});
-    _fetchNextStep();
+    await _fetchNextStep();
   }
 
-  Future<void> retryLastStep() async => _fetchNextStep();
+  Future<void> retryLastStep() async {
+    if (state is TriageLoading) return;
+    if (state is! TriageError) return;
+
+    if (_history.isEmpty) {
+      await startTriage();
+    } else {
+      await _fetchNextStep();
+    }
+  }
 
   Future<void> _fetchNextStep() async {
     emit(TriageLoading());
@@ -37,7 +59,6 @@ class TriageCubit extends Cubit<TriageState> {
         emit(TriageStepLoaded(step, history: List.from(_history)));
       }
     } catch (e) {
-      // Mapping raw errors to user-friendly messages via our Failures system
       final String message = e is Failure ? e.message : e.toString();
       emit(TriageError(message));
     }

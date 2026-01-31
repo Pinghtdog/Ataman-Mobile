@@ -31,7 +31,7 @@ Future<void> initInjector() async {
   getIt.registerLazySingleton<GeminiService>(() => GeminiService());
   getIt.registerLazySingleton<AuthService>(() => AuthService());
   getIt.registerLazySingleton<TriageService>(
-    () => TriageService(getIt<GeminiService>(), getIt<IUserRepository>()),
+    () => TriageService(getIt<GeminiService>()),
   );
 
   // Repositories - Interfaces

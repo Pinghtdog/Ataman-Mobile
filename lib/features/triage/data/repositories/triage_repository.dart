@@ -9,6 +9,11 @@ class TriageRepository extends BaseRepository implements ITriageRepository {
   TriageRepository(this._triageService);
 
   @override
+  Future<void> initializeSession() async {
+    await safeCall(() => _triageService.initializeSession());
+  }
+
+  @override
   Future<TriageStep> getNextStep(List<Map<String, String>> history) async {
     return await safeCall(() => _triageService.getNextStep(history));
   }
