@@ -50,6 +50,8 @@ class HomeScreen extends StatelessWidget {
                                       color: Colors.white,
                                     ),
                                   ),
+                                  const SizedBox(height: AppSizes.p24),
+
                                 ],
                               ),
                               Align(
@@ -77,8 +79,6 @@ class HomeScreen extends StatelessWidget {
                           ),
                         ),
                       ),
-                      const SizedBox(height: AppSizes.p24),
-
                       Positioned(
                         bottom: 0,
                         left: 0,

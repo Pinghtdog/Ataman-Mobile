@@ -33,6 +33,7 @@ dependencies:
   add_2_calendar: ^3.0.1
   shared_preferences: ^2.5.4
 
+
   # PDF and Printing
   pdf: ^3.11.1
   printing: ^5.13.2

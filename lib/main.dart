@@ -4,6 +4,7 @@ import 'package:ataman/features/vaccination/presentation/screens/vaccination_con
 import 'package:ataman/features/vaccination/presentation/screens/vaccination_record_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'core/constants/constants.dart';
 import 'core/services/service_initializer.dart';
 import 'features/auth/data/models/user_model.dart';
@@ -58,11 +59,14 @@ import 'features/triage/presentation/screens/triage_input_screen.dart';
 import 'features/triage/presentation/screens/triage_result_screen.dart';
 import 'features/vaccination/presentation/screens/vaccination_screen.dart';
 import 'injector.dart';
+import 'package:flutter_gemini/flutter_gemini.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
   final bool isInitialized = await ServiceInitializer.initialize();
+
+  Gemini.init(apiKey: dotenv.env['GEMINI_API_KEY'] ?? '');
 
   runApp(AtamanApp(isInitialized: isInitialized));
 }
@@ -73,6 +77,7 @@ class AtamanApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+
     if (!isInitialized) {
       return const _ErrorApp();
     }

@@ -113,24 +113,24 @@ class _PostCallSummarySheetState extends State<PostCallSummarySheet> {
       
       final doctorId = sessionResponse['doctor_id'];
 
-      // 2. Generate AI SOAP Note
-      final summary = await getIt<GeminiService>().summarizeConsultation(
-        transcriptOrNotes: _notesController.text,
-        patientProfile: {
-          'full_name': patientProfile.fullName,
-          'medical_id': patientProfile.id,
-        },
-      );
+      // // 2. Generate AI SOAP Note
+      // final summary = await getIt<GeminiService>().summarizeConsultation(
+      //   transcriptOrNotes: _notesController.text,
+      //   patientProfile: {
+      //     'full_name': patientProfile.fullName,
+      //     'medical_id': patientProfile.id,
+      //   },
+      // );
 
       // 3. Save to clinical_notes table
-      await _supabase.from('clinical_notes').insert({
-        'patient_id': patientProfile.id,
-        'doctor_id': doctorId,
-        'subjective_notes': summary['subjective'],
-        'objective_notes': summary['objective'],
-        'assessment': summary['assessment'],
-        'plan': summary['plan'],
-      });
+      // await _supabase.from('clinical_notes').insert({
+      //   'patient_id': patientProfile.id,
+      //   'doctor_id': doctorId,
+      //   'subjective_notes': summary['subjective'],
+      //   'objective_notes': summary['objective'],
+      //   'assessment': summary['assessment'],
+      //   'plan': summary['plan'],
+      // });
 
       // 4. Update session status to completed
       await _supabase.from('telemed_sessions').update({

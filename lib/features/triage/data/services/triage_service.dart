@@ -10,66 +10,44 @@ class TriageService {
 
   TriageService(this._geminiService, this._userRepository);
 
-  /// Handles the multi-step triage process. 
-  /// Updates or creates a session in triage_records.
-  Future<TriageStep> getNextStep(List<Map<String, String>> history, {String? sessionId}) async {
+  Future<TriageStep> getNextStep(List<Map<String, String>> history) async {
     try {
       final user = _supabase.auth.currentUser;
-      Map<String, dynamic>? userProfileData;
-      
+      String userContext = "";
+
       if (user != null) {
         final profile = await _userRepository.getUserProfile(user.id);
         if (profile != null) {
-          userProfileData = profile.toJson();
+          userContext = "USER CONTEXT: Patient is ${profile.fullName}. ";
+          if (profile.birthDate != null) {
+            userContext += "Age/BirthDate: ${profile.birthDate}. ";
+          }
+          userContext += "Adjust urgency thresholds based on this profile.\n\n";
         }
       }
 
-      // Fetch infrastructure context for AI-guided routing
-      final List<dynamic> facilitiesData = await _supabase
-          .from('facilities')
-          .select('name, status, is_diversion_active, current_queue_length, has_doctor_on_site, facility_services(name, is_available)');
-      
-      final List<Map<String, dynamic>> liveFacilities = facilitiesData.map((f) {
-        return {
-          'name': f['name'],
-          'status': f['status'],
-          'is_diversion_active': f['is_diversion_active'],
-          'queue': f['current_queue_length'],
-          'has_doctor': f['has_doctor_on_site'],
-          'services': f['facility_services'],
-        };
-      }).toList();
+      String prompt = "${GeminiService.triageSystemPrompt}\n\n$userContext"
+          "CONVERSATION HISTORY:\n";
 
-      String historyText = "";
-      for (var turn in history) {
-        historyText += "Q: ${turn['question']} | A: ${turn['answer']}\n";
+      if (history.isEmpty) {
+        prompt += "No history. Start with a broad question using BUTTONS to find the main issue.";
+      } else {
+        for (var turn in history) {
+          prompt += "Q: ${turn['question']} | A: ${turn['answer']}\n";
+        }
+        prompt += "\nProvide the next step (BUTTONS or TEXT) or the final result.";
       }
 
-      final String lastAnswer = history.isNotEmpty ? history.last['answer']! : "Start Triage";
+      final data = await _geminiService.getTriageResponse(prompt);
 
-      final aiResponse = await _geminiService.getTriageResponse(
-        userMessage: lastAnswer,
-        history: historyText,
-        stepCount: history.length + 1,
-        userProfile: userProfileData,
-        liveFacilities: liveFacilities,
-      );
+      if (data['is_final'] == true && data['result'] != null) {
+        String historySummary = history.map((e) => "Q: ${e['question']} A: ${e['answer']}").join("\n");
+        final resultData = data['result'];
 
-      // Handle session persistence in triage_records
-      if (user != null) {
-        final Map<String, dynamic> recordData = {
-          'user_id': user.id,
-          'status': aiResponse['is_final'] == true ? 'completed' : 'active',
-          'current_step': history.length + 1,
-          'interaction_history': history,
-        };
-
-        if (aiResponse['is_final'] == true && aiResponse['result'] != null) {
-          final resultData = aiResponse['result'];
+        if (user != null) {
           final soapNote = resultData['soap_note'];
-          String historySummary = history.map((e) => "Q: ${e['question']} A: ${e['answer']}").join("\n");
-          
-          recordData.addAll({
+          final savedResult = await _supabase.from('triage_results').insert({
+            'user_id': user.id,
             'raw_symptoms': historySummary,
             'urgency': resultData['urgency'],
             'case_category': resultData['case_category'],
@@ -80,69 +58,46 @@ class TriageService {
             'specialty': resultData['specialty'],
             'reason': resultData['reason'],
             'summary_for_provider': resultData['summary_for_provider'],
-            'soap_note': soapNote,
-            'completed_at': DateTime.now().toIso8601String(),
-          });
-        }
+            'soap_subjective': soapNote?['subjective'],
+            'soap_objective': soapNote?['objective'],
+            'soap_assessment': soapNote?['assessment'],
+            'soap_plan': soapNote?['plan'],
+          }).select().single();
 
-        if (sessionId != null) {
-          await _supabase.from('triage_records').update(recordData).eq('id', sessionId);
-        } else {
-          // If it's a new session, create the record and get the ID back
-          final newRecord = await _supabase.from('triage_records').insert(recordData).select('id').single();
-          // Note: In a real app, you'd pass this sessionId back to the state
+          return TriageStep(
+            question: "Triage Complete",
+            options: [],
+            isFinal: true,
+            result: TriageResult.fromJson(savedResult),
+          );
         }
       }
 
-      if (aiResponse['is_final'] == true && aiResponse['result'] != null) {
-        return TriageStep(
-          question: "Triage Complete",
-          options: [],
-          isFinal: true,
-          result: TriageResult.fromJson(aiResponse['result']),
-        );
-      }
-
-      return TriageStep.fromJson(aiResponse);
+      return TriageStep.fromJson(data);
     } catch (e) {
       throw Exception('Failed to get triage step: $e');
     }
   }
 
-  /// Bypass for direct text-based triage
   Future<TriageResult> performTriage(String symptoms) async {
     final user = _supabase.auth.currentUser;
     if (user == null) throw Exception('User not authenticated');
 
     try {
       final profile = await _userRepository.getUserProfile(user.id);
-      
-      final List<dynamic> facilitiesData = await _supabase
-          .from('facilities')
-          .select('name, status, is_diversion_active, current_queue_length, has_doctor_on_site, facility_services(name, is_available)');
-      
-      final List<Map<String, dynamic>> liveFacilities = facilitiesData.map((f) {
-        return {
-          'name': f['name'],
-          'status': f['status'],
-          'is_diversion_active': f['is_diversion_active'],
-          'services': f['facility_services'],
-        };
-      }).toList();
+      String userContext = profile != null
+          ? "USER CONTEXT: Patient profile data provided. Adjust urgency.\n\n"
+          : "";
 
-      final data = await _geminiService.getTriageResponse(
-        userMessage: symptoms,
-        history: "Direct triage bypass.",
-        stepCount: 7,
-        userProfile: profile?.toJson(),
-        liveFacilities: liveFacilities,
-      );
-      
+      final prompt = "${GeminiService.triageSystemPrompt}\n\n$userContext"
+          "User symptoms: $symptoms\n\nProvide the final result immediately.";
+      final data = await _geminiService.getTriageResponse(prompt);
+
       final resultData = data['is_final'] == true ? data['result'] : data;
+      final soapNote = resultData['soap_note'];
 
-      final result = await _supabase.from('triage_records').insert({
+      final result = await _supabase.from('triage_results').insert({
         'user_id': user.id,
-        'status': 'completed',
         'raw_symptoms': symptoms,
         'urgency': resultData['urgency'],
         'case_category': resultData['case_category'],
@@ -153,8 +108,10 @@ class TriageService {
         'specialty': resultData['specialty'],
         'reason': resultData['reason'],
         'summary_for_provider': resultData['summary_for_provider'],
-        'soap_note': resultData['soap_note'],
-        'completed_at': DateTime.now().toIso8601String(),
+        'soap_subjective': soapNote?['subjective'],
+        'soap_objective': soapNote?['objective'],
+        'soap_assessment': soapNote?['assessment'],
+        'soap_plan': soapNote?['plan'],
       }).select().single();
 
       return TriageResult.fromJson(result);
@@ -165,11 +122,10 @@ class TriageService {
 
   Future<List<TriageResult>> getTriageHistory() async {
     final response = await _supabase
-        .from('triage_records')
+        .from('triage_results')
         .select()
-        .eq('status', 'completed')
         .order('created_at', ascending: false);
-    
+
     return (response as List).map((json) => TriageResult.fromJson(json)).toList();
   }
 }
