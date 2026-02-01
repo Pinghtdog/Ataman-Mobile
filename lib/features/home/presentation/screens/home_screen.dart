@@ -37,60 +37,66 @@ class HomeScreen extends StatelessWidget {
             child: Column(
               children: [
                 SizedBox(
-                  height: 360, // Increased height to push card lower
+                  height: 360,
                   child: Stack(
                     children: [
                       AtamanHeader(
-                        height: 220, // Slightly reduced header height to show more background
+                        height: 220,
                         child: SafeArea(
-                          child: Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            children: [
-                              Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
+                          child: Align(
+                            alignment: Alignment.topCenter,
+                            child: Padding(
+                              padding: const EdgeInsets.only(top: 0.0),
+                              child: Row(
+                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
                                 children: [
-                                  Text(
-                                    "${_getGreeting()},",
-                                    style: AppTextStyles.bodySmall.copyWith(
-                                      color: Colors.white70,
+                                  Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      Text(
+                                        "${_getGreeting()},",
+                                        style: AppTextStyles.bodySmall.copyWith(
+                                          color: Colors.white70,
+                                        ),
+                                      ),
+                                      Text(
+                                        userName,
+                                        style: AppTextStyles.h2.copyWith(
+                                          color: Colors.white,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                  Align(
+                                    alignment: Alignment.topRight,
+                                    child: GestureDetector(
+                                      onTap: () {
+                                        Navigator.of(context, rootNavigator: true)
+                                            .pushNamed(AppRoutes.notifications);
+                                      },
+                                      child: Container(
+                                        padding: const EdgeInsets.all(AppSizes.p8),
+                                        decoration: BoxDecoration(
+                                          color: Colors.white.withAlpha(51),
+                                          shape: BoxShape.circle,
+                                        ),
+                                        child: const Icon(
+                                          Icons.notifications_none_rounded,
+                                          color: Colors.white,
+                                          size: AppSizes.iconMedium,
+                                        ),
+                                      ),
                                     ),
                                   ),
-                                  Text(
-                                    userName,
-                                    style: AppTextStyles.h2.copyWith(
-                                      color: Colors.white,
-                                    ),
-                                  ),
-                                  const SizedBox(height: AppSizes.p24),
                                 ],
                               ),
-                              Align(
-                                alignment: Alignment.topRight,
-                                child: GestureDetector(
-                                  onTap: () {
-                                    Navigator.of(context, rootNavigator: true)
-                                        .pushNamed(AppRoutes.notifications);
-                                  },
-                                  child: Container(
-                                    padding: const EdgeInsets.all(AppSizes.p8),
-                                    decoration: BoxDecoration(
-                                      color: Colors.white.withAlpha(51),
-                                      shape: BoxShape.circle,
-                                    ),
-                                    child: const Icon(
-                                      Icons.notifications_none_rounded,
-                                      color: Colors.white,
-                                      size: AppSizes.iconMedium,
-                                    ),
-                                  ),
-                                ),
-                              ),
-                            ],
+                            ),
                           ),
                         ),
                       ),
                       Positioned(
-                        bottom: 10, // Added 10px buffer from bottom
+                        bottom: 0,
                         left: 0,
                         right: 0,
                         child: SmartTriageCard(
@@ -107,7 +113,7 @@ class HomeScreen extends StatelessWidget {
                 const SizedBox(height: AppSizes.p24),
 
                 Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: AppSizes.p32),
+                  padding: const EdgeInsets.symmetric(horizontal: AppSizes.p24),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [

@@ -68,6 +68,13 @@ void main() async {
 
   Gemini.init(apiKey: dotenv.env['GEMINI_API_KEY'] ?? '');
 
+  Gemini.init(
+    apiKey: dotenv.env['GEMINI_API_KEY'] ?? '',
+    generationConfig: GenerationConfig(
+      temperature: 0.2, // Lower temp = faster, more determined answers
+      maxOutputTokens: 250, // Force short answers
+    ),
+  );
   runApp(AtamanApp(isInitialized: isInitialized));
 }
 
