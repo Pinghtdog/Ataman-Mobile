@@ -224,6 +224,14 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                 child: Column(
                                   children: [
                                     ProfileListTile(
+                                      title: "Active Referrals",
+                                      icon: Icons.assignment_turned_in_rounded,
+                                      onTap: () {
+                                        Navigator.pushNamed(context, AppRoutes.referrals);
+                                      },
+                                    ),
+                                    const Divider(height: 1, indent: 60, endIndent: 20),
+                                    ProfileListTile(
                                       title: "Digital Medical ID",
                                       icon: Icons.qr_code_scanner_rounded,
                                       onTap: () {

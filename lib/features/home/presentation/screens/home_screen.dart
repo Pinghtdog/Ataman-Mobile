@@ -1,4 +1,3 @@
-import 'package:ataman/core/constants/app_routes.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../../../core/constants/constants.dart';
@@ -46,7 +45,7 @@ class HomeScreen extends StatelessWidget {
                           child: Align(
                             alignment: Alignment.topCenter,
                             child: Padding(
-                              padding: const EdgeInsets.only(top: 0.0),
+                              padding: const EdgeInsets.only(bottom: 30),
                               child: Row(
                                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                                 children: [
@@ -95,6 +94,8 @@ class HomeScreen extends StatelessWidget {
                           ),
                         ),
                       ),
+                      const SizedBox(height: AppSizes.p24),
+
                       Positioned(
                         bottom: 0,
                         left: 0,

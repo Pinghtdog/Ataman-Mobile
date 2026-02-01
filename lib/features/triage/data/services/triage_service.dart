@@ -5,37 +5,20 @@ import '../models/triage_model.dart';
 class TriageService {
   final SupabaseClient _supabase = Supabase.instance.client;
   final GeminiService _geminiService;
-  String? _cachedUserContext;
 
   TriageService(this._geminiService);
 
   Future<void> initializeSession() async {
-    _cachedUserContext = null;
-    final user = _supabase.auth.currentUser;
-    if (user == null) return;
-    try {
-      final data = await _supabase.from('users').select('birth_date, gender, medical_conditions, allergies, barangay')
-          .eq('id', user.id).maybeSingle();
-      if (data != null) {
-        final age = data['birth_date'] != null ? _calculateAge(DateTime.parse(data['birth_date'])) : "Unk";
-        _cachedUserContext = "PATIENT: ${data['gender']}, $age. History: ${data['medical_conditions']}.";
-      }
-    } catch (e) {
-      _cachedUserContext = "PATIENT: Unknown.";
-    }
+    // No longer fetching profile context to reduce prompt size and avoid overloads
   }
 
   Future<TriageStep> getNextStep(List<Map<String, String>> history) async {
     try {
       String prompt;
       if (history.isEmpty) {
-        // FIRST TURN: Send full instructions and patient context
-        prompt = "${GeminiService.triageSystemPrompt}\nCONTEXT: ${_cachedUserContext ?? "None"}\nStart now.";
+        prompt = "${GeminiService.triageSystemPrompt}\nStart now.";
       } else {
-        // FOLLOW-UPS: Ultra-Lite instructions. No patient context (it's in the flow history).
         prompt = "Continue Triage. Output JSON ONLY. Format: {\"is_final\":false,\"question\":\"...\",\"options\":[]} OR {\"is_final\":true,\"result\":{...}}\n";
-        
-        // SLIDING WINDOW: Reduce to 3 turns for max token saving
         final recentHistory = history.length > 3 ? history.sublist(history.length - 3) : history;
         for (var turn in recentHistory) {
           prompt += "Q: ${turn['question']} A: ${turn['answer']}\n";
@@ -55,7 +38,7 @@ class TriageService {
   }
 
   Future<TriageResult> performTriage(String symptoms) async {
-    final prompt = "${GeminiService.triageSystemPrompt}\nCONTEXT: $_cachedUserContext\nSYMPTOMS: $symptoms\nFinal JSON:";
+    final prompt = "${GeminiService.triageSystemPrompt}\nSYMPTOMS: $symptoms\nFinal JSON:";
     final data = await _geminiService.getTriageResponse(prompt);
     if (data['result'] != null) {
       final step = await _saveAndReturnResult(data['result'], [{'question': 'Symptoms', 'answer': symptoms}]);
@@ -77,6 +60,8 @@ class TriageService {
       if (user != null) {
         String historySummary = history.map((e) => "Q: ${e['question']} A: ${e['answer']}").join("\n");
         final soapNote = resultData['soap_note'];
+        
+        // 1. Save to triage_results
         final savedResult = await _supabase.from('triage_results').insert({
           'user_id': user.id,
           'raw_symptoms': historySummary,
@@ -95,16 +80,21 @@ class TriageService {
           'soap_plan': soapNote?['plan'],
         }).select().single();
 
+        // 2. ALSO Save to medical_history table (to keep it populated)
+        await _supabase.from('medical_history').insert({
+          'user_id': user.id,
+          'title': "Triage: ${resultData['case_category']?.toString().replaceAll('_', ' ') ?? 'Consultation'}",
+          'subtitle': resultData['specialty'] ?? 'General Medicine',
+          'date': DateTime.now().toIso8601String(),
+          'type': 'consultation',
+          'tag': resultData['urgency'],
+          'extra_info': resultData['recommended_action']?.toString().replaceAll('_', ' '),
+          'has_pdf': false,
+        });
+
         return TriageStep(question: "Complete", options: [], isFinal: true, result: TriageResult.fromJson(savedResult));
       }
     } catch (e) { print("DB Error: $e"); }
     return TriageStep(question: "Complete", options: [], isFinal: true, result: TriageResult.fromJson(resultData));
-  }
-
-  String _calculateAge(DateTime birthDate) {
-    DateTime now = DateTime.now();
-    int age = now.year - birthDate.year;
-    if (now.month < birthDate.month || (now.month == birthDate.month && now.day < birthDate.day)) age--;
-    return age.toString();
   }
 }

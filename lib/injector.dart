@@ -9,6 +9,7 @@ import 'features/auth/domain/repositories/i_user_repository.dart';
 import 'features/booking/data/repositories/booking_repository.dart';
 import 'features/emergency/data/repositories/emergency_repository.dart';
 import 'features/facility/data/repositories/facility_repository.dart';
+import 'features/medical_records/data/repositories/medical_history_repository.dart';
 import 'features/medical_records/data/repositories/prescription_repository.dart';
 import 'features/medical_records/data/repositories/referral_repository.dart';
 import 'features/notification/data/repositories/notification_repository.dart';
@@ -57,4 +58,5 @@ Future<void> initInjector() async {
   getIt.registerLazySingleton<FamilyRepository>(() => FamilyRepository(getIt<SupabaseClient>()));
   getIt.registerLazySingleton<ReferralRepository>(() => ReferralRepository(getIt<SupabaseClient>()));
   getIt.registerLazySingleton<VaccineRepository>(() => VaccineRepository());
+  getIt.registerLazySingleton<MedicalHistoryRepository>(() => MedicalHistoryRepository(getIt<SupabaseClient>()));
 }

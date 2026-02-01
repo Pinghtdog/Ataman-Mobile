@@ -5,12 +5,14 @@ class AtamanEmptyState extends StatelessWidget {
   final String title;
   final String message;
   final IconData? icon;
+  final VoidCallback? onRetry;
 
   const AtamanEmptyState({
     super.key,
     this.title = "No results found",
     this.message = "We couldn't find what you're looking for.",
     this.icon,
+    this.onRetry,
   });
 
   @override
@@ -38,6 +40,18 @@ class AtamanEmptyState extends StatelessWidget {
               textAlign: TextAlign.center,
               style: AppTextStyles.bodyMedium,
             ),
+            if (onRetry != null) ...[
+              const SizedBox(height: AppSizes.p24),
+              ElevatedButton(
+                onPressed: onRetry,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppColors.primary,
+                  foregroundColor: Colors.white,
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                ),
+                child: const Text("Retry"),
+              ),
+            ],
           ],
         ),
       ),

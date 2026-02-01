@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
-import 'package:intl/intl.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../../../core/constants/constants.dart';
 import '../../../../core/widgets/widgets.dart';
+import '../../../auth/logic/auth_cubit.dart';
 import '../../data/models/medical_history_model.dart';
+import '../../logic/medical_history_cubit.dart';
 import '../widgets/medical_history_timeline_item.dart';
 
 class MedicalHistoryScreen extends StatefulWidget {
@@ -16,51 +18,21 @@ class _MedicalHistoryScreenState extends State<MedicalHistoryScreen> {
   String _selectedFilter = "All";
   final List<String> _filters = ["All", "Consultations", "Labs"];
 
-  // Mock data for display - this would normally come from a repository/cubit
-  final List<MedicalHistoryItem> _allHistory = [
-    MedicalHistoryItem(
-      id: '1',
-      title: "General Consultation",
-      subtitle: "Tele-Ataman • Dr. Santos",
-      date: DateTime(2025, 10, 24),
-      type: MedicalRecordType.consultation,
-      tag: "Diagnosis: Flu",
-    ),
-    MedicalHistoryItem(
-      id: '2',
-      title: "Immunization",
-      subtitle: "Concepcion BHC",
-      date: DateTime(2025, 9, 10),
-      type: MedicalRecordType.immunization,
-      extraInfo: "Flu Shot",
-    ),
-    MedicalHistoryItem(
-      id: '3',
-      title: "Emergency Room",
-      subtitle: "NCGH • Triage Level 3",
-      date: DateTime(2025, 8, 5),
-      type: MedicalRecordType.emergency,
-      tag: "Minor Injury",
-    ),
-    MedicalHistoryItem(
-      id: '4',
-      title: "Blood Test (CBC)",
-      subtitle: "Hi-Precision Diagnostics",
-      date: DateTime(2025, 1, 5),
-      type: MedicalRecordType.lab,
-      hasPdf: true,
-    ),
-  ];
+  @override
+  void initState() {
+    super.initState();
+    _loadHistory();
+  }
+
+  void _loadHistory() {
+    final authState = context.read<AuthCubit>().state;
+    if (authState is Authenticated) {
+      context.read<MedicalHistoryCubit>().fetchHistory(authState.user.id);
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
-    List<MedicalHistoryItem> filteredHistory = _allHistory.where((item) {
-      if (_selectedFilter == "All") return true;
-      if (_selectedFilter == "Consultations") return item.type == MedicalRecordType.consultation;
-      if (_selectedFilter == "Labs") return item.type == MedicalRecordType.lab;
-      return true;
-    }).toList();
-
     return Scaffold(
       backgroundColor: AppColors.background,
       body: Column(
@@ -96,7 +68,9 @@ class _MedicalHistoryScreenState extends State<MedicalHistoryScreen> {
                 return Padding(
                   padding: const EdgeInsets.only(right: 12),
                   child: GestureDetector(
-                    onTap: () => setState(() => _selectedFilter = filter),
+                    onTap: () {
+                        setState(() => _selectedFilter = filter);
+                    },
                     child: Container(
                       padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 10),
                       decoration: BoxDecoration(
@@ -121,15 +95,45 @@ class _MedicalHistoryScreenState extends State<MedicalHistoryScreen> {
           const SizedBox(height: 24),
           
           Expanded(
-            child: ListView.builder(
-              padding: const EdgeInsets.symmetric(horizontal: 24),
-              itemCount: filteredHistory.length,
-              itemBuilder: (context, index) {
-                final item = filteredHistory[index];
-                return MedicalHistoryTimelineItem(
-                  item: item,
-                  isLast: index == filteredHistory.length - 1,
-                );
+            child: BlocBuilder<MedicalHistoryCubit, MedicalHistoryState>(
+              builder: (context, state) {
+                if (state is MedicalHistoryLoading) {
+                  return const Center(child: CircularProgressIndicator());
+                }
+
+                if (state is MedicalHistoryError) {
+                  return Center(child: Text("Error: ${state.message}"));
+                }
+
+                if (state is MedicalHistoryLoaded) {
+                  final filteredItems = state.history.where((item) {
+                    if (_selectedFilter == "All") return true;
+                    if (_selectedFilter == "Consultations") return item.type == MedicalRecordType.consultation;
+                    if (_selectedFilter == "Labs") return item.type == MedicalRecordType.lab;
+                    return true;
+                  }).toList();
+
+                  if (filteredItems.isEmpty) {
+                    return AtamanEmptyState(
+                      title: "No Records Found",
+                      message: "Complete a triage session to see your medical records here.",
+                      onRetry: _loadHistory,
+                    );
+                  }
+
+                  return ListView.builder(
+                    padding: const EdgeInsets.symmetric(horizontal: 24),
+                    itemCount: filteredItems.length,
+                    itemBuilder: (context, index) {
+                      return MedicalHistoryTimelineItem(
+                        item: filteredItems[index],
+                        isLast: index == filteredItems.length - 1,
+                      );
+                    },
+                  );
+                }
+
+                return const SizedBox.shrink();
               },
             ),
           ),

@@ -30,8 +30,11 @@ import 'features/facility/data/repositories/facility_repository.dart';
 import 'features/facility/logic/facility_cubit.dart';
 import 'features/facility/logic/facility_state.dart';
 import 'features/home/presentation/screens/ataman_base_screen.dart';
+import 'features/medical_records/data/repositories/medical_history_repository.dart';
 import 'features/medical_records/data/repositories/referral_repository.dart';
+import 'features/medical_records/logic/medical_history_cubit.dart';
 import 'features/medical_records/presentation/screens/medical_history_screen.dart';
+import 'features/medical_records/presentation/screens/referrals_screen.dart';
 import 'features/medicine_access/presentation/screens/hospital_availability_screen.dart';
 import 'features/medicine_access/presentation/screens/medicine_access_screen.dart';
 import 'features/notification/data/repositories/notification_repository.dart';
@@ -66,13 +69,11 @@ void main() async {
 
   final bool isInitialized = await ServiceInitializer.initialize();
 
-  Gemini.init(apiKey: dotenv.env['GEMINI_API_KEY'] ?? '');
-
   Gemini.init(
     apiKey: dotenv.env['GEMINI_API_KEY'] ?? '',
     generationConfig: GenerationConfig(
-      temperature: 0.2, // Lower temp = faster, more determined answers
-      maxOutputTokens: 250, // Force short answers
+      temperature: 0.2,
+      maxOutputTokens: 250,
     ),
   );
   runApp(AtamanApp(isInitialized: isInitialized));
@@ -115,6 +116,9 @@ class AtamanApp extends StatelessWidget {
         BlocProvider<TelemedicineCubit>(
           create: (context) =>
               TelemedicineCubit(getIt<ITelemedicineRepository>()),
+        ),
+        BlocProvider<MedicalHistoryCubit>(
+          create: (context) => MedicalHistoryCubit(getIt<MedicalHistoryRepository>()),
         ),
       ],
       child: MaterialApp(
@@ -222,6 +226,7 @@ class AtamanApp extends StatelessWidget {
         AppRoutes.generalConsult: (context) => const GeneralConsultScreen(),
         AppRoutes.familyMembers: (context) => const FamilyMembersScreen(),
         AppRoutes.medicalHistory: (context) => const MedicalHistoryScreen(),
+        AppRoutes.referrals: (context) => const ReferralsScreen(),
         AppRoutes.settings: (context) => const SettingsScreen(),
         AppRoutes.changePassword: (context) => const ChangePasswordScreen(),
         AppRoutes.notificationSettings: (context) =>
