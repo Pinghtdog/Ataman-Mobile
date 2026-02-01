@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import '../../../../core/constants/constants.dart';
 import '../../../../core/widgets/widgets.dart';
+import '../../../../core/services/pdf_service.dart';
 import '../../../../injector.dart';
 import '../../../auth/logic/auth_cubit.dart';
 import '../../data/models/referral_model.dart';
@@ -118,6 +119,21 @@ class _ReferralsScreenState extends State<ReferralsScreen> {
               const SizedBox(height: 4),
               Text(referral.diagnosisImpression!, style: AppTextStyles.bodyMedium.copyWith(color: AppColors.primary)),
             ],
+            const SizedBox(height: 20),
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton.icon(
+                onPressed: () => PdfService.generateReferralSlip(referral),
+                icon: const Icon(Icons.file_download_outlined, size: 18),
+                label: const Text("Download Referral Slip"),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppColors.primary,
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(vertical: 12),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                ),
+              ),
+            ),
           ],
         ),
       ),

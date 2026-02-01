@@ -1,14 +1,46 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 import '../../../../core/constants/constants.dart';
 import '../../../../core/widgets/widgets.dart';
 import '../../../../core/services/pdf_service.dart';
 import '../../../auth/data/models/user_model.dart';
+import '../../../triage/data/models/triage_model.dart';
+import '../../../triage/logic/triage_cubit.dart';
+import '../../../../injector.dart';
+import '../../../triage/domain/repositories/i_triage_repository.dart';
 
 class MedicalIdScreen extends StatelessWidget {
   final UserModel user;
 
   const MedicalIdScreen({super.key, required this.user});
+
+  Future<void> _generatePdf(BuildContext context) async {
+    // Show loading
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text("Fetching latest medical data...")),
+    );
+
+    try {
+      final history = await getIt<ITriageRepository>().getHistory();
+      Map<String, dynamic>? triageData;
+
+      if (history.isNotEmpty) {
+        final latest = history.first;
+        triageData = {
+          'priority': latest.urgency.name.toUpperCase(),
+          'complaint': latest.rawSymptoms,
+          'recommendation': latest.recommendedAction.replaceAll('_', ' '),
+        };
+      }
+
+      await PdfService.previewMedicalIdForm(user, triageResult: triageData);
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text("Error generating PDF: $e")),
+      );
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -149,15 +181,7 @@ class MedicalIdScreen extends StatelessWidget {
                 isOutlined: true,
                 color: Colors.white,
                 icon: Icons.assignment_ind_outlined,
-                onPressed: () => PdfService.previewMedicalIdForm(
-                  user, 
-                  // In a real scenario, you'd fetch the latest triage result here
-                  triageResult: {
-                    'priority': 'URGENT',
-                    'complaint': 'Severe abdominal pain, nausea',
-                    'recommendation': 'Immediate consult at Bicol Medical Center'
-                  }
-                ),
+                onPressed: () => _generatePdf(context),
               ),
               
               const SizedBox(height: AppSizes.p20),

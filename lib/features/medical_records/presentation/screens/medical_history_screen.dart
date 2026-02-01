@@ -16,7 +16,7 @@ class MedicalHistoryScreen extends StatefulWidget {
 
 class _MedicalHistoryScreenState extends State<MedicalHistoryScreen> {
   String _selectedFilter = "All";
-  final List<String> _filters = ["All", "Consultations", "Labs"];
+  final List<String> _filters = ["All", "Consultations", "Labs", "Referrals"];
 
   @override
   void initState() {
@@ -69,7 +69,11 @@ class _MedicalHistoryScreenState extends State<MedicalHistoryScreen> {
                   padding: const EdgeInsets.only(right: 12),
                   child: GestureDetector(
                     onTap: () {
+                      if (filter == "Referrals") {
+                        Navigator.of(context).pushNamed(AppRoutes.referrals);
+                      } else {
                         setState(() => _selectedFilter = filter);
+                      }
                     },
                     child: Container(
                       padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 10),

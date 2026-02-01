@@ -191,16 +191,19 @@ class TriageResultScreen extends StatelessWidget {
         await launchUrl(url);
       }
     } else if (result.recommendedAction == 'TELEMEDICINE') {
-      // Navigate to Telemed List
       _exitTriage(context);
     } else {
-      // BHC or Hospital Visit: Go to Booking
-      context.read<TriageCubit>().reset();
+      // Safely check if the cubit is available before calling reset
+      final cubit = context.read<TriageCubit?>();
+      if (cubit != null && !cubit.isClosed) {
+        cubit.reset();
+      }
+
       Navigator.of(context).pushAndRemoveUntil(
         MaterialPageRoute(
           builder: (context) => AtamanBaseScreen(
-            initialIndex: 1, // Open Booking Tab
-            triageResult: result, // Pass result to pre-fill booking
+            initialIndex: 1, 
+            triageResult: result,
           ),
         ),
         (route) => false,
@@ -209,7 +212,12 @@ class TriageResultScreen extends StatelessWidget {
   }
 
   void _exitTriage(BuildContext context) {
-    context.read<TriageCubit>().reset();
+    // Safely check if the cubit is available before calling reset
+    final cubit = context.read<TriageCubit?>();
+    if (cubit != null && !cubit.isClosed) {
+      cubit.reset();
+    }
+    
     Navigator.of(context).pushAndRemoveUntil(
       MaterialPageRoute(builder: (context) => const AtamanBaseScreen()),
       (route) => false,

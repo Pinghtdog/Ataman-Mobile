@@ -43,10 +43,15 @@ class _TriageInputScreenState extends State<TriageInputScreen> {
       body: BlocConsumer<TriageCubit, TriageState>(
         listener: (context, state) {
           if (state is TriageSuccess) {
+            // Fix: Pass the current TriageCubit to the next screen
+            final cubit = context.read<TriageCubit>();
             Navigator.pushReplacement(
               context,
               MaterialPageRoute(
-                builder: (_) => TriageResultScreen(result: state.result),
+                builder: (_) => BlocProvider.value(
+                  value: cubit,
+                  child: TriageResultScreen(result: state.result),
+                ),
               ),
             );
           }
@@ -130,8 +135,6 @@ class _TriageInputScreenState extends State<TriageInputScreen> {
     if (state is TriageStepLoaded) {
       final step = state.step;
 
-      // LOGIC FIX: Check if this is a "Retry" state (connection failed)
-      // If the only option contains "Retry", we hide the 'None of the above' button.
       final bool isRetryState = step.options.length == 1 &&
           step.options.first.toLowerCase().contains("retry");
 
@@ -148,7 +151,7 @@ class _TriageInputScreenState extends State<TriageInputScreen> {
               child: ClipRRect(
                 borderRadius: BorderRadius.circular(8),
                 child: LinearProgressIndicator(
-                  value: ((state.history.length + 1) / 7).clamp(0.0, 1.0),
+                  value: ((state.history.length + 1) / 5).clamp(0.0, 1.0), // Adjusted for hardcoded steps
                   minHeight: 8,
                   backgroundColor: Colors.grey[200],
                   valueColor: const AlwaysStoppedAnimation<Color>(AppColors.primary),

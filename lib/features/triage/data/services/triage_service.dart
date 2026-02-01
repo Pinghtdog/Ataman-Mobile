@@ -13,38 +13,78 @@ class TriageService {
   }
 
   Future<TriageStep> getNextStep(List<Map<String, String>> history) async {
-    try {
-      String prompt;
-      if (history.isEmpty) {
-        prompt = "${GeminiService.triageSystemPrompt}\nStart now.";
-      } else {
-        prompt = "Continue Triage. Output JSON ONLY. Format: {\"is_final\":false,\"question\":\"...\",\"options\":[]} OR {\"is_final\":true,\"result\":{...}}\n";
-        final recentHistory = history.length > 3 ? history.sublist(history.length - 3) : history;
-        for (var turn in recentHistory) {
-          prompt += "Q: ${turn['question']} A: ${turn['answer']}\n";
-        }
-        prompt += "Next:";
-      }
+    // HARDCODED LOGIC FOR DEMO/VIDEO PURPOSES (Fever and Coughing)
+    await Future.delayed(const Duration(seconds: 1)); // Simulate AI thinking
 
-      final data = await _geminiService.getTriageResponse(prompt);
-
-      if (data['is_final'] == true && data['result'] != null) {
-        return await _saveAndReturnResult(data['result'], history);
-      }
-      return TriageStep.fromJson(data);
-    } catch (e) {
-      throw Exception('Triage Interrupted. Please try again.');
+    if (history.isEmpty) {
+      return const TriageStep(
+        question: "Maogmang aga! I am ATAMAN AI, your smart health assistant. How are you feeling today? Please select the option that best describes your concern.",
+        options: ["Fever or Cough", "Body Aches or Pain", "Injury or Wound", "General Check-up", "Other symptoms"],
+        inputType: TriageInputType.buttons,
+        isFinal: false,
+      );
     }
+
+    if (history.length == 1) {
+      return const TriageStep(
+        question: "How long have you been experiencing these symptoms?",
+        options: ["Just today", "2-3 days", "More than a week"],
+        inputType: TriageInputType.buttons,
+        isFinal: false,
+      );
+    }
+
+    if (history.length == 2) {
+      return const TriageStep(
+        question: "Are you experiencing any difficulty in breathing, chest pain, or severe weakness?",
+        options: ["Yes, I have difficulty breathing", "No, I don't have these symptoms"],
+        inputType: TriageInputType.buttons,
+        isFinal: false,
+      );
+    }
+
+    // FINAL STEP: Generate a hardcoded result based on common patterns
+    final String duration = history[1]['answer'] ?? "Unknown";
+    final String breathing = history[2]['answer'] ?? "Normal";
+    bool isUrgent = breathing.contains("Yes") || duration.contains("week");
+
+    final mockResult = {
+      'urgency': isUrgent ? 'URGENT' : 'ROUTINE',
+      'case_category': 'GENERAL_MEDICINE',
+      'recommended_action': isUrgent ? 'HOSPITAL_ER' : 'BHC_APPOINTMENT',
+      'required_capability': isUrgent ? 'NCGH' : 'BHS',
+      'is_telemed_suitable': !isUrgent,
+      'ai_confidence': 0.98,
+      'specialty': 'General Medicine / Internal Medicine',
+      'reason': isUrgent ? 'Potential respiratory distress or prolonged symptoms detected.' : 'Symptoms appear stable but require evaluation.',
+      'summary_for_provider': 'Patient reports ${history[0]['answer']}. Duration: $duration. Emergency signs: $breathing.',
+      'soap_note': {
+        'subjective': 'Patient complains of fever and cough for $duration. Signs of respiratory distress: $breathing.',
+        'objective': 'Patient is alert but appearing fatigued. Temperature elevated (mock 38.5C). Cough is productive.',
+        'assessment': 'Acute Respiratory Infection. Differential Diagnosis: Influenza-like Illness, possible Community Acquired Pneumonia.',
+        'plan': isUrgent 
+          ? 'Immediate referral to NCGH for chest X-ray and physical assessment. Monitor oxygen saturation.' 
+          : 'Supportive care at home. Hydration, Paracetamol for fever. Follow up at Barangay Health Station if symptoms persist beyond 48 hours.',
+      }
+    };
+
+    return await _saveAndReturnResult(mockResult, history);
   }
 
   Future<TriageResult> performTriage(String symptoms) async {
-    final prompt = "${GeminiService.triageSystemPrompt}\nSYMPTOMS: $symptoms\nFinal JSON:";
-    final data = await _geminiService.getTriageResponse(prompt);
-    if (data['result'] != null) {
-      final step = await _saveAndReturnResult(data['result'], [{'question': 'Symptoms', 'answer': symptoms}]);
-      return step.result!;
-    }
-    throw Exception('Failed to perform triage');
+    final mockResult = {
+      'urgency': 'ROUTINE',
+      'case_category': 'GENERAL_MEDICINE',
+      'recommended_action': 'TELEMEDICINE',
+      'required_capability': 'BHS',
+      'is_telemed_suitable': true,
+      'ai_confidence': 0.8,
+      'specialty': 'General Medicine',
+      'reason': 'Symptoms reported via direct text.',
+      'summary_for_provider': 'Symptoms: $symptoms',
+    };
+    final step = await _saveAndReturnResult(mockResult, [{'question': 'Symptoms', 'answer': symptoms}]);
+    return step.result!;
   }
 
   Future<List<TriageResult>> getTriageHistory() async {
@@ -61,8 +101,8 @@ class TriageService {
         String historySummary = history.map((e) => "Q: ${e['question']} A: ${e['answer']}").join("\n");
         final soapNote = resultData['soap_note'];
         
-        // 1. Save to triage_results
-        final savedResult = await _supabase.from('triage_results').insert({
+        // Use a map for insertion to allow flexibility if columns are missing
+        final insertData = {
           'user_id': user.id,
           'raw_symptoms': historySummary,
           'urgency': resultData['urgency'],
@@ -74,13 +114,22 @@ class TriageService {
           'specialty': resultData['specialty'],
           'reason': resultData['reason'],
           'summary_for_provider': resultData['summary_for_provider'],
-          'soap_subjective': soapNote?['subjective'],
-          'soap_objective': soapNote?['objective'],
-          'soap_assessment': soapNote?['assessment'],
-          'soap_plan': soapNote?['plan'],
-        }).select().single();
+        };
 
-        // 2. ALSO Save to medical_history table (to keep it populated)
+        // Note: We avoid inserting soap_subjective etc. into DB here if columns are missing
+        // but we still pass them to the TriageResult object for the UI to display.
+        
+        final savedResult = await _supabase.from('triage_results').insert(insertData).select().single();
+
+        // Add the soap notes manually to the returned object so the UI shows them
+        final resultWithSoap = Map<String, dynamic>.from(savedResult);
+        if (soapNote != null) {
+          resultWithSoap['soap_subjective'] = soapNote['subjective'];
+          resultWithSoap['soap_objective'] = soapNote['objective'];
+          resultWithSoap['soap_assessment'] = soapNote['assessment'];
+          resultWithSoap['soap_plan'] = soapNote['plan'];
+        }
+
         await _supabase.from('medical_history').insert({
           'user_id': user.id,
           'title': "Triage: ${resultData['case_category']?.toString().replaceAll('_', ' ') ?? 'Consultation'}",
@@ -92,9 +141,11 @@ class TriageService {
           'has_pdf': false,
         });
 
-        return TriageStep(question: "Complete", options: [], isFinal: true, result: TriageResult.fromJson(savedResult));
+        return TriageStep(question: "Complete", options: [], isFinal: true, result: TriageResult.fromJson(resultWithSoap));
       }
     } catch (e) { print("DB Error: $e"); }
+    
+    // Fallback for UI if DB fails
     return TriageStep(question: "Complete", options: [], isFinal: true, result: TriageResult.fromJson(resultData));
   }
 }

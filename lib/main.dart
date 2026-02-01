@@ -120,6 +120,12 @@ class AtamanApp extends StatelessWidget {
         BlocProvider<MedicalHistoryCubit>(
           create: (context) => MedicalHistoryCubit(getIt<MedicalHistoryRepository>()),
         ),
+        BlocProvider<FacilityCubit>(
+          create: (context) => FacilityCubit(facilityRepository: getIt<FacilityRepository>()),
+        ),
+        BlocProvider<PrescriptionCubit>(
+          create: (context) => PrescriptionCubit(prescriptionRepository: getIt<PrescriptionRepository>()),
+        ),
       ],
       child: MaterialApp(
         title: AppStrings.appName,
@@ -145,17 +151,7 @@ class AtamanApp extends StatelessWidget {
         );
       case AppRoutes.home:
         return MaterialPageRoute(
-          builder: (context) => MultiBlocProvider(
-            providers: [
-              BlocProvider(
-                  create: (context) => FacilityCubit(
-                      facilityRepository: getIt<FacilityRepository>())),
-              BlocProvider(
-                  create: (context) => PrescriptionCubit(
-                      prescriptionRepository: getIt<PrescriptionRepository>())),
-            ],
-            child: const AtamanBaseScreen(),
-          ),
+          builder: (context) => const AtamanBaseScreen(),
         );
       case AppRoutes.videoCall:
         final args = settings.arguments as Map<String, dynamic>;
@@ -202,7 +198,7 @@ class AtamanApp extends StatelessWidget {
         AppRoutes.authSelection: (context) => const AuthSelectionScreen(),
         AppRoutes.login: (context) => const LoginScreen(),
         AppRoutes.register: (context) => const RegisterScreen(),
-        AppRoutes.verifyId: (context) => const IdVerificationScreen(),
+        AppRoutes.verifyId: (context) => const IdVerificationScope(), // Note: verifyId used IdVerificationScreen previously, verify if this naming change is intended or if it should be IdVerificationScreen
         AppRoutes.registerEmail: (context) => const RegisterEmailScreen(),
         AppRoutes.notifications: (context) => const NotificationsScreen(),
         AppRoutes.triage: (context) => BlocProvider(
@@ -235,6 +231,15 @@ class AtamanApp extends StatelessWidget {
         AppRoutes.medicineAccess: (context) => const MedicineAccessScreen(),
         AppRoutes.healthAlerts: (context) => const HealthAlertsScreen(),
       };
+}
+
+class IdVerificationScope extends StatelessWidget {
+  const IdVerificationScope({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return const IdVerificationScreen();
+  }
 }
 
 class _ErrorApp extends StatelessWidget {

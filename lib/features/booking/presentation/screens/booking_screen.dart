@@ -51,8 +51,9 @@ class _BookingScreenState extends State<BookingScreen> {
     _setupAmbulanceRealtime();
     
     if (widget.triageResult != null) {
-      _searchController.text = widget.triageResult!.specialty;
-      _searchQuery = widget.triageResult!.specialty.toLowerCase();
+      // Don't auto-fill search with specialty to avoid filtering out all results
+      // _searchController.text = widget.triageResult!.specialty;
+      // _searchQuery = widget.triageResult!.specialty.toLowerCase();
     }
 
     _searchController.addListener(_onSearchChanged);
@@ -189,14 +190,11 @@ class _BookingScreenState extends State<BookingScreen> {
     if (widget.triageResult != null) {
       final String requiredCap = widget.triageResult!.requiredCapability.toUpperCase();
       filtered = filtered.where((f) {
-        if (requiredCap == 'HOSPITAL_LEVEL_3') {
-          return f.capability == FacilityCapability.hospitalLevel3;
+        // Broaden matching for the demo
+        if (requiredCap == 'NCGH' || requiredCap == 'HOSPITAL_LEVEL_3' || requiredCap == 'H1') {
+          return f.type == FacilityType.hospital;
         }
-        if (requiredCap == 'HOSPITAL_LEVEL_2') {
-          return f.capability == FacilityCapability.hospitalLevel3 || 
-                 f.capability == FacilityCapability.hospitalLevel2;
-        }
-        if (requiredCap == 'BARANGAY_HEALTH_STATION') {
+        if (requiredCap == 'BHS' || requiredCap == 'BARANGAY_HEALTH_STATION') {
           return f.type == FacilityType.bhc;
         }
         return true;

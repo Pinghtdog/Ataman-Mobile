@@ -56,7 +56,7 @@ class NotificationService {
     if (user != null) {
       try {
         await Supabase.instance.client
-            .from('profiles')
+            .from('users')
             .update({'fcm_token': token})
             .eq('id', user.id);
         debugPrint('FCM Token updated for user: ${user.id}');
