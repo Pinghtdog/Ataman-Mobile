@@ -3,14 +3,32 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../../../../core/constants/constants.dart';
 import '../../../../core/widgets/ataman_button.dart';
+import '../../../../core/services/notification_service.dart';
 import '../../data/models/triage_model.dart';
 import '../../logic/triage_cubit.dart';
 import '../../../home/presentation/screens/ataman_base_screen.dart';
 
-class TriageResultScreen extends StatelessWidget {
+class TriageResultScreen extends StatefulWidget {
   final TriageResult result;
 
   const TriageResultScreen({super.key, required this.result});
+
+  @override
+  State<TriageResultScreen> createState() => _TriageResultScreenState();
+}
+
+class _TriageResultScreenState extends State<TriageResultScreen> {
+  @override
+  void initState() {
+    super.initState();
+    // Trigger notification on load
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      NotificationService.showSimulatedNotification(
+        title: "Triage Analysis Ready",
+        body: "Status: ${widget.result.urgency.name.toUpperCase()} - ${widget.result.actionText}",
+      );
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -33,7 +51,7 @@ class TriageResultScreen extends StatelessWidget {
             _buildUrgencyHeader(),
             const SizedBox(height: AppSizes.p32),
             _buildDetails(),
-            if (result.soapNote != null) ...[
+            if (widget.result.soapNote != null) ...[
               const SizedBox(height: AppSizes.p24),
               _buildSoapNote(),
             ],
@@ -54,21 +72,21 @@ class TriageResultScreen extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(AppSizes.p24),
       decoration: BoxDecoration(
-        color: result.urgencyColor.withOpacity(0.1),
+        color: widget.result.urgencyColor.withOpacity(0.1),
         borderRadius: BorderRadius.circular(AppSizes.radiusLarge),
-        border: Border.all(color: result.urgencyColor.withOpacity(0.3), width: 2),
+        border: Border.all(color: widget.result.urgencyColor.withOpacity(0.3), width: 2),
       ),
       child: Column(
         children: [
-          Icon(_getUrgencyIcon(), size: 80, color: result.urgencyColor),
+          Icon(_getUrgencyIcon(), size: 80, color: widget.result.urgencyColor),
           const SizedBox(height: AppSizes.p16),
           Text(
-            result.urgency.name.toUpperCase(),
-            style: AppTextStyles.h1.copyWith(color: result.urgencyColor),
+            widget.result.urgency.name.toUpperCase(),
+            style: AppTextStyles.h1.copyWith(color: widget.result.urgencyColor),
           ),
           const SizedBox(height: AppSizes.p8),
           Text(
-            result.actionText,
+            widget.result.actionText,
             textAlign: TextAlign.center,
             style: AppTextStyles.bodyLarge.copyWith(fontWeight: FontWeight.bold),
           ),
@@ -80,22 +98,22 @@ class TriageResultScreen extends StatelessWidget {
   Widget _buildDetails() {
     return Column(
       children: [
-        if (result.summaryForProvider != null) ...[
-          _buildDetailTile("Summary", result.summaryForProvider!, Icons.summarize_outlined),
+        if (widget.result.summaryForProvider != null) ...[
+          _buildDetailTile("Summary", widget.result.summaryForProvider!, Icons.summarize_outlined),
           const SizedBox(height: AppSizes.p16),
         ],
         _buildDetailTile(
           "Recommended Facility", 
-          result.requiredCapability.replaceAll('_', ' '), 
+          widget.result.requiredCapability.replaceAll('_', ' '), 
           Icons.account_balance_outlined
         ),
         const SizedBox(height: AppSizes.p16),
-        _buildDetailTile("Likely Specialty", result.specialty, Icons.medical_services_outlined),
-        if (result.aiConfidence > 0) ...[
+        _buildDetailTile("Likely Specialty", widget.result.specialty, Icons.medical_services_outlined),
+        if (widget.result.aiConfidence > 0) ...[
           const SizedBox(height: AppSizes.p16),
           _buildDetailTile(
             "AI Confidence", 
-            "\${(result.aiConfidence * 100).toInt()}%", 
+            "${(widget.result.aiConfidence * 100).toInt()}%", 
             Icons.verified_user_outlined
           ),
         ],
@@ -122,10 +140,10 @@ class TriageResultScreen extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 16),
-          _buildSoapField("Subjective", result.soapNote!.subjective),
-          _buildSoapField("Objective", result.soapNote!.objective),
-          _buildSoapField("Assessment", result.soapNote!.assessment),
-          _buildSoapField("Plan", result.soapNote!.plan),
+          _buildSoapField("Subjective", widget.result.soapNote!.subjective),
+          _buildSoapField("Objective", widget.result.soapNote!.objective),
+          _buildSoapField("Assessment", widget.result.soapNote!.assessment),
+          _buildSoapField("Plan", widget.result.soapNote!.plan),
         ],
       ),
     );
@@ -171,29 +189,28 @@ class TriageResultScreen extends StatelessWidget {
 
   Widget _buildActionButton(BuildContext context) {
     String buttonText = "Proceed to Booking";
-    if (result.urgency == TriageUrgency.emergency) {
+    if (widget.result.urgency == TriageUrgency.emergency) {
       buttonText = "Call Emergency Services (911)";
-    } else if (result.recommendedAction == 'TELEMEDICINE') {
+    } else if (widget.result.recommendedAction == 'TELEMEDICINE') {
       buttonText = "Start Telemedicine";
     }
 
     return AtamanButton(
       text: buttonText,
-      color: result.urgencyColor,
+      color: widget.result.urgencyColor,
       onPressed: () => _handleProceed(context),
     );
   }
 
   Future<void> _handleProceed(BuildContext context) async {
-    if (result.recommendedAction == 'AMBULANCE_DISPATCH' || result.urgency == TriageUrgency.emergency) {
+    if (widget.result.recommendedAction == 'AMBULANCE_DISPATCH' || widget.result.urgency == TriageUrgency.emergency) {
       final Uri url = Uri.parse("tel:911");
       if (await canLaunchUrl(url)) {
         await launchUrl(url);
       }
-    } else if (result.recommendedAction == 'TELEMEDICINE') {
+    } else if (widget.result.recommendedAction == 'TELEMEDICINE') {
       _exitTriage(context);
     } else {
-      // Safely check if the cubit is available before calling reset
       final cubit = context.read<TriageCubit?>();
       if (cubit != null && !cubit.isClosed) {
         cubit.reset();
@@ -203,7 +220,7 @@ class TriageResultScreen extends StatelessWidget {
         MaterialPageRoute(
           builder: (context) => AtamanBaseScreen(
             initialIndex: 1, 
-            triageResult: result,
+            triageResult: widget.result,
           ),
         ),
         (route) => false,
@@ -212,7 +229,6 @@ class TriageResultScreen extends StatelessWidget {
   }
 
   void _exitTriage(BuildContext context) {
-    // Safely check if the cubit is available before calling reset
     final cubit = context.read<TriageCubit?>();
     if (cubit != null && !cubit.isClosed) {
       cubit.reset();
@@ -225,7 +241,7 @@ class TriageResultScreen extends StatelessWidget {
   }
 
   IconData _getUrgencyIcon() {
-    switch (result.urgency) {
+    switch (widget.result.urgency) {
       case TriageUrgency.emergency: return Icons.report_problem_rounded;
       case TriageUrgency.urgent: return Icons.error_outline_rounded;
       case TriageUrgency.routine: return Icons.check_circle_outline_rounded;

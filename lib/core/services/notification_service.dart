@@ -51,6 +51,34 @@ class NotificationService {
     }
   }
 
+  /// Trigger a simulated push notification (Perfect for Demo/Video)
+  static Future<void> showSimulatedNotification({
+    required String title,
+    required String body,
+    String? payload,
+  }) async {
+    const AndroidNotificationDetails androidPlatformChannelSpecifics =
+        AndroidNotificationDetails(
+      'ataman_urgent_channel',
+      'Ataman Alerts',
+      importance: Importance.max,
+      priority: Priority.high,
+      showWhen: true,
+      playSound: true,
+    );
+
+    const NotificationDetails platformChannelSpecifics =
+        NotificationDetails(android: androidPlatformChannelSpecifics);
+
+    await _localNotificationsPlugin.show(
+      DateTime.now().millisecond,
+      title,
+      body,
+      platformChannelSpecifics,
+      payload: payload,
+    );
+  }
+
   static Future<void> _updateUserFcmToken(String token) async {
     final user = Supabase.instance.client.auth.currentUser;
     if (user != null) {
@@ -69,8 +97,8 @@ class NotificationService {
   static Future<void> _showLocalNotification(RemoteMessage message) async {
     const AndroidNotificationDetails androidPlatformChannelSpecifics =
         AndroidNotificationDetails(
-      'ataman_channel', // id
-      'Ataman Notifications', // title
+      'ataman_channel',
+      'Ataman Notifications',
       importance: Importance.max,
       priority: Priority.high,
       showWhen: true,
@@ -89,6 +117,10 @@ class NotificationService {
   }
 
   static Future<String?> getFCMToken() async {
-    return await FirebaseMessaging.instance.getToken();
+    try {
+      return await FirebaseMessaging.instance.getToken();
+    } catch (e) {
+      return null;
+    }
   }
 }
