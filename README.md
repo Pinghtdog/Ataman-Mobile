@@ -85,8 +85,8 @@ The mobile app supports first responders, patients, and healthcare workers by pr
    Add your credentials in `local.properties` or the appropriate config file:
 
    ```
-   SUPABASE_URL=YOUR_SUPABASE_URL
-   SUPABASE_ANON_KEY=YOUR_SUPABASE_ANON_KEY
+   SUPABASE_URL= Please ask developers
+   SUPABASE_ANON_KEY= Please ask developers
    ```
 
 4. **Sync Gradle**
