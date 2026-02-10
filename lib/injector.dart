@@ -50,7 +50,7 @@ Future<void> initInjector() async {
     () => TriageService(getIt<AiService>()),
   );
 
-  getIt.registerLazySingleton<MedicalDocumentService>(() => MedicalDocumentService());
+  getIt.registerLazySingleton<MedicalDocumentService>(() => MedicalDocumentService(getIt<SupabaseClient>()));
   getIt.registerLazySingleton<MedicineAlertService>(() => MedicineAlertService(getIt<SupabaseClient>()));
 
   // Repositories - Interfaces

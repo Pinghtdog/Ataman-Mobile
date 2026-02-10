@@ -74,12 +74,12 @@ class EmergencyRepository {
       final reasoning = 'Nearest available ambulance found at approximately ${minDistance.toStringAsFixed(2)} km away.';
 
       // 3. Update Database
+      // Note: In the mobile repo, column is 'assigned_ambulance_id' based on model
       await _supabase
           .from('emergency_requests')
           .update({
-            'ambulance_id': recommendedId,
+            'assigned_ambulance_id': recommendedId,
             'status': 'dispatched',
-            'ai_assignment_reason': reasoning
           })
           .eq('id', requestId);
 

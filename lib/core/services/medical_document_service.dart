@@ -1,11 +1,11 @@
 import 'dart:io';
 import 'package:file_picker/file_picker.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
-import 'supabase_service.dart';
-import '../../injector.dart';
 
 class MedicalDocumentService {
-  final SupabaseService _supabaseService = getIt<SupabaseService>();
+  final SupabaseClient _supabase;
+
+  MedicalDocumentService(this._supabase);
 
   Future<String?> pickAndUploadDocument({
     required String userId,
@@ -25,14 +25,12 @@ class MedicalDocumentService {
       String path = '$userId/$folder/${DateTime.now().millisecondsSinceEpoch}_$fileName';
 
       // 2. Upload to Supabase Storage
-      final storageResponse = await _supabaseService.client.storage
+      await _supabase.storage
           .from('medical_documents')
           .upload(path, file);
 
-      if (storageResponse.isEmpty) return null;
-
       // 3. Get Public URL
-      final String publicUrl = _supabaseService.client.storage
+      final String publicUrl = _supabase.storage
           .from('medical_documents')
           .getPublicUrl(path);
 
