@@ -1,25 +1,24 @@
 import 'package:supabase_flutter/supabase_flutter.dart';
-import '../../../../core/services/gemini_service.dart';
+import '../../../../core/services/ai_service.dart';
 import '../models/triage_model.dart';
 
 class TriageService {
   final SupabaseClient _supabase = Supabase.instance.client;
-  final GeminiService _geminiService;
+  final AiService _aiService;
 
-  TriageService(this._geminiService);
+  TriageService(this._aiService);
 
   Future<void> initializeSession() async {
-    // Optional: could re-add profile context fetching here if desired, 
-    // but keeping it simple to avoid token overloads as requested previously.
+    // Optional: could re-add profile context fetching here if desired
   }
 
   Future<TriageStep> getNextStep(List<Map<String, String>> history) async {
     try {
       String prompt;
       if (history.isEmpty) {
-        prompt = "${GeminiService.triageSystemPrompt}\nStart now.";
+        prompt = "New triage session. Start now.";
       } else {
-        prompt = "Continue Triage. Output JSON ONLY.\n";
+        prompt = "Continue Triage. \n";
         final recentHistory = history.length > 3 ? history.sublist(history.length - 3) : history;
         for (var turn in recentHistory) {
           prompt += "Q: ${turn['question']} A: ${turn['answer']}\n";
@@ -27,22 +26,20 @@ class TriageService {
         prompt += "Next:";
       }
 
-      final data = await _geminiService.getTriageResponse(prompt);
+      final data = await _aiService.getTriageResponse(prompt);
 
       if (data['is_final'] == true && data['result'] != null) {
         return await _saveAndReturnResult(data['result'], history);
       }
       return TriageStep.fromJson(data);
     } catch (e) {
-      // If AI fails, we might want a better fallback than just throwing, 
-      // but for now, we follow the dynamic flow.
       throw Exception('Triage Interrupted. Please try again.');
     }
   }
 
   Future<TriageResult> performTriage(String symptoms) async {
-    final prompt = "${GeminiService.triageSystemPrompt}\nSYMPTOMS: $symptoms\nFinal JSON:";
-    final data = await _geminiService.getTriageResponse(prompt);
+    final prompt = "SYMPTOMS: $symptoms";
+    final data = await _aiService.getTriageResponse(prompt);
     if (data['result'] != null) {
       final step = await _saveAndReturnResult(data['result'], [{'question': 'Symptoms', 'answer': symptoms}]);
       return step.result!;
@@ -71,8 +68,8 @@ class TriageService {
           'case_category': resultData['case_category'],
           'recommended_action': resultData['recommended_action'],
           'required_capability': resultData['required_capability'],
-          'is_telemed_suitable': resultData['is_telemed_suitable'],
-          'ai_confidence': resultData['ai_confidence'],
+          'is_telemed_suitable': resultData['is_telemed_suitable'] ?? false,
+          'ai_confidence': resultData['ai_confidence'] ?? 0.0,
           'specialty': resultData['specialty'],
           'reason': resultData['reason'],
           'summary_for_provider': resultData['summary_for_provider'],

@@ -4,6 +4,9 @@ import 'package:url_launcher/url_launcher.dart';
 import '../../../../core/constants/constants.dart';
 import '../../../../core/widgets/ataman_button.dart';
 import '../../../../core/services/notification_service.dart';
+import '../../../../injector.dart';
+import '../../../booking/presentation/screens/booking_details_screen.dart';
+import '../../../facility/data/repositories/facility_repository.dart';
 import '../../data/models/triage_model.dart';
 import '../../logic/triage_cubit.dart';
 import '../../../home/presentation/screens/ataman_base_screen.dart';
@@ -18,10 +21,11 @@ class TriageResultScreen extends StatefulWidget {
 }
 
 class _TriageResultScreenState extends State<TriageResultScreen> {
+  bool _isProcessing = false;
+
   @override
   void initState() {
     super.initState();
-    // Trigger notification on load
     WidgetsBinding.instance.addPostFrameCallback((_) {
       NotificationService.showSimulatedNotification(
         title: "Triage Analysis Ready",
@@ -196,9 +200,9 @@ class _TriageResultScreenState extends State<TriageResultScreen> {
     }
 
     return AtamanButton(
-      text: buttonText,
+      text: _isProcessing ? "Finding Facility..." : buttonText,
       color: widget.result.urgencyColor,
-      onPressed: () => _handleProceed(context),
+      onPressed: _isProcessing ? null : () => _handleProceed(context),
     );
   }
 
@@ -211,20 +215,50 @@ class _TriageResultScreenState extends State<TriageResultScreen> {
     } else if (widget.result.recommendedAction == 'TELEMEDICINE') {
       _exitTriage(context);
     } else {
-      final cubit = context.read<TriageCubit?>();
-      if (cubit != null && !cubit.isClosed) {
-        cubit.reset();
-      }
+      setState(() => _isProcessing = true);
+      
+      try {
+        final facility = await getIt<FacilityRepository>().findRecommendedFacility(widget.result.requiredCapability);
+        
+        if (!mounted) return;
 
-      Navigator.of(context).pushAndRemoveUntil(
-        MaterialPageRoute(
-          builder: (context) => AtamanBaseScreen(
-            initialIndex: 1, 
-            triageResult: widget.result,
-          ),
-        ),
-        (route) => false,
-      );
+        final cubit = context.read<TriageCubit?>();
+        if (cubit != null && !cubit.isClosed) {
+          cubit.reset();
+        }
+
+        if (facility != null) {
+          // DIRECT NAVIGATION TO BOOKING DETAILS
+          Navigator.of(context).pushAndRemoveUntil(
+            MaterialPageRoute(
+              builder: (context) => BookingDetailsScreen(
+                facility: facility,
+                triageResult: widget.result,
+              ),
+            ),
+            (route) => false,
+          );
+        } else {
+          // Fallback to facility list if no specific match
+          Navigator.of(context).pushAndRemoveUntil(
+            MaterialPageRoute(
+              builder: (context) => AtamanBaseScreen(
+                initialIndex: 1, 
+                triageResult: widget.result,
+              ),
+            ),
+            (route) => false,
+          );
+        }
+      } catch (e) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text("Error finding facility: $e")),
+          );
+        }
+      } finally {
+        if (mounted) setState(() => _isProcessing = false);
+      }
     }
   }
 
