@@ -4,6 +4,7 @@ import '../../../auth/logic/auth_cubit.dart';
 import '../../logic/telemedicine_cubit.dart';
 import '../../data/models/doctor_model.dart';
 import '../../../../core/constants/constants.dart';
+import '../screens/available_doctors_screen.dart';
 import 'telemed_booking_sheet.dart';
 
 class TelemedDoctorSection extends StatelessWidget {
@@ -61,7 +62,15 @@ class TelemedDoctorSection extends StatelessWidget {
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
             Text("Available Doctors", style: AppTextStyles.h3),
-            TextButton(onPressed: () {}, child: const Text("View All")),
+            TextButton(
+              onPressed: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (context) => const AvailableDoctorsScreen()),
+                );
+              },
+              child: const Text("View All"),
+            ),
           ],
         ),
         const SizedBox(height: 12),

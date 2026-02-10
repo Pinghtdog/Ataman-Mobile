@@ -4,6 +4,7 @@ import '../../../../core/constants/constants.dart';
 import '../../../../core/widgets/widgets.dart';
 import '../../../auth/logic/auth_cubit.dart';
 import '../../logic/telemedicine_cubit.dart';
+import '../../data/models/doctor_model.dart';
 import 'package:dotted_border/dotted_border.dart';
 import '../widgets/telemed_booking_sheet.dart';
 
@@ -17,11 +18,11 @@ class GeneralConsultScreen extends StatefulWidget {
 class _GeneralConsultScreenState extends State<GeneralConsultScreen> {
   final Set<String> _selectedSymptoms = {};
   final TextEditingController _detailsController = TextEditingController();
+  String? _selectedDoctorId;
 
   @override
   void initState() {
     super.initState();
-    // Professional approach: Cubit handles the data fetching
     context.read<TelemedicineCubit>().loadSymptoms('general');
   }
 
@@ -62,20 +63,25 @@ class _GeneralConsultScreenState extends State<GeneralConsultScreen> {
           Expanded(
             child: BlocBuilder<TelemedicineCubit, TelemedicineState>(
               builder: (context, state) {
-                String? doctorId;
                 List<String> symptoms = [];
+                List<DoctorModel> doctors = [];
 
                 if (state is TelemedicineLoaded) {
                   symptoms = state.symptoms;
-                  if (state.doctors.isNotEmpty) {
-                    doctorId = state.doctors.first.id;
+                  doctors = state.doctors;
+                  // Auto-select first doctor if none selected and list is not empty
+                  if (_selectedDoctorId == null && doctors.isNotEmpty) {
+                    _selectedDoctorId = doctors.first.id;
                   }
                 }
 
                 return ListView(
                   padding: const EdgeInsets.all(24),
                   children: [
-                    _buildDoctorBanner(state),
+                    const Text("Select Doctor",
+                        style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
+                    const SizedBox(height: 12),
+                    _buildDoctorDropdown(doctors),
                     const SizedBox(height: 32),
                     const Text("What are you feeling?",
                         style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
@@ -138,9 +144,9 @@ class _GeneralConsultScreenState extends State<GeneralConsultScreen> {
                     const SizedBox(height: 32),
                     AtamanButton(
                       text: "Schedule Consultation",
-                      onPressed: doctorId == null
+                      onPressed: _selectedDoctorId == null
                           ? null
-                          : () => _handleProceed(context, doctorId!, state),
+                          : () => _handleProceed(context, _selectedDoctorId!, state),
                     ),
                     const SizedBox(height: 20),
                   ],
@@ -153,48 +159,67 @@ class _GeneralConsultScreenState extends State<GeneralConsultScreen> {
     );
   }
 
-  Widget _buildDoctorBanner(TelemedicineState state) {
-    bool isOnline = false;
-    if (state is TelemedicineLoaded) {
-      isOnline = state.doctors.any((d) => d.isOnline);
+  Widget _buildDoctorDropdown(List<DoctorModel> doctors) {
+    if (doctors.isEmpty) {
+      return Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: Colors.grey.shade100,
+          borderRadius: BorderRadius.circular(15),
+        ),
+        child: const Text("No doctors available", style: TextStyle(color: Colors.grey)),
+      );
     }
 
-    return DottedBorder(
-      color: AppColors.primary.withOpacity(0.5),
-      strokeWidth: 1,
-      dashPattern: const [6, 3],
-      borderType: BorderType.RRect,
-      radius: const Radius.circular(24),
-      child: Container(
-        padding: const EdgeInsets.all(20),
-        decoration: BoxDecoration(
-          color: AppColors.primary.withOpacity(0.05),
-          borderRadius: BorderRadius.circular(24),
-        ),
-        child: Row(
-          children: [
-            Container(
-              padding: const EdgeInsets.all(12),
-              decoration: const BoxDecoration(color: Colors.white, shape: BoxShape.circle),
-              child: const Icon(Icons.person_outline_rounded, color: AppColors.primary, size: 28),
-            ),
-            const SizedBox(width: 16),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(15),
+        border: Border.all(color: Colors.grey.shade200),
+      ),
+      child: DropdownButtonHideUnderline(
+        child: DropdownButton<String>(
+          value: _selectedDoctorId,
+          isExpanded: true,
+          icon: const Icon(Icons.keyboard_arrow_down_rounded, color: AppColors.primary),
+          hint: const Text("Choose a doctor"),
+          items: doctors.map((doctor) {
+            return DropdownMenuItem<String>(
+              value: doctor.id,
+              child: Row(
                 children: [
-                  Text(
-                    isOnline ? "Doctors are Online" : "Doctors Currently Offline",
-                    style: const TextStyle(color: AppColors.primary, fontSize: 16, fontWeight: FontWeight.bold),
+                  CircleAvatar(
+                    radius: 14,
+                    backgroundColor: AppColors.primary.withOpacity(0.1),
+                    child: const Icon(Icons.person, size: 16, color: AppColors.primary),
                   ),
-                  Text(
-                    "Schedule a pre-prepared session now",
-                    style: TextStyle(color: Colors.grey.shade600, fontSize: 13),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(doctor.fullName, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14)),
+                        Text(doctor.specialty ?? "General Practice", style: TextStyle(color: Colors.grey.shade500, fontSize: 12)),
+                      ],
+                    ),
                   ),
+                  if (doctor.isOnline)
+                    Container(
+                      width: 8,
+                      height: 8,
+                      decoration: const BoxDecoration(color: Colors.green, shape: BoxShape.circle),
+                    ),
                 ],
               ),
-            ),
-          ],
+            );
+          }).toList(),
+          onChanged: (String? newValue) {
+            setState(() {
+              _selectedDoctorId = newValue;
+            });
+          },
         ),
       ),
     );

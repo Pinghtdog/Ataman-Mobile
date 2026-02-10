@@ -413,6 +413,7 @@
                     top: widget.triageResult != null ? 280 : 240,
                     right: 16,
                     child: FloatingActionButton.small(
+                      heroTag: 'booking_recenter',
                       onPressed: _reCenterCamera,
                       backgroundColor: Colors.white,
                       child: const Icon(Icons.my_location, color: AppColors.primary),
@@ -424,6 +425,7 @@
                     bottom: _selectedFacility != null ? 240 : AppSizes.p24,
                     right: 24,
                     child: FloatingActionButton.extended(
+                      heroTag: 'booking_view_toggle',
                       onPressed: () {
                         setState(() {
                           _isMapView = !_isMapView;

@@ -6,7 +6,13 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 class BookingRepository extends BaseRepository {
   
   Future<void> createBooking(Booking booking) async {
-    // 1. Double check slot availability at the database level
+    // 1. Check if the USER already has a booking at this exact time
+    final hasExisting = await _userHasBookingAtTime(booking.userId, booking.appointmentTime);
+    if (hasExisting) {
+      throw Exception("You already have an active appointment scheduled for this time.");
+    }
+
+    // 2. Double check FACILITY slot availability
     final isAvailable = await isSlotAvailable(
       booking.facilityId,
       booking.appointmentTime,
@@ -19,7 +25,7 @@ class BookingRepository extends BaseRepository {
 
     await safeCall(() => supabase.from('bookings').insert(booking.toJson()));
 
-    // 2. Insert into notifications table for the user
+    // 3. Insert into notifications table
     await safeCall(() => supabase.from('notifications').insert({
       'user_id': booking.userId,
       'title': 'Booking Confirmed!',
@@ -28,12 +34,21 @@ class BookingRepository extends BaseRepository {
       'data': {'booking_id': booking.id},
     }));
 
-    // Invalidate user's booking list cache
     cache.invalidate('user_bookings_${booking.userId}');
   }
 
+  Future<bool> _userHasBookingAtTime(String userId, DateTime time) async {
+    final response = await supabase
+        .from('bookings')
+        .select('id')
+        .eq('user_id', userId)
+        .eq('appointment_time', time.toIso8601String())
+        .inFilter('status', ['pending', 'confirmed']);
+    
+    return (response as List).isNotEmpty;
+  }
+
   Future<bool> isSlotAvailable(String facilityId, DateTime time, String serviceId) async {
-    // Check how many bookings exist for this specific time slot and service
     final response = await supabase
         .from('bookings')
         .select('*')
@@ -43,7 +58,6 @@ class BookingRepository extends BaseRepository {
 
     final int count = (response as List).length;
 
-    // Fetch facility service to get max_slots
     final serviceResponse = await supabase
         .from('facility_services')
         .select('max_slots_per_time_slot')
@@ -84,7 +98,6 @@ class BookingRepository extends BaseRepository {
     final startOfDay = DateTime(date.year, date.month, date.day);
     final endOfDay = startOfDay.add(const Duration(days: 1));
 
-    // Get all confirmed bookings for the day
     final response = await supabase
         .from('bookings')
         .select('appointment_time, service_id')
@@ -93,24 +106,36 @@ class BookingRepository extends BaseRepository {
         .gte('appointment_time', startOfDay.toIso8601String())
         .lt('appointment_time', endOfDay.toIso8601String());
 
-    final List<dynamic> bookings = response as List;
+    final List<dynamic> bookingsData = response as List;
 
-    // Group by time and count
-    Map<String, int> timeCounts = {};
-    for (var b in bookings) {
-      String time = b['appointment_time'];
-      timeCounts[time] = (timeCounts[time] ?? 0) + 1;
+    final servicesResponse = await supabase
+        .from('facility_services')
+        .select('id, max_slots_per_time_slot')
+        .eq('facility_id', facilityId);
+
+    final Map<String, int> serviceCapacities = {
+      for (var s in (servicesResponse as List)) s['id'].toString(): s['max_slots_per_time_slot'] ?? 2
+    };
+
+    Map<String, int> timeServiceCounts = {};
+    for (var b in bookingsData) {
+      String key = "${b['appointment_time']}_${b['service_id']}";
+      timeServiceCounts[key] = (timeServiceCounts[key] ?? 0) + 1;
     }
 
-    // Mark as occupied if count >= max_slots (we assume a default of 2 here for simplicity)
-    List<String> occupied = [];
-    timeCounts.forEach((time, count) {
-      if (count >= 2) {
-        occupied.add(DateFormat('hh:mm a').format(DateTime.parse(time)));
+    Set<String> occupiedTimes = {};
+    timeServiceCounts.forEach((key, count) {
+      final parts = key.split('_');
+      final timeStr = parts[0];
+      final sId = parts[1];
+
+      final capacity = serviceCapacities[sId] ?? 2;
+      if (count >= capacity) {
+        occupiedTimes.add(DateFormat('hh:mm a').format(DateTime.parse(timeStr)));
       }
     });
 
-    return occupied;
+    return occupiedTimes.toList();
   }
 
   Stream<List<Booking>> watchUserBookings(String userId) {
