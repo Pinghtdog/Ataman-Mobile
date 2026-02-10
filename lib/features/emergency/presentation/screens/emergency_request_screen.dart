@@ -104,18 +104,35 @@ class _EmergencyRequestScreenState extends State<EmergencyRequestScreen> with Si
     );
 
     context.read<EmergencyCubit>().requestEmergency(request);
-    
-    // For demo: Mocking nearby ambulance markers
+  }
+
+  void _updateAmbulanceMarker(LatLng position) {
     setState(() {
+      _markers.removeWhere((m) => m.markerId.value == 'ambulance_live');
       _markers.add(
         Marker(
-          markerId: const MarkerId('ambulance_1'),
-          position: LatLng(_currentPosition!.latitude + 0.005, _currentPosition!.longitude + 0.005),
+          markerId: const MarkerId('ambulance_live'),
+          position: position,
           icon: BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueAzure),
-          infoWindow: const InfoWindow(title: 'Ambulance 01'),
+          infoWindow: const InfoWindow(title: 'Ambulance arriving'),
         ),
       );
     });
+
+    // Optionally zoom to fit both markers
+    if (_currentPosition != null) {
+      final bounds = LatLngBounds(
+        southwest: LatLng(
+          _currentPosition!.latitude < position.latitude ? _currentPosition!.latitude : position.latitude,
+          _currentPosition!.longitude < position.longitude ? _currentPosition!.longitude : position.longitude,
+        ),
+        northeast: LatLng(
+          _currentPosition!.latitude > position.latitude ? _currentPosition!.latitude : position.latitude,
+          _currentPosition!.longitude > position.longitude ? _currentPosition!.longitude : position.longitude,
+        ),
+      );
+      _mapController?.animateCamera(CameraUpdate.newLatLngBounds(bounds, 50));
+    }
   }
 
   @override
@@ -129,6 +146,9 @@ class _EmergencyRequestScreenState extends State<EmergencyRequestScreen> with Si
               _isRequesting = true;
               _isGrowing = false;
             });
+            if (state.ambulance != null) {
+              _updateAmbulanceMarker(LatLng(state.ambulance!.latitude, state.ambulance!.longitude));
+            }
           } else if (state is EmergencyError) {
             setState(() {
               _isGrowing = false;
@@ -137,11 +157,16 @@ class _EmergencyRequestScreenState extends State<EmergencyRequestScreen> with Si
             ScaffoldMessenger.of(context).showSnackBar(
               SnackBar(content: Text(state.message)),
             );
+          } else if (state is EmergencySuccess) {
+            // Handle completion (e.g., show a summary or navigate away)
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text("Emergency assistance has arrived.")),
+            );
           }
         },
         builder: (context, state) {
           if (_isRequesting && state is EmergencyActive) {
-            return _buildActiveRequestView(state.request);
+            return _buildActiveRequestView(state);
           }
 
           return _buildInitialView();
@@ -276,7 +301,10 @@ class _EmergencyRequestScreenState extends State<EmergencyRequestScreen> with Si
     );
   }
 
-  Widget _buildActiveRequestView(EmergencyRequest request) {
+  Widget _buildActiveRequestView(EmergencyActive state) {
+    final request = state.request;
+    final ambulance = state.ambulance;
+
     return Stack(
       children: [
         GoogleMap(
@@ -306,6 +334,7 @@ class _EmergencyRequestScreenState extends State<EmergencyRequestScreen> with Si
                       _isRequesting = false;
                       _isGrowing = false;
                       _animationController?.reset();
+                      _markers.removeWhere((m) => m.markerId.value == 'ambulance_live');
                     });
                   },
                 ),
@@ -330,14 +359,27 @@ class _EmergencyRequestScreenState extends State<EmergencyRequestScreen> with Si
               children: [
                 Row(
                   children: [
-                    const CircularProgressIndicator(color: AppColors.danger, strokeWidth: 3),
+                    if (ambulance == null)
+                      const CircularProgressIndicator(color: AppColors.danger, strokeWidth: 3)
+                    else
+                      const Icon(Icons.local_shipping, color: AppColors.primary, size: 30),
                     const SizedBox(width: 16),
                     Expanded(
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text("Emergency ${request.type.name.toUpperCase()} Active", style: AppTextStyles.bodyLarge.copyWith(fontWeight: FontWeight.bold)),
-                          Text("Nearest ambulance is being notified...", style: AppTextStyles.bodySmall),
+                          Text(
+                            ambulance == null
+                              ? "Searching for Help"
+                              : "Ambulance ${ambulance.plateNumber} En Route",
+                            style: AppTextStyles.bodyLarge.copyWith(fontWeight: FontWeight.bold)
+                          ),
+                          Text(
+                            ambulance == null
+                              ? "Emergency ${request.type.name.toUpperCase()} Active. Nearest responder is being notified..."
+                              : "The ambulance is on its way to your location.",
+                            style: AppTextStyles.bodySmall
+                          ),
                         ],
                       ),
                     ),

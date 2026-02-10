@@ -4,6 +4,8 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../../../core/services/gemini_service.dart';
 import '../../../../injector.dart';
 import '../../../auth/logic/auth_cubit.dart';
+import '../../../booking/data/models/booking_model.dart';
+import '../../../booking/data/repositories/booking_repository.dart';
 
 class PostCallSummarySheet extends StatefulWidget {
   final String callId;
@@ -21,6 +23,7 @@ class _PostCallSummarySheetState extends State<PostCallSummarySheet> {
   final _notesController = TextEditingController();
   final _supabase = Supabase.instance.client;
   bool _isSummarizing = false;
+  bool _isSchedulingFollowUp = false;
 
   @override
   void dispose() {
@@ -79,7 +82,29 @@ class _PostCallSummarySheetState extends State<PostCallSummarySheet> {
                 backgroundColor: const Color(0xFF2D3238),
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
               ),
-              onPressed: _isSummarizing ? null : _handleGenerateSummary,
+              onPressed: _isSummarizing || _isSchedulingFollowUp ? null : _handleGenerateSummary,
+            ),
+          ),
+          const SizedBox(height: 12),
+          SizedBox(
+            width: double.infinity,
+            height: 56,
+            child: OutlinedButton.icon(
+              icon: _isSchedulingFollowUp
+                  ? const SizedBox(
+                      width: 20,
+                      height: 20,
+                      child: CircularProgressIndicator(
+                        color: Colors.blue,
+                        strokeWidth: 2,
+                      ),
+                    )
+                  : const Icon(Icons.calendar_today),
+              label: Text(_isSchedulingFollowUp ? "Scheduling..." : "Auto-Schedule Follow-up"),
+              style: OutlinedButton.styleFrom(
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              ),
+              onPressed: _isSummarizing || _isSchedulingFollowUp ? null : _handleAutoScheduleFollowUp,
             ),
           ),
           const SizedBox(height: 24),
@@ -113,24 +138,24 @@ class _PostCallSummarySheetState extends State<PostCallSummarySheet> {
       
       final doctorId = sessionResponse['doctor_id'];
 
-      // // 2. Generate AI SOAP Note
-      // final summary = await getIt<GeminiService>().summarizeConsultation(
-      //   transcriptOrNotes: _notesController.text,
-      //   patientProfile: {
-      //     'full_name': patientProfile.fullName,
-      //     'medical_id': patientProfile.id,
-      //   },
-      // );
+      // 2. Generate AI SOAP Note
+      final summary = await getIt<GeminiService>().summarizeConsultation(
+        transcriptOrNotes: _notesController.text,
+        patientProfile: {
+          'full_name': patientProfile.fullName,
+          'medical_id': patientProfile.id,
+        },
+      );
 
       // 3. Save to clinical_notes table
-      // await _supabase.from('clinical_notes').insert({
-      //   'patient_id': patientProfile.id,
-      //   'doctor_id': doctorId,
-      //   'subjective_notes': summary['subjective'],
-      //   'objective_notes': summary['objective'],
-      //   'assessment': summary['assessment'],
-      //   'plan': summary['plan'],
-      // });
+      await _supabase.from('clinical_notes').insert({
+        'patient_id': patientProfile.id,
+        'doctor_id': doctorId,
+        'subjective_notes': summary['subjective'],
+        'objective_notes': summary['objective'],
+        'assessment': summary['assessment'],
+        'plan': summary['plan'],
+      });
 
       // 4. Update session status to completed
       await _supabase.from('telemed_sessions').update({
@@ -153,6 +178,75 @@ class _PostCallSummarySheetState extends State<PostCallSummarySheet> {
       }
     } finally {
       if (mounted) setState(() => _isSummarizing = false);
+    }
+  }
+
+  Future<void> _handleAutoScheduleFollowUp() async {
+    final authState = context.read<AuthCubit>().state;
+    if (authState is! Authenticated) return;
+
+    if (_notesController.text.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Please provide consultation notes first.")),
+      );
+      return;
+    }
+
+    setState(() => _isSchedulingFollowUp = true);
+    try {
+      // 1. Get AI Recommendation
+      final recommendation = await getIt<GeminiService>().getFollowUpRecommendation(_notesController.text);
+      
+      final daysUntil = (recommendation['days_until_follow_up'] as int?) ?? 7;
+      final reason = recommendation['reason'] ?? "Follow-up consultation";
+      
+      final appointmentTime = DateTime.now().add(Duration(days: daysUntil));
+      // Set to a standard time like 9 AM
+      final scheduledTime = DateTime(appointmentTime.year, appointmentTime.month, appointmentTime.day, 9, 0);
+
+      // 2. Get session details to find doctor and facility
+      final session = await _supabase
+          .from('telemed_sessions')
+          .select('doctor_id, telemed_doctors(facility_id, full_name)')
+          .eq('id', widget.callId)
+          .single();
+
+      final facilityId = session['telemed_doctors']['facility_id'];
+      
+      // 3. Create Booking
+      final booking = Booking(
+        id: '', // Will be generated by DB
+        userId: authState.user.id,
+        facilityId: facilityId.toString(),
+        facilityName: 'Same Facility', // Will be fetched by repo if needed
+        appointmentTime: scheduledTime,
+        status: BookingStatus.pending,
+        createdAt: DateTime.now(),
+        natureOfVisit: 'Follow-up visit',
+        chiefComplaint: reason,
+      );
+
+      await getIt<BookingRepository>().createBooking(booking);
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text("Follow-up scheduled for ${scheduledTime.day}/${scheduledTime.month} regarding: $reason"),
+            backgroundColor: Colors.green,
+          ),
+        );
+        // Also trigger the summary save
+        await _handleGenerateSummary();
+      }
+    } catch (e) {
+      debugPrint("Scheduling Error: $e");
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text("Failed to schedule: $e")),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _isSchedulingFollowUp = false);
     }
   }
 }

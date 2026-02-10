@@ -6,6 +6,8 @@ import 'package:printing/printing.dart';
 import '../../features/medical_records/data/models/referral_model.dart';
 import '../../features/medical_records/data/models/medical_history_model.dart';
 import '../../features/auth/data/models/user_model.dart';
+import 'yakap_form_pdf.dart';
+import 'itr_form_pdf.dart';
 
 class PdfService {
   /// Generates a PDF for a specific Hospital Referral
@@ -198,6 +200,26 @@ class PdfService {
     await Printing.layoutPdf(
       onLayout: (PdfPageFormat format) async => pdf.save(),
       name: 'MedicalID_${user.fullName.replaceAll(' ', '_')}.pdf',
+    );
+  }
+
+  /// Generates the official PhilHealth Konsulta Registration Form (Yakap)
+  static Future<void> generateYakapForm(UserModel user) async {
+    final pdf = await YakapFormPdf.generate(user);
+    
+    await Printing.layoutPdf(
+      onLayout: (PdfPageFormat format) async => pdf.save(),
+      name: 'Yakap_Form_${user.lastName}.pdf',
+    );
+  }
+
+  /// Generates the Individual Treatment Record (ITR) for Naga CHO
+  static Future<void> generateITR(UserModel user) async {
+    final pdf = await ItrFormPdf.generate(user);
+
+    await Printing.layoutPdf(
+      onLayout: (PdfPageFormat format) async => pdf.save(),
+      name: 'ITR_${user.lastName}.pdf',
     );
   }
 

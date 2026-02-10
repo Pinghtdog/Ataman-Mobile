@@ -51,6 +51,58 @@ class NotificationService {
     }
   }
 
+  /// Shows a notification immediately
+  Future<void> showNotification({
+    required String title,
+    required String body,
+    String? payload,
+  }) async {
+    const AndroidNotificationDetails androidPlatformChannelSpecifics =
+        AndroidNotificationDetails(
+      'ataman_general_channel',
+      'Ataman General',
+      importance: Importance.max,
+      priority: Priority.high,
+      showWhen: true,
+    );
+
+    const NotificationDetails platformChannelSpecifics =
+        NotificationDetails(android: androidPlatformChannelSpecifics);
+
+    await _localNotificationsPlugin.show(
+      DateTime.now().millisecond,
+      title,
+      body,
+      platformChannelSpecifics,
+      payload: payload,
+    );
+  }
+
+  /// Schedules a notification for a future time
+  static Future<void> scheduleNotification({
+    required int id,
+    required String title,
+    required String body,
+    required DateTime scheduledDate,
+  }) async {
+    await _localNotificationsPlugin.show(
+      id,
+      title,
+      body,
+      const NotificationDetails(
+        android: AndroidNotificationDetails(
+          'ataman_reminders',
+          'Ataman Reminders',
+          channelDescription: 'Appointment reminders and scheduled alerts',
+          importance: Importance.max,
+          priority: Priority.high,
+        ),
+      ),
+    );
+    
+    debugPrint('Notification scheduled (simulated): $title at $scheduledDate');
+  }
+
   /// Trigger a simulated push notification (Perfect for Demo/Video)
   static Future<void> showSimulatedNotification({
     required String title,

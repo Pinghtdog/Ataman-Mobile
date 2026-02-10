@@ -1,5 +1,7 @@
 import 'dart:async';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import '../../../core/services/notification_service.dart';
+import '../../../injector.dart';
 import '../data/models/booking_model.dart';
 import '../data/repositories/booking_repository.dart';
 import '../../medical_records/data/repositories/referral_repository.dart';
@@ -22,7 +24,13 @@ class BookingCubit extends Cubit<BookingState> {
     try {
       await _bookingRepository.createBooking(booking);
       
-      // Automatic Rapid Referral logic for Booking
+      // 1. Trigger Push Notification locally
+      await getIt<NotificationService>().showNotification(
+        title: 'Booking Confirmed!',
+        body: 'Your appointment at ${booking.facilityName} is successfully scheduled.',
+      );
+
+      // 2. Automatic Rapid Referral logic for Booking
       if (isEmergencyReferral) {
         await _referralRepository.createRapidReferralFromBooking(
           userId: booking.userId,

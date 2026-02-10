@@ -28,8 +28,64 @@ class BookingFacilityInfo extends StatelessWidget {
             children: [
               _buildStatusChip("Queue: ${facility.queueCount}", Colors.green),
               const SizedBox(width: 8),
-              _buildStatusChip(facility.hasDoctor ? "Dr. On-Site" : "Midwife Only", Colors.teal),
+              _buildStatusChip(facility.hasDoctor ? "Dr. On-Site" : "Staff Only", Colors.teal),
             ],
+          ),
+          if (facility.services.isNotEmpty) ...[
+            const SizedBox(height: 20),
+            const Divider(),
+            const SizedBox(height: 12),
+            const Text("Specialized Services Status",
+              style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: AppColors.textPrimary)
+            ),
+            const SizedBox(height: 12),
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: facility.services.map((service) =>
+                _buildServiceStatus(service.name, service.isAvailable)
+              ).toList(),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Widget _buildServiceStatus(String name, bool isAvailable) {
+    final color = isAvailable ? Colors.green : Colors.grey;
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      decoration: BoxDecoration(
+        color: color.withOpacity(0.05),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: color.withOpacity(0.2)),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(
+            isAvailable ? Icons.check_circle_rounded : Icons.pause_circle_filled_rounded,
+            size: 14,
+            color: color
+          ),
+          const SizedBox(width: 6),
+          Text(
+            name,
+            style: TextStyle(
+              color: isAvailable ? AppColors.textPrimary : Colors.grey.shade600,
+              fontSize: 12,
+              fontWeight: isAvailable ? FontWeight.w600 : FontWeight.normal
+            )
+          ),
+          const SizedBox(width: 4),
+          Text(
+            isAvailable ? "Online" : "Offline",
+            style: TextStyle(
+              color: color,
+              fontSize: 10,
+              fontWeight: FontWeight.bold
+            )
           ),
         ],
       ),

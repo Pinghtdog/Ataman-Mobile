@@ -10,6 +10,7 @@
 #include <audioplayers_windows/audioplayers_windows_plugin.h>
 #include <connectivity_plus/connectivity_plus_windows_plugin.h>
 #include <firebase_core/firebase_core_plugin_c_api.h>
+#include <flutter_secure_storage_windows/flutter_secure_storage_windows_plugin.h>
 #include <flutter_volume_controller/flutter_volume_controller_plugin_c_api.h>
 #include <geolocator_windows/geolocator_windows.h>
 #include <pdfx/pdfx_plugin.h>
@@ -30,6 +31,8 @@ void RegisterPlugins(flutter::PluginRegistry* registry) {
       registry->GetRegistrarForPlugin("ConnectivityPlusWindowsPlugin"));
   FirebaseCorePluginCApiRegisterWithRegistrar(
       registry->GetRegistrarForPlugin("FirebaseCorePluginCApi"));
+  FlutterSecureStorageWindowsPluginRegisterWithRegistrar(
+      registry->GetRegistrarForPlugin("FlutterSecureStorageWindowsPlugin"));
   FlutterVolumeControllerPluginCApiRegisterWithRegistrar(
       registry->GetRegistrarForPlugin("FlutterVolumeControllerPluginCApi"));
   GeolocatorWindowsRegisterWithRegistrar(

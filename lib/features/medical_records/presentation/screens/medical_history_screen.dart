@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../../../core/constants/constants.dart';
 import '../../../../core/widgets/widgets.dart';
+import '../../../../core/services/medical_document_service.dart';
+import '../../../../injector.dart';
 import '../../../auth/logic/auth_cubit.dart';
 import '../../data/models/medical_history_model.dart';
 import '../../logic/medical_history_cubit.dart';
@@ -17,6 +19,7 @@ class MedicalHistoryScreen extends StatefulWidget {
 class _MedicalHistoryScreenState extends State<MedicalHistoryScreen> {
   String _selectedFilter = "All";
   final List<String> _filters = ["All", "Consultations", "Labs", "Referrals"];
+  bool _isUploading = false;
 
   @override
   void initState() {
@@ -31,10 +34,60 @@ class _MedicalHistoryScreenState extends State<MedicalHistoryScreen> {
     }
   }
 
+  Future<void> _handleUpload() async {
+    final authState = context.read<AuthCubit>().state;
+    if (authState is! Authenticated) return;
+
+    setState(() => _isUploading = true);
+
+    try {
+      final String? url = await getIt<MedicalDocumentService>().pickAndUploadDocument(
+        userId: authState.user.id,
+        folder: 'uploads',
+      );
+
+      if (url != null && mounted) {
+        // Create a new history item for the upload
+        final newItem = MedicalHistoryItem(
+          id: '', // Will be generated
+          title: 'Document Upload',
+          subtitle: 'User Uploaded File',
+          date: DateTime.now(),
+          type: MedicalRecordType.lab,
+          fileUrl: url,
+          hasPdf: url.toLowerCase().contains('.pdf'),
+          tag: 'Uploaded',
+        );
+
+        await context.read<MedicalHistoryCubit>().addHistoryItem(newItem, authState.user.id);
+        
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text("Document uploaded successfully!")),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text("Upload failed: $e")),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _isUploading = false);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppColors.background,
+      floatingActionButton: FloatingActionButton.extended(
+        onPressed: _isUploading ? null : _handleUpload,
+        backgroundColor: AppColors.primary,
+        icon: _isUploading 
+          ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
+          : const Icon(Icons.upload_file, color: Colors.white),
+        label: Text(_isUploading ? "Uploading..." : "Upload Document", style: const TextStyle(color: Colors.white)),
+      ),
       body: Column(
         children: [
           AtamanHeader(
@@ -120,13 +173,13 @@ class _MedicalHistoryScreenState extends State<MedicalHistoryScreen> {
                   if (filteredItems.isEmpty) {
                     return AtamanEmptyState(
                       title: "No Records Found",
-                      message: "Complete a triage session to see your medical records here.",
+                      message: "Complete a triage session or upload a document to see your history here.",
                       onRetry: _loadHistory,
                     );
                   }
 
                   return ListView.builder(
-                    padding: const EdgeInsets.symmetric(horizontal: 24),
+                    padding: const EdgeInsets.only(left: 24, right: 24, bottom: 80),
                     itemCount: filteredItems.length,
                     itemBuilder: (context, index) {
                       return MedicalHistoryTimelineItem(

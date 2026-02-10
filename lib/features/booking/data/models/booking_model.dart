@@ -47,11 +47,17 @@ class Booking extends Equatable {
   ];
 
   factory Booking.fromJson(Map<String, dynamic> json) {
+    // Check if facility name is in the main record or joined from facilities table
+    String? fName = json['facility_name'];
+    if (fName == null && json['facilities'] != null) {
+      fName = json['facilities']['name'];
+    }
+
     return Booking(
       id: json['id'].toString(),
       userId: json['user_id'],
       facilityId: json['facility_id'].toString(),
-      facilityName: json['facility_name'] ?? 'Facility',
+      facilityName: fName ?? 'Unknown Facility',
       appointmentTime: DateTime.parse(json['appointment_time']),
       status: _parseStatus(json['status']),
       triageResult: json['triage_result'],
@@ -69,7 +75,8 @@ class Booking extends Equatable {
   Map<String, dynamic> toJson() {
     return {
       'user_id': userId,
-      'facility_id': facilityId,
+      'facility_id': int.tryParse(facilityId) ?? facilityId,
+      'facility_name': facilityName, // Fixed: ensure name is saved to DB
       'appointment_time': appointmentTime.toIso8601String(),
       'status': status.name,
       'triage_result': triageResult,

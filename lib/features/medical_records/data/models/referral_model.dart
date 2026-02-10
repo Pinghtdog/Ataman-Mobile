@@ -26,16 +26,27 @@ class Referral extends Equatable {
   });
 
   factory Referral.fromJson(Map<String, dynamic> json) {
+    // Handle both direct column and joined object names
+    String? originName = json['origin_facility_name'];
+    if (originName == null && json['origin_facility'] != null) {
+      originName = json['origin_facility']['name'];
+    }
+
+    String? destName = json['destination_facility_name'];
+    if (destName == null && json['destination_facility'] != null) {
+      destName = json['destination_facility']['name'];
+    }
+
     return Referral(
-      id: json['id'],
-      referenceNumber: json['reference_number'] ?? '',
+      id: json['id'].toString(),
+      referenceNumber: json['reference_number'] ?? 'REF-0000',
       patientId: json['patient_id'],
-      originFacilityName: json['origin_facility']?['name'] ?? 'Origin Facility',
-      destinationFacilityName: json['destination_facility']?['name'] ?? 'Destination Hospital',
-      chiefComplaint: json['chief_complaint'] ?? '',
+      originFacilityName: originName ?? 'Origin Facility',
+      destinationFacilityName: destName ?? 'Destination Hospital',
+      chiefComplaint: json['chief_complaint'] ?? 'General Consult',
       diagnosisImpression: json['diagnosis_impression'],
       status: _parseStatus(json['status']),
-      createdAt: DateTime.parse(json['created_at']),
+      createdAt: DateTime.parse(json['created_at'] ?? DateTime.now().toIso8601String()),
     );
   }
 

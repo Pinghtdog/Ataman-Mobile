@@ -1,6 +1,13 @@
 import 'package:get_it/get_it.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'core/services/gemini_service.dart';
+import 'core/services/openai_service.dart';
+import 'core/services/hybrid_ai_service.dart';
+import 'core/services/ai_service.dart';
+import 'core/services/referral_status_service.dart';
+import 'core/services/medical_document_service.dart';
+import 'core/services/medicine_alert_service.dart';
+import 'core/services/notification_service.dart';
 import 'features/auth/data/repositories/auth_repository.dart';
 import 'features/auth/data/repositories/user_repository.dart';
 import 'features/auth/data/services/auth_service.dart';
@@ -20,6 +27,9 @@ import 'features/triage/data/repositories/triage_repository.dart';
 import 'features/triage/data/services/triage_service.dart';
 import 'features/triage/domain/repositories/i_triage_repository.dart';
 import 'features/vaccination/data/repositories/vaccine_repository.dart';
+import 'features/medicine_access/data/repositories/medicine_repository.dart';
+import 'core/services/local_storage_service.dart';
+import 'core/services/sync_service.dart';
 
 final getIt = GetIt.instance;
 
@@ -28,12 +38,20 @@ Future<void> initInjector() async {
   final supabase = Supabase.instance.client;
   getIt.registerLazySingleton<SupabaseClient>(() => supabase);
 
+  // AI Service - Using Hybrid (OpenAI -> Gemini -> Mock) for maximum reliability
+  getIt.registerLazySingleton<AiService>(() => HybridAiService());
+
   // Services
-  getIt.registerLazySingleton<GeminiService>(() => GeminiService());
+  getIt.registerLazySingleton<NotificationService>(() => NotificationService());
   getIt.registerLazySingleton<AuthService>(() => AuthService());
+  
+  // Triage Service
   getIt.registerLazySingleton<TriageService>(
-    () => TriageService(getIt<GeminiService>()),
+    () => TriageService(getIt<AiService>()),
   );
+
+  getIt.registerLazySingleton<MedicalDocumentService>(() => MedicalDocumentService());
+  getIt.registerLazySingleton<MedicineAlertService>(() => MedicineAlertService(getIt<SupabaseClient>()));
 
   // Repositories - Interfaces
   getIt.registerLazySingleton<IAuthRepository>(
@@ -59,4 +77,12 @@ Future<void> initInjector() async {
   getIt.registerLazySingleton<ReferralRepository>(() => ReferralRepository(getIt<SupabaseClient>()));
   getIt.registerLazySingleton<VaccineRepository>(() => VaccineRepository());
   getIt.registerLazySingleton<MedicalHistoryRepository>(() => MedicalHistoryRepository(getIt<SupabaseClient>()));
+  getIt.registerLazySingleton<MedicineRepository>(() => MedicineRepository(getIt<SupabaseClient>()));
+
+  // Local storage and sync
+  getIt.registerLazySingleton<LocalStorageService>(() => LocalStorageService());
+  getIt.registerLazySingleton<SyncService>(() => SyncService(getIt<EmergencyRepository>(), getIt<LocalStorageService>()));
+
+  // Referral Status Service
+  getIt.registerLazySingleton<ReferralStatusService>(() => ReferralStatusService(getIt<ReferralRepository>()));
 }

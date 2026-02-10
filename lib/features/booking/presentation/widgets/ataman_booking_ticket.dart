@@ -41,17 +41,19 @@ class AtamanBookingTicket extends StatelessWidget {
           child: Padding(
             padding: const EdgeInsets.all(AppSizes.p16),
             child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Container(
-                      width: 50,
-                      height: 50,
+                      width: 48,
+                      height: 48,
                       decoration: BoxDecoration(
                         color: AppColors.primary.withOpacity(0.1),
                         borderRadius: BorderRadius.circular(AppSizes.radiusMedium),
                       ),
-                      child: const Icon(Icons.medical_services_outlined, color: AppColors.primary),
+                      child: const Icon(Icons.calendar_today_rounded, color: AppColors.primary, size: 24),
                     ),
                     const SizedBox(width: 16),
                     Expanded(
@@ -61,10 +63,18 @@ class AtamanBookingTicket extends StatelessWidget {
                           Text(
                             booking.facilityName,
                             style: AppTextStyles.bodyLarge.copyWith(fontWeight: FontWeight.bold),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
                           ),
+                          const SizedBox(height: 2),
                           Text(
-                            DateFormat('MMMM dd, yyyy • hh:mm a').format(booking.appointmentTime),
-                            style: AppTextStyles.bodySmall,
+                            booking.natureOfVisit,
+                            style: TextStyle(color: Colors.grey.shade600, fontSize: 13, fontWeight: FontWeight.w500),
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            DateFormat('EEEE, MMM dd • hh:mm a').format(booking.appointmentTime),
+                            style: AppTextStyles.bodySmall.copyWith(color: AppColors.primary, fontWeight: FontWeight.bold),
                           ),
                         ],
                       ),
@@ -78,12 +88,24 @@ class AtamanBookingTicket extends StatelessWidget {
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    Text("Ticket ID: ${booking.id}", style: AppTextStyles.caption),
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text("TICKET ID", style: TextStyle(color: Colors.grey, fontSize: 9, fontWeight: FontWeight.bold)),
+                        Text("#${_formatId(booking.id)}", style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12)),
+                      ],
+                    ),
                     if (onCancel != null && !isCancelled && !isCompleted)
-                      TextButton(
+                      TextButton.icon(
                         onPressed: onCancel,
-                        style: TextButton.styleFrom(padding: EdgeInsets.zero, minimumSize: Size.zero),
-                        child: const Text("Cancel", style: TextStyle(color: AppColors.danger)),
+                        icon: const Icon(Icons.cancel_outlined, size: 14),
+                        style: TextButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(horizontal: 12),
+                          foregroundColor: AppColors.danger,
+                          backgroundColor: AppColors.danger.withOpacity(0.05),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                        ),
+                        label: const Text("Cancel Appointment", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 11)),
                       ),
                   ],
                 ),
@@ -93,6 +115,10 @@ class AtamanBookingTicket extends StatelessWidget {
         ),
       ),
     );
+  }
+
+  String _formatId(String id) {
+    return id.length > 8 ? id.substring(0, 8).toUpperCase() : id.toUpperCase();
   }
 
   Widget _buildStatusBadge() {
@@ -118,14 +144,14 @@ class AtamanBookingTicket extends StatelessWidget {
     }
 
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
       decoration: BoxDecoration(
         color: color.withOpacity(0.1),
-        borderRadius: BorderRadius.circular(AppSizes.radiusSmall),
+        borderRadius: BorderRadius.circular(12),
       ),
       child: Text(
         text,
-        style: TextStyle(color: color, fontWeight: FontWeight.bold, fontSize: 10),
+        style: TextStyle(color: color, fontWeight: FontWeight.bold, fontSize: 9, letterSpacing: 0.5),
       ),
     );
   }

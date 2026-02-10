@@ -32,6 +32,7 @@ dependencies:
   dotted_border: ^2.1.0
   add_2_calendar: ^3.0.1
   shared_preferences: ^2.5.4
+  file_picker: ^10.3.8
 
 
   # PDF and Printing
@@ -47,6 +48,7 @@ dependencies:
   hive: ^2.2.3
   hive_flutter: ^1.1.0
   path_provider: ^2.1.2
+  flutter_secure_storage: ^8.0.0
 
 dev_dependencies:
   flutter_launcher_icons: ^0.14.4
@@ -60,6 +62,8 @@ flutter_launcher_icons:
   android: "ic_launcher"
   ios: true
   image_path: "assets/icon/icon.png"
+  adaptive_icon_background: "#00695C"
+  adaptive_icon_foreground: "assets/icon/icon.png"
 
 flutter:
   uses-material-design: true

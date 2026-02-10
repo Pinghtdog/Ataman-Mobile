@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:permission_handler/permission_handler.dart';
 import '../../../auth/logic/auth_cubit.dart';
 import '../../logic/prescription_cubit.dart';
 import '../../logic/prescription_state.dart';
@@ -75,7 +74,6 @@ class _TelemedicineScreenState extends State<TelemedicineScreen> {
                         children: [
                           TelemedDoctorSection(
                             state: telemedState,
-                            onJoinCall: _handleJoinCall,
                           ),
                           
                           const SizedBox(height: AppSizes.p32),
@@ -138,48 +136,5 @@ class _TelemedicineScreenState extends State<TelemedicineScreen> {
         ],
       ),
     );
-  }
-
-  Future<void> _handleJoinCall(String doctorId) async {
-    final status = await [Permission.camera, Permission.microphone].request();
-    
-    if (status[Permission.camera]!.isGranted && status[Permission.microphone]!.isGranted) {
-      _startCall(doctorId);
-    } else {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text("Camera and Microphone permissions are required for video calls.")),
-        );
-      }
-    }
-  }
-
-  Future<void> _startCall(String doctorId) async {
-    final authState = context.read<AuthCubit>().state;
-    if (authState is Authenticated) {
-      try {
-        final callId = await context.read<TelemedicineCubit>().initiateCall(
-          authState.user.id,
-          doctorId,
-        );
-
-        if (mounted) {
-          // Use named route for consistency
-          Navigator.pushNamed(
-            context, 
-            AppRoutes.videoCall, 
-            arguments: {
-              'callId': callId,
-              'userId': authState.user.id,
-              'isCaller': true,
-            }
-          );
-        }
-      } catch (e) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text("Failed to start call: $e")),
-        );
-      }
-    }
   }
 }

@@ -7,6 +7,9 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'core/constants/constants.dart';
 import 'core/services/service_initializer.dart';
+import 'core/services/local_storage_service.dart';
+import 'core/services/sync_service.dart';
+import 'core/services/referral_status_service.dart';
 import 'features/auth/data/models/user_model.dart';
 import 'features/auth/domain/repositories/i_auth_repository.dart';
 import 'features/auth/domain/repositories/i_user_repository.dart';
@@ -17,7 +20,6 @@ import 'features/auth/presentation/screens/login_screen.dart';
 import 'features/auth/presentation/screens/patient_enrollment_screen.dart';
 import 'features/auth/presentation/screens/register_email_screen.dart';
 import 'features/auth/presentation/screens/register_screen.dart';
-import 'features/booking/data/models/booking_model.dart';
 import 'features/booking/data/repositories/booking_repository.dart';
 import 'features/booking/logic/booking_cubit.dart';
 import 'features/booking/presentation/screens/booking_details_screen.dart';
@@ -28,7 +30,6 @@ import 'features/emergency/presentation/screens/emergency_request_screen.dart';
 import 'features/facility/data/models/facility_model.dart';
 import 'features/facility/data/repositories/facility_repository.dart';
 import 'features/facility/logic/facility_cubit.dart';
-import 'features/facility/logic/facility_state.dart';
 import 'features/home/presentation/screens/ataman_base_screen.dart';
 import 'features/medical_records/data/repositories/medical_history_repository.dart';
 import 'features/medical_records/data/repositories/referral_repository.dart';
@@ -69,13 +70,15 @@ void main() async {
 
   final bool isInitialized = await ServiceInitializer.initialize();
 
-  Gemini.init(
-    apiKey: dotenv.env['GEMINI_API_KEY'] ?? '',
-    generationConfig: GenerationConfig(
-      temperature: 0.2,
-      maxOutputTokens: 250,
-    ),
-  );
+  if (isInitialized) {
+    // Initialize services that depend on injector
+    await getIt<LocalStorageService>().init();
+    
+    // Start background services
+    await getIt<SyncService>().start();
+    getIt<ReferralStatusService>().start();
+  }
+
   runApp(AtamanApp(isInitialized: isInitialized));
 }
 
@@ -198,7 +201,7 @@ class AtamanApp extends StatelessWidget {
         AppRoutes.authSelection: (context) => const AuthSelectionScreen(),
         AppRoutes.login: (context) => const LoginScreen(),
         AppRoutes.register: (context) => const RegisterScreen(),
-        AppRoutes.verifyId: (context) => const IdVerificationScope(), // Note: verifyId used IdVerificationScreen previously, verify if this naming change is intended or if it should be IdVerificationScreen
+        AppRoutes.verifyId: (context) => const IdVerificationScope(), 
         AppRoutes.registerEmail: (context) => const RegisterEmailScreen(),
         AppRoutes.notifications: (context) => const NotificationsScreen(),
         AppRoutes.triage: (context) => BlocProvider(

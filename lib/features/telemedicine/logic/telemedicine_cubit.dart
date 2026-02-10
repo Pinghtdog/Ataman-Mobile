@@ -4,36 +4,9 @@ import 'package:equatable/equatable.dart';
 import '../data/models/doctor_model.dart';
 import '../data/models/telemedicine_service_model.dart';
 import '../domain/repositories/i_telemedicine_repository.dart';
+import '../data/repositories/telemedicine_repository.dart';
 
-abstract class TelemedicineState extends Equatable {
-  @override
-  List<Object?> get props => [];
-}
-
-class TelemedicineInitial extends TelemedicineState {}
-class TelemedicineLoading extends TelemedicineState {}
-
-class TelemedicineDoctorsLoaded extends TelemedicineState {
-  final List<DoctorModel> doctors;
-  TelemedicineDoctorsLoaded(this.doctors);
-  @override
-  List<Object?> get props => [doctors];
-}
-
-class TelemedicineDataLoaded extends TelemedicineState {
-  final List<DoctorModel> doctors;
-  final List<TelemedicineService> services;
-  TelemedicineDataLoaded({required this.doctors, required this.services});
-  @override
-  List<Object?> get props => [doctors, services];
-}
-
-class TelemedicineError extends TelemedicineState {
-  final String message;
-  TelemedicineError(this.message);
-  @override
-  List<Object?> get props => [message];
-}
+part 'telemedicine_state.dart';
 
 class TelemedicineCubit extends Cubit<TelemedicineState> {
   final ITelemedicineRepository _repository;
@@ -46,12 +19,18 @@ class TelemedicineCubit extends Cubit<TelemedicineState> {
     _doctorsSubscription?.cancel();
     _doctorsSubscription = _repository.watchDoctors().listen(
       (doctors) {
-        if (state is TelemedicineDataLoaded) {
-          final currentServices = (state as TelemedicineDataLoaded).services;
-          emit(TelemedicineDataLoaded(doctors: doctors, services: currentServices));
-        } else {
-          emit(TelemedicineDoctorsLoaded(doctors));
-        }
+        final currentServices = state is TelemedicineLoaded 
+            ? (state as TelemedicineLoaded).services 
+            : <TelemedicineService>[];
+        final currentSymptoms = state is TelemedicineLoaded
+            ? (state as TelemedicineLoaded).symptoms
+            : <String>[];
+            
+        emit(TelemedicineLoaded(
+          doctors, 
+          services: currentServices,
+          symptoms: currentSymptoms,
+        ));
       },
       onError: (error) {
         emit(TelemedicineError(error.toString()));
@@ -59,31 +38,55 @@ class TelemedicineCubit extends Cubit<TelemedicineState> {
     );
   }
 
-  Future<void> loadServicesAndDoctors(String category) async {
-    emit(TelemedicineLoading());
+  Future<List<Map<String, dynamic>>> getDoctorAvailability(String doctorId) async {
     try {
-      final services = await _repository.getServicesByCategory(category);
-      
-      _doctorsSubscription?.cancel();
-      _doctorsSubscription = _repository.watchDoctors().listen(
-        (doctors) {
-          emit(TelemedicineDataLoaded(doctors: doctors, services: services));
-        },
-        onError: (error) {
-          emit(TelemedicineError(error.toString()));
-        },
-      );
+      return await _repository.getDoctorAvailability(doctorId);
     } catch (e) {
-      emit(TelemedicineError(e.toString()));
+      print("Error fetching availability: $e");
+      return [];
     }
   }
 
-  Future<String> initiateCall(String patientId, String doctorId, {Map<String, dynamic>? metadata}) async {
-    return await _repository.initiateCall(patientId, doctorId, metadata: metadata);
+  Future<List<Map<String, dynamic>>> getSymptomsByCategory(String category) async {
+    try {
+      return await _repository.getSymptomsByCategory(category);
+    } catch (e) {
+      print("Error fetching symptoms: $e");
+      return [];
+    }
+  }
+
+  Future<void> loadSymptoms(String category) async {
+    try {
+      final symptomsData = await _repository.getSymptomsByCategory(category);
+      final symptomNames = symptomsData.map((s) => s['name'] as String).toList();
+      
+      if (state is TelemedicineLoaded) {
+        final currentState = state as TelemedicineLoaded;
+        emit(currentState.copyWith(symptoms: symptomNames));
+      } else {
+        // If not loaded yet, we can't easily push to symptoms without doctors.
+        // For now, emit a loaded state with empty doctors or wait for doctors stream.
+      }
+    } catch (e) {
+      print("Error loading symptoms: $e");
+    }
+  }
+
+  Future<String> initiateCall(String patientId, String doctorId, {Map<String, dynamic>? metadata, DateTime? scheduledTime}) async {
+    try {
+      return await _repository.initiateCall(patientId, doctorId, metadata: metadata, scheduledTime: scheduledTime);
+    } catch (e) {
+      throw Exception('Failed to initiate consultation: $e');
+    }
   }
 
   Future<void> updateCallStatus(String callId, String status) async {
-    await _repository.updateCallStatus(callId, status);
+    try {
+      await _repository.updateCallStatus(callId, status);
+    } catch (e) {
+      emit(TelemedicineError(e.toString()));
+    }
   }
 
   @override

@@ -47,9 +47,14 @@ class _MyAppointmentsScreenState extends State<MyAppointmentsScreen> with Single
         children: [
           AtamanHeader(
             isSimple: true,
-            height: 170,
+            padding: EdgeInsets.only(
+              top: MediaQuery.of(context).padding.top + AppSizes.p16,
+              left: AppSizes.p24,
+              right: AppSizes.p24,
+              bottom: AppSizes.p16,
+            ),
             child: Column(
-              mainAxisAlignment: MainAxisAlignment.end,
+              mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Row(
@@ -67,7 +72,7 @@ class _MyAppointmentsScreenState extends State<MyAppointmentsScreen> with Single
                     ),
                   ],
                 ),
-                const SizedBox(height: 10),
+                const SizedBox(height: 20),
                 TabBar(
                   controller: _tabController,
                   indicatorColor: Colors.white,
@@ -77,6 +82,7 @@ class _MyAppointmentsScreenState extends State<MyAppointmentsScreen> with Single
                   labelStyle: AppTextStyles.bodyMedium.copyWith(fontWeight: FontWeight.bold),
                   unselectedLabelStyle: AppTextStyles.bodyMedium,
                   dividerColor: Colors.transparent,
+                  indicatorSize: TabBarIndicatorSize.tab,
                   tabs: const [
                     Tab(text: "Active"),
                     Tab(text: "History"),
@@ -85,7 +91,6 @@ class _MyAppointmentsScreenState extends State<MyAppointmentsScreen> with Single
               ],
             ),
           ),
-          const SizedBox(height: 8),
           Expanded(
             child: BlocBuilder<BookingCubit, BookingState>(
               builder: (context, state) {
@@ -125,11 +130,9 @@ class _MyAppointmentsScreenState extends State<MyAppointmentsScreen> with Single
 
   Widget _buildBookingList(List<Booking> bookings, {required bool isActive}) {
     if (bookings.isEmpty) {
-      return SingleChildScrollView(
-        physics: const AlwaysScrollableScrollPhysics(),
-        child: Container(
-          height: MediaQuery.of(context).size.height - 250,
-          alignment: Alignment.center,
+      return Center(
+        child: SingleChildScrollView(
+          physics: const AlwaysScrollableScrollPhysics(),
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
@@ -153,12 +156,10 @@ class _MyAppointmentsScreenState extends State<MyAppointmentsScreen> with Single
         return AtamanBookingTicket(
           booking: booking,
           onTap: () {
-            if (isActive) {
-              showDialog(
-                context: context,
-                builder: (context) => BookingQrDialog(booking: booking),
-              );
-            }
+            showDialog(
+              context: context,
+              builder: (context) => BookingQrDialog(booking: booking),
+            );
           },
           onCancel: isActive ? () => _confirmCancel(booking) : null,
         );
@@ -182,7 +183,6 @@ class _MyAppointmentsScreenState extends State<MyAppointmentsScreen> with Single
             onPressed: () {
               final authState = context.read<AuthCubit>().state;
               if (authState is Authenticated) {
-                // Action Integration: Calling repository via Cubit
                 context.read<BookingCubit>().cancelBooking(booking.id, authState.user.id);
               }
               Navigator.pop(context);

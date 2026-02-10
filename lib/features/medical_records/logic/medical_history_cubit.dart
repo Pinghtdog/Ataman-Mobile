@@ -38,4 +38,13 @@ class MedicalHistoryCubit extends Cubit<MedicalHistoryState> {
       emit(MedicalHistoryError(e.toString()));
     }
   }
+
+  Future<void> addHistoryItem(MedicalHistoryItem item, String userId) async {
+    try {
+      await _repository.addMedicalHistory(item, userId);
+      await fetchHistory(userId);
+    } catch (e) {
+      emit(MedicalHistoryError(e.toString()));
+    }
+  }
 }

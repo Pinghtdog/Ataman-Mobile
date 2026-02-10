@@ -1,17 +1,33 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+import '../../../auth/logic/auth_cubit.dart';
 import '../../logic/telemedicine_cubit.dart';
 import '../../data/models/doctor_model.dart';
-import 'ataman_konsulta_card.dart';
+import '../../../../core/constants/constants.dart';
+import 'telemed_booking_sheet.dart';
 
 class TelemedDoctorSection extends StatelessWidget {
   final TelemedicineState state;
-  final Function(String) onJoinCall;
 
   const TelemedDoctorSection({
     super.key,
     required this.state,
-    required this.onJoinCall,
   });
+
+  void _showBookingSheet(BuildContext context, DoctorModel doctor) {
+    final authState = context.read<AuthCubit>().state;
+    if (authState is Authenticated) {
+      showModalBottomSheet(
+        context: context,
+        isScrollControlled: true,
+        backgroundColor: Colors.transparent,
+        builder: (context) => TelemedBookingSheet(
+          doctor: doctor,
+          userId: authState.user.id,
+        ),
+      );
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -23,32 +39,106 @@ class TelemedDoctorSection extends StatelessWidget {
     }
 
     List<DoctorModel>? doctors;
-    if (state is TelemedicineDoctorsLoaded) {
-      doctors = (state as TelemedicineDoctorsLoaded).doctors;
-    } else if (state is TelemedicineDataLoaded) {
-      doctors = (state as TelemedicineDataLoaded).doctors;
+    if (state is TelemedicineLoaded) {
+      doctors = (state as TelemedicineLoaded).doctors;
     }
 
-    if (doctors != null) {
-      if (doctors.isEmpty) {
-        return const AtamanKonsultaCard(
-          title: "No Doctors Online",
-          subtitle: "Please check back later.",
-          nextAvailable: "None",
-        );
-      }
-
-      // Find the first online doctor, or fallback to the first one in the list
-      final doctor = doctors.firstWhere((d) => d.isOnline, orElse: () => doctors!.first);
-      
-      return AtamanKonsultaCard(
-        title: "PhilHealth Konsulta",
-        subtitle: doctor.fullName,
-        nextAvailable: doctor.isOnline ? "Next Available ( ${doctor.currentWaitMinutes}m wait)" : "Offline",
-        onJoinTap: doctor.isOnline ? () => onJoinCall(doctor.id) : null,
+    if (doctors == null || doctors.isEmpty) {
+      return Container(
+        padding: const EdgeInsets.all(20),
+        decoration: BoxDecoration(
+          color: Colors.grey.shade100,
+          borderRadius: BorderRadius.circular(20),
+        ),
+        child: const Text("No doctors available for scheduling at this time."),
       );
     }
 
-    return const SizedBox.shrink();
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Text("Available Doctors", style: AppTextStyles.h3),
+            TextButton(onPressed: () {}, child: const Text("View All")),
+          ],
+        ),
+        const SizedBox(height: 12),
+        SizedBox(
+          height: 160,
+          child: ListView.builder(
+            scrollDirection: Axis.horizontal,
+            itemCount: doctors.length,
+            itemBuilder: (context, index) {
+              final doctor = doctors![index];
+              return _buildDoctorCard(context, doctor);
+            },
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildDoctorCard(BuildContext context, DoctorModel doctor) {
+    return GestureDetector(
+      onTap: () => _showBookingSheet(context, doctor),
+      child: Container(
+        width: 140,
+        margin: const EdgeInsets.only(right: 16),
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(24),
+          border: Border.all(color: Colors.grey.shade100),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.03),
+              blurRadius: 10,
+              offset: const Offset(0, 4),
+            )
+          ],
+        ),
+        child: Column(
+          children: [
+            Stack(
+              children: [
+                CircleAvatar(
+                  radius: 30,
+                  backgroundColor: AppColors.primary.withOpacity(0.1),
+                  child: const Icon(Icons.person, color: AppColors.primary, size: 30),
+                ),
+                Positioned(
+                  right: 0,
+                  bottom: 0,
+                  child: Container(
+                    width: 14,
+                    height: 14,
+                    decoration: BoxDecoration(
+                      color: doctor.isOnline ? Colors.green : Colors.grey,
+                      shape: BoxShape.circle,
+                      border: Border.all(color: Colors.white, width: 2),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            Text(
+              doctor.fullName,
+              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+              textAlign: TextAlign.center,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            ),
+            Text(
+              doctor.specialty ?? "General Practice",
+              style: TextStyle(color: Colors.grey.shade500, fontSize: 11),
+              textAlign: TextAlign.center,
+            ),
+          ],
+        ),
+      ),
+    );
   }
 }

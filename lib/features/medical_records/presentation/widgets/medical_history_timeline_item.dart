@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../../../../core/constants/constants.dart';
+import '../../../../core/services/pdf_service.dart';
 import '../../data/models/medical_history_model.dart';
 
 class MedicalHistoryTimelineItem extends StatelessWidget {
@@ -13,14 +15,34 @@ class MedicalHistoryTimelineItem extends StatelessWidget {
     required this.isLast,
   });
 
+  Future<void> _viewDocument() async {
+    if (item.fileUrl != null) {
+      final Uri url = Uri.parse(item.fileUrl!);
+      if (await canLaunchUrl(url)) {
+        await launchUrl(url, mode: LaunchMode.externalApplication);
+      }
+    } else if (item.hasPdf) {
+      // If it's a generated PDF from the system
+      await PdfService.generateMedicalRecordPdf(item);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     Color dotColor;
     switch (item.type) {
-      case MedicalRecordType.consultation: dotColor = Colors.teal; break;
-      case MedicalRecordType.immunization: dotColor = Colors.purple; break;
-      case MedicalRecordType.emergency: dotColor = Colors.red; break;
-      case MedicalRecordType.lab: dotColor = Colors.blue; break;
+      case MedicalRecordType.consultation:
+        dotColor = Colors.teal;
+        break;
+      case MedicalRecordType.immunization:
+        dotColor = Colors.purple;
+        break;
+      case MedicalRecordType.emergency:
+        dotColor = Colors.red;
+        break;
+      case MedicalRecordType.lab:
+        dotColor = Colors.blue;
+        break;
     }
 
     return IntrinsicHeight(
@@ -110,10 +132,13 @@ class MedicalHistoryTimelineItem extends StatelessWidget {
                           fontSize: 13,
                         ),
                       ),
+                      if (item.hasSoapNotes)
+                        _buildSoapNotes(context),
                       if (item.tag != null) ...[
                         const SizedBox(height: 16),
                         Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 12, vertical: 6),
                           decoration: BoxDecoration(
                             color: dotColor.withOpacity(0.1),
                             borderRadius: BorderRadius.circular(8),
@@ -128,24 +153,89 @@ class MedicalHistoryTimelineItem extends StatelessWidget {
                           ),
                         ),
                       ],
-                      if (item.hasPdf) ...[
+                      if (item.hasPdf || item.fileUrl != null) ...[
                         const SizedBox(height: 16),
                         Align(
                           alignment: Alignment.centerRight,
-                          child: ElevatedButton(
-                            onPressed: () {},
+                          child: ElevatedButton.icon(
+                            onPressed: _viewDocument,
+                            icon: const Icon(Icons.remove_red_eye_outlined, size: 14),
                             style: ElevatedButton.styleFrom(
                               backgroundColor: Colors.blue.shade50,
                               foregroundColor: Colors.blue,
                               elevation: 0,
                               padding: const EdgeInsets.symmetric(horizontal: 16),
-                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                              shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(10)),
                             ),
-                            child: const Text("View PDF", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12)),
+                            label: Text(item.fileUrl != null ? "View Document" : "View PDF",
+                                style: const TextStyle(
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 12)),
                           ),
                         ),
                       ],
                     ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSoapNotes(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(top: 16.0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Divider(),
+          const SizedBox(height: 8),
+          if (item.subjective != null)
+            _buildSoapSection('S', 'Subjective', item.subjective!),
+          if (item.objective != null)
+            _buildSoapSection('O', 'Objective', item.objective!),
+          if (item.assessment != null)
+            _buildSoapSection('A', 'Assessment', item.assessment!),
+          if (item.plan != null) _buildSoapSection('P', 'Plan', item.plan!),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSoapSection(String letter, String title, String content) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12.0),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            '$letter: ',
+            style: const TextStyle(
+              fontWeight: FontWeight.bold,
+              fontSize: 16,
+            ),
+          ),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  title,
+                  style: const TextStyle(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 14,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  content,
+                  style: TextStyle(
+                    color: Colors.grey.shade700,
+                    fontSize: 13,
                   ),
                 ),
               ],

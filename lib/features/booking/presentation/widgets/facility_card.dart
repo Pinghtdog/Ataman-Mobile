@@ -12,26 +12,6 @@ class FacilityCard extends StatelessWidget {
     required this.onTap,
   });
 
-  String _getQueueDisplay() {
-    if (facility.type == FacilityType.hospital) {
-      if (facility.queueCount < 10) return "Low";
-      if (facility.queueCount <= 30) return "Moderate";
-      return "Heavy";
-    } else {
-      // BHC or Clinic: Calculate Wait Time
-      int totalMinutes = facility.queueCount * 15;
-      if (totalMinutes == 0) return "No wait";
-      if (totalMinutes < 60) return "~$totalMinutes mins wait";
-      
-      double hours = totalMinutes / 60;
-      return "~${hours.toStringAsFixed(1)} hr wait";
-    }
-  }
-
-  String _getQueueLabel() {
-    return facility.type == FacilityType.hospital ? "Triage" : "Est. Wait";
-  }
-
   @override
   Widget build(BuildContext context) {
     final isAvailable = facility.status == FacilityStatus.available;
@@ -134,27 +114,55 @@ class FacilityCard extends StatelessWidget {
 
                 const SizedBox(height: AppSizes.p16),
 
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: AppSizes.p12, vertical: AppSizes.p4),
-                  decoration: BoxDecoration(
-                    color: statusBg,
-                    borderRadius: BorderRadius.circular(AppSizes.radiusSmall),
-                    border: Border.all(color: statusColor.withOpacity(0.2)),
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(statusIcon, size: 14, color: statusColor),
-                      const SizedBox(width: AppSizes.p8),
-                      Text(
-                        statusText,
-                        style: AppTextStyles.caption.copyWith(
-                          color: statusColor,
-                          fontWeight: FontWeight.bold,
+                Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: AppSizes.p12, vertical: AppSizes.p4),
+                      decoration: BoxDecoration(
+                        color: statusBg,
+                        borderRadius: BorderRadius.circular(AppSizes.radiusSmall),
+                        border: Border.all(color: statusColor.withOpacity(0.2)),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(statusIcon, size: 14, color: statusColor),
+                          const SizedBox(width: AppSizes.p8),
+                          Text(
+                            statusText,
+                            style: AppTextStyles.caption.copyWith(
+                              color: statusColor,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    if (facility.status != FacilityStatus.closed)
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: AppSizes.p12, vertical: AppSizes.p4),
+                        decoration: BoxDecoration(
+                          color: AppColors.primary.withOpacity(0.1),
+                          borderRadius: BorderRadius.circular(AppSizes.radiusSmall),
+                          border: Border.all(color: AppColors.primary.withOpacity(0.2)),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            const Icon(Icons.people_outline, size: 14, color: AppColors.primary),
+                            const SizedBox(width: AppSizes.p8),
+                            Text(
+                              "${facility.queueCount} in Queue",
+                              style: AppTextStyles.caption.copyWith(
+                                color: AppColors.primary,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ],
                         ),
                       ),
-                    ],
-                  ),
+                  ],
                 ),
 
                 const SizedBox(height: AppSizes.p16),
@@ -165,17 +173,17 @@ class FacilityCard extends StatelessWidget {
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     _buildStat(
-                      label: _getQueueLabel(),
-                      value: _getQueueDisplay(),
+                      label: "Est. Wait",
+                      value: facility.estimatedWaitTime,
                       icon: Icons.timer_outlined,
                       color: AppColors.info,
                     ),
                     _buildVerticalDivider(),
                     _buildStat(
-                      label: "Staff",
-                      value: facility.hasDoctor ? "Doctor On-site" : "Midwife Only",
-                      icon: Icons.medical_services_outlined,
-                      color: facility.hasDoctor ? AppColors.primary : Colors.orange,
+                      label: "Queue Status",
+                      value: facility.queueStatus,
+                      icon: Icons.analytics_outlined,
+                      color: _getQueueColor(facility.queueStatus),
                       isText: true,
                     ),
                     _buildVerticalDivider(),
@@ -194,6 +202,15 @@ class FacilityCard extends StatelessWidget {
         ),
       ),
     );
+  }
+
+  Color _getQueueColor(String status) {
+    switch (status) {
+      case 'Light': return AppColors.success;
+      case 'Moderate': return Colors.orange;
+      case 'Busy': return AppColors.danger;
+      default: return AppColors.textSecondary;
+    }
   }
 
   Widget _buildStat({
@@ -218,7 +235,7 @@ class FacilityCard extends StatelessWidget {
           Text(
             value,
             style: AppTextStyles.bodyLarge.copyWith(
-              fontSize: isText ? 11 : 14,
+              fontSize: 13,
               fontWeight: FontWeight.bold,
               color: isText ? color : AppColors.textPrimary,
             ),

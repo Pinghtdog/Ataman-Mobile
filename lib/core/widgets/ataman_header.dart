@@ -5,12 +5,14 @@ class AtamanHeader extends StatelessWidget {
   final Widget child;
   final double? height;
   final EdgeInsetsGeometry? padding;
+  final bool isSimple;
 
   const AtamanHeader({
     super.key,
     required this.child,
     this.height,
     this.padding,
+    this.isSimple = false,
   });
 
   @override
@@ -24,11 +26,13 @@ class AtamanHeader extends StatelessWidget {
         AppSizes.p24,
         40,
       ),
-      decoration: const BoxDecoration(
+      decoration: BoxDecoration(
         color: AppColors.primary,
-        borderRadius: BorderRadius.vertical(
-          bottom: Radius.elliptical(200, 30),
-        ),
+        borderRadius: isSimple 
+          ? null 
+          : const BorderRadius.vertical(
+              bottom: Radius.elliptical(200, 30),
+            ),
       ),
       child: child,
     );

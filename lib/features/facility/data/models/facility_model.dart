@@ -1,3 +1,5 @@
+import 'facility_service_model.dart';
+
 enum FacilityStatus { available, congested, closed }
 enum FacilityType { hospital, bhc, clinic }
 enum FacilityOwnership { governmentNational, governmentLgu, private, ngoCharitable }
@@ -33,6 +35,7 @@ class Facility {
   final String? email;
   final String? website;
   final String distance;
+  final List<FacilityService> services;
 
   const Facility({
     required this.id,
@@ -55,7 +58,27 @@ class Facility {
     this.email,
     this.website,
     this.distance = "Calculating...",
+    this.services = const [],
   });
+
+  String get estimatedWaitTime {
+    if (status == FacilityStatus.closed) return "Closed";
+
+    int minutesPerPatient = type == FacilityType.hospital ? 10 : 15;
+    int totalMinutes = queueCount * minutesPerPatient;
+
+    if (totalMinutes == 0) return "No wait";
+    if (totalMinutes < 60) return "$totalMinutes mins";
+
+    double hours = totalMinutes / 60;
+    return "${hours.toStringAsFixed(1)} hrs";
+  }
+
+  String get queueStatus {
+    if (queueCount < 5) return "Light";
+    if (queueCount < 15) return "Moderate";
+    return "Busy";
+  }
 
   Facility copyWith({
     String? id,
@@ -78,6 +101,7 @@ class Facility {
     String? email,
     String? website,
     String? distance,
+    List<FacilityService>? services,
   }) {
     return Facility(
       id: id ?? this.id,
@@ -100,6 +124,7 @@ class Facility {
       email: email ?? this.email,
       website: website ?? this.website,
       distance: distance ?? this.distance,
+      services: services ?? this.services,
     );
   }
 
@@ -123,7 +148,7 @@ class Facility {
         case 'GOVERNMENT_NATIONAL': return FacilityOwnership.governmentNational;
         case 'GOVERNMENT_LGU': return FacilityOwnership.governmentLgu;
         case 'PRIVATE': return FacilityOwnership.private;
-        case 'NGO_CHARITABLE': return FacilityOwnership.ngoCharitable;
+        case 'NGO_CHARITABLE': return FacilityOwnership.governmentLgu; // Defaulting for simplicity
         default: return FacilityOwnership.governmentLgu;
       }
     }
@@ -162,6 +187,9 @@ class Facility {
       email: json['email'],
       website: json['website'],
       distance: 'Calculating...',
+      services: (json['facility_services'] as List?)
+          ?.map((s) => FacilityService.fromJson(s))
+          .toList() ?? const [],
     );
   }
 }

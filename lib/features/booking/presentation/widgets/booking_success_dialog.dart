@@ -1,9 +1,11 @@
 import 'package:add_2_calendar/add_2_calendar.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import 'package:qr_flutter/qr_flutter.dart';
 import '../../../../core/constants/constants.dart';
 import '../../../../core/widgets/widgets.dart';
 import '../../data/models/booking_model.dart';
+import 'booking_qr_dialog.dart';
 
 class BookingSuccessDialog extends StatelessWidget {
   final Booking booking;
@@ -18,7 +20,7 @@ class BookingSuccessDialog extends StatelessWidget {
   void _addToCalendar() {
     final Event event = Event(
       title: 'Medical Appointment: ${booking.facilityName}',
-      description: 'Service: General Checkup\nPatient: $patientName\nReference: BHC-${_formatRef(booking.id)}',
+      description: 'Service: ${booking.natureOfVisit}\nPatient: $patientName\nReference: BHC-${_formatRef(booking.id)}',
       location: booking.facilityName,
       startDate: booking.appointmentTime,
       endDate: booking.appointmentTime.add(const Duration(minutes: 30)),
@@ -26,6 +28,13 @@ class BookingSuccessDialog extends StatelessWidget {
     );
 
     Add2Calendar.addEvent2Cal(event);
+  }
+
+  void _showQrCode(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (context) => BookingQrDialog(booking: booking),
+    );
   }
 
   String _formatRef(String id) {
@@ -54,7 +63,6 @@ class BookingSuccessDialog extends StatelessWidget {
         clipBehavior: Clip.none,
         alignment: Alignment.topCenter,
         children: [
-          // The Main White Card
           Container(
             constraints: BoxConstraints(
               maxWidth: 500,
@@ -91,7 +99,6 @@ class BookingSuccessDialog extends StatelessWidget {
                         ),
                         const SizedBox(height: 24),
                         
-                        // Reference Tag
                         Container(
                           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                           decoration: BoxDecoration(
@@ -110,7 +117,7 @@ class BookingSuccessDialog extends StatelessWidget {
                         const SizedBox(height: 28),
                         
                         _buildDetailItem("HEALTH CENTER", booking.facilityName),
-                        _buildDetailItem("SERVICE", "General Checkup"), 
+                        _buildDetailItem("SERVICE", booking.natureOfVisit), 
                         
                         Row(
                           children: [
@@ -123,48 +130,51 @@ class BookingSuccessDialog extends StatelessWidget {
                         
                         const SizedBox(height: 24),
                         
-                        // QR Scan Box
-                        Container(
-                          padding: const EdgeInsets.all(16),
-                          decoration: BoxDecoration(
-                            color: const Color(0xFF2D3238),
-                            borderRadius: BorderRadius.circular(20),
-                          ),
-                          child: Row(
-                            children: [
-                              Container(
-                                width: 36,
-                                height: 36,
-                                decoration: BoxDecoration(
-                                  border: Border.all(color: Colors.white, width: 2),
-                                  borderRadius: BorderRadius.circular(4),
+                        // QR Scan Box - Clickable
+                        InkWell(
+                          onTap: () => _showQrCode(context),
+                          borderRadius: BorderRadius.circular(20),
+                          child: Container(
+                            padding: const EdgeInsets.all(16),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFF2D3238),
+                              borderRadius: BorderRadius.circular(20),
+                            ),
+                            child: Row(
+                              children: [
+                                Container(
+                                  width: 44,
+                                  height: 44,
+                                  padding: const EdgeInsets.all(4),
+                                  decoration: BoxDecoration(
+                                    color: Colors.white,
+                                    borderRadius: BorderRadius.circular(8),
+                                  ),
+                                  child: QrImageView(
+                                    data: booking.id,
+                                    version: QrVersions.auto,
+                                    padding: EdgeInsets.zero,
+                                  ),
                                 ),
-                                child: Stack(
-                                  children: [
-                                    Positioned(top: 3, left: 3, child: Container(width: 10, height: 10, color: Colors.white)),
-                                    Positioned(top: 3, right: 3, child: Container(width: 10, height: 10, color: Colors.white)),
-                                    Positioned(bottom: 3, left: 3, child: Container(width: 10, height: 10, color: Colors.white)),
-                                    Positioned(bottom: 3, right: 3, child: Container(width: 4, height: 4, color: Colors.white)),
-                                  ],
+                                const SizedBox(width: 16),
+                                const Expanded(
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        "Scan at Reception",
+                                        style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 13),
+                                      ),
+                                      Text(
+                                        "Tap to view full QR code.",
+                                        style: TextStyle(color: Colors.white70, fontSize: 10),
+                                      ),
+                                    ],
+                                  ),
                                 ),
-                              ),
-                              const SizedBox(width: 16),
-                              const Expanded(
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text(
-                                      "Scan at Reception",
-                                      style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 13),
-                                    ),
-                                    Text(
-                                      "Present this to the staff.",
-                                      style: TextStyle(color: Colors.white70, fontSize: 10),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            ],
+                                const Icon(Icons.open_in_full_rounded, color: Colors.white54, size: 18),
+                              ],
+                            ),
                           ),
                         ),
                       ],
@@ -192,7 +202,6 @@ class BookingSuccessDialog extends StatelessWidget {
             ),
           ),
           
-          // Floating Success Icon
           Positioned(
             top: 5, 
             child: Container(

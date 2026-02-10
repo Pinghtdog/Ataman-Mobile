@@ -26,6 +26,11 @@ class MedicalHistoryRepository {
       'tag': item.tag,
       'extra_info': item.extraInfo,
       'has_pdf': item.hasPdf,
+      'file_url': item.fileUrl,
+      'subjective': item.subjective,
+      'objective': item.objective,
+      'assessment': item.assessment,
+      'plan': item.plan,
     });
   }
 }

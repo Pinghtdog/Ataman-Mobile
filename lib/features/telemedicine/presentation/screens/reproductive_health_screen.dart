@@ -1,13 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:gotrue/src/types/user.dart';
-import 'package:permission_handler/permission_handler.dart';
 import '../../../../core/constants/constants.dart';
 import '../../../../core/widgets/widgets.dart';
 import '../../../auth/logic/auth_cubit.dart';
 import '../../data/models/telemedicine_service_model.dart';
 import '../../logic/telemedicine_cubit.dart';
-import 'video_call_screen.dart';
+import '../widgets/telemed_booking_sheet.dart';
 
 class ReproductiveHealthScreen extends StatefulWidget {
   const ReproductiveHealthScreen({super.key});
@@ -20,13 +18,12 @@ class ReproductiveHealthScreen extends StatefulWidget {
 class _ReproductiveHealthScreenState extends State<ReproductiveHealthScreen> {
   String? _selectedServiceTitle;
   bool _isVideoMode = true;
-  bool _isLoading = false;
+  final bool _isLoading = false;
 
   @override
   void initState() {
     super.initState();
-    // Load services for this specific category
-    context.read<TelemedicineCubit>().loadServicesAndDoctors('reproductive');
+    context.read<TelemedicineCubit>().startWatchingDoctors();
   }
 
   @override
@@ -68,18 +65,50 @@ class _ReproductiveHealthScreenState extends State<ReproductiveHealthScreen> {
                   return Center(child: Text(state.message));
                 }
 
-                if (state is TelemedicineDataLoaded) {
-                  final services = state.services;
+                if (state is TelemedicineLoaded) {
                   final doctors = state.doctors;
+                  final List<TelemedicineService> services = [
+                    TelemedicineService(
+                      id: '1',
+                      title: 'Family Planning',
+                      category: 'reproductive',
+                      subtitle: 'Planning and contraception',
+                      iconName: 'family_restroom',
+                      bgColor: const Color(0xFFFCE4EC),
+                      iconColor: const Color(0xFFAD1457),
+                    ),
+                    TelemedicineService(
+                      id: '2',
+                      title: 'Maternal Care',
+                      category: 'reproductive',
+                      subtitle: 'Pregnancy and postnatal support',
+                      iconName: 'pregnant_woman',
+                      bgColor: const Color(0xFFF3E5F5),
+                      iconColor: const Color(0xFF7B1FA2),
+                    ),
+                    TelemedicineService(
+                      id: '3',
+                      title: 'Sexual Health',
+                      category: 'reproductive',
+                      subtitle: 'STI and sexual wellness',
+                      iconName: 'health_and_safety',
+                      bgColor: const Color(0xFFE1F5FE),
+                      iconColor: const Color(0xFF0288D1),
+                    ),
+                    TelemedicineService(
+                      id: '4',
+                      title: 'Counseling',
+                      category: 'reproductive',
+                      subtitle: 'Emotional and mental support',
+                      iconName: 'psychology',
+                      bgColor: const Color(0xFFE8F5E9),
+                      iconColor: const Color(0xFF388E3C),
+                    ),
+                  ];
 
-                  // Auto-select first service if none selected
                   if (_selectedServiceTitle == null && services.isNotEmpty) {
                     _selectedServiceTitle = services.first.title;
                   }
-
-                  final onlineDoctor =
-                      doctors.where((d) => d.isOnline).firstOrNull;
-                  final doctorId = onlineDoctor?.id;
 
                   return ListView(
                     padding: const EdgeInsets.all(24),
@@ -113,11 +142,11 @@ class _ReproductiveHealthScreenState extends State<ReproductiveHealthScreen> {
                       _buildConsultationModeSelector(),
                       const SizedBox(height: 32),
                       AtamanButton(
-                        text: AppStrings.connectWithSpecialist,
+                        text: "Schedule Consultation",
                         isLoading: _isLoading,
-                        onPressed: doctorId == null
+                        onPressed: doctors.isEmpty
                             ? null
-                            : () => _handleConnect(doctorId),
+                            : () => _handleSchedule(context, doctors.first),
                       ),
                       const SizedBox(height: 20),
                     ],
@@ -131,6 +160,21 @@ class _ReproductiveHealthScreenState extends State<ReproductiveHealthScreen> {
         ],
       ),
     );
+  }
+
+  void _handleSchedule(BuildContext context, doctor) {
+    final authState = context.read<AuthCubit>().state;
+    if (authState is Authenticated) {
+      showModalBottomSheet(
+        context: context,
+        isScrollControlled: true,
+        backgroundColor: Colors.transparent,
+        builder: (context) => TelemedBookingSheet(
+          doctor: doctor,
+          userId: authState.user.id,
+        ),
+      );
+    }
   }
 
   Widget _buildServiceCard(TelemedicineService service, bool isSelected) {
@@ -153,9 +197,9 @@ class _ReproductiveHealthScreenState extends State<ReproductiveHealthScreen> {
             Container(
               padding: const EdgeInsets.all(8),
               decoration:
-                  BoxDecoration(color: service.bgColor, shape: BoxShape.circle),
-              child: Icon(_getIconData(service.iconName),
-                  color: service.iconColor, size: 24),
+                  BoxDecoration(color: AppColors.primary.withOpacity(0.1), shape: BoxShape.circle),
+              child: const Icon(Icons.favorite_rounded,
+                  color: AppColors.primary, size: 24),
             ),
             Text(
               service.title,
@@ -166,21 +210,6 @@ class _ReproductiveHealthScreenState extends State<ReproductiveHealthScreen> {
         ),
       ),
     );
-  }
-
-  IconData _getIconData(String name) {
-    switch (name) {
-      case 'more_horiz':
-        return Icons.more_horiz_rounded;
-      case 'add':
-        return Icons.add_rounded;
-      case 'circle_outlined':
-        return Icons.circle_outlined;
-      case 'drag_handle':
-        return Icons.drag_handle_rounded;
-      default:
-        return Icons.help_outline_rounded;
-    }
   }
 
   Widget _buildConfidentialityBanner() {
@@ -284,55 +313,4 @@ class _ReproductiveHealthScreenState extends State<ReproductiveHealthScreen> {
       ),
     );
   }
-
-  Future<void> _handleConnect(String doctorId) async {
-    final status = await [Permission.camera, Permission.microphone].request();
-    if (_isVideoMode &&
-        (!status[Permission.camera]!.isGranted ||
-            !status[Permission.microphone]!.isGranted)) {
-      if (mounted)
-        ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text("Permissions required for call")));
-      return;
-    }
-
-    setState(() => _isLoading = true);
-    final authState = context.read<AuthCubit>().state;
-
-    if (authState is Authenticated) {
-      try {
-        final callId = await context.read<TelemedicineCubit>().initiateCall(
-          authState.user!.id,
-          doctorId,
-          metadata: {
-            'service_type': 'reproductive',
-            'sub_service': _selectedServiceTitle,
-            'consultation_mode': _isVideoMode ? 'video' : 'audio',
-          },
-        );
-
-        if (mounted) {
-          Navigator.pushReplacement(
-            context,
-            MaterialPageRoute(
-              builder: (context) => VideoCallScreen(
-                callId: callId,
-                userId: authState.user!.id,
-                userName: authState.user!.userMetadata?['full_name'] ?? 'Patient',
-                isCaller: true,
-              ),
-            ),
-          );
-        }
-      } catch (e) {
-        if (mounted)
-          ScaffoldMessenger.of(context)
-              .showSnackBar(SnackBar(content: Text("Failed to connect: $e")));
-      } finally {
-        if (mounted) setState(() => _isLoading = false);
-      }
-    }
-  }
 }
-
-

@@ -17,6 +17,28 @@ class TelemedicineRepository implements ITelemedicineRepository {
         .map((data) => data.map((e) => DoctorModel.fromMap(e)).toList());
   }
 
+  Future<List<Map<String, dynamic>>> getSymptomsByCategory(String category) async {
+    final response = await _supabase
+        .from('telemed_symptoms')
+        .select('name')
+        .eq('category', category)
+        .eq('is_active', true)
+        .order('display_order', ascending: true);
+    
+    return List<Map<String, dynamic>>.from(response);
+  }
+
+  @override
+  Future<List<Map<String, dynamic>>> getDoctorAvailability(String doctorId) async {
+    final response = await _supabase
+        .from('doctor_availability')
+        .select()
+        .eq('doctor_id', doctorId)
+        .eq('is_available', true);
+    
+    return List<Map<String, dynamic>>.from(response);
+  }
+
   @override
   Future<List<TelemedicineService>> getServicesByCategory(String category) async {
     final response = await _supabase
@@ -29,15 +51,24 @@ class TelemedicineRepository implements ITelemedicineRepository {
   }
 
   @override
-  Future<String> initiateCall(String patientId, String doctorId, {Map<String, dynamic>? metadata}) async {
-    // We now insert into telemed_sessions to match the Web Console
-    final response = await _supabase.from('telemed_sessions').insert({
+  Future<String> initiateCall(String patientId, String doctorId, {Map<String, dynamic>? metadata, DateTime? scheduledTime}) async {
+    final Map<String, dynamic> insertData = {
       'patient_id': patientId,
       'doctor_id': doctorId,
-      'status': 'scheduled', // Web app looks for 'scheduled' or 'PENDING'
-      'started_at': DateTime.now().toIso8601String(),
-      if (metadata != null) 'metadata': metadata,
-    }).select().single();
+      'status': scheduledTime == null ? 'active' : 'scheduled',
+      'started_at': scheduledTime == null ? DateTime.now().toIso8601String() : null,
+      'scheduled_time': scheduledTime?.toIso8601String(),
+    };
+
+    if (metadata != null) {
+      insertData['metadata'] = metadata;
+    }
+
+    final response = await _supabase
+        .from('telemed_sessions')
+        .insert(insertData)
+        .select()
+        .single();
     
     return response['id'] as String;
   }
@@ -53,14 +84,5 @@ class TelemedicineRepository implements ITelemedicineRepository {
         .from('telemed_sessions')
         .stream(primaryKey: ['id'])
         .eq('id', callId);
-  }
-
-  Stream<List<Map<String, dynamic>>> watchCallSession(String patientId) {
-    return _supabase
-        .from('telemed_sessions')
-        .stream(primaryKey: ['id'])
-        .eq('patient_id', patientId)
-        .order('started_at', ascending: false)
-        .limit(1);
   }
 }
