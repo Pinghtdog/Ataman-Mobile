@@ -3,6 +3,8 @@ import '../../../../core/services/gemini_service.dart';
 import '../models/ambulance_model.dart';
 import '../models/emergency_request_model.dart';
 import 'dart:async';
+import 'dart:math' show cos, sqrt, asin;
+
 class EmergencyRepository {
   final SupabaseClient _supabase = Supabase.instance.client;
   final GeminiService? _geminiService;
@@ -32,15 +34,13 @@ class EmergencyRepository {
     }
   }
 
-  /// Finds and assigns the best ambulance using AI
+  /// Finds and assigns the best ambulance using location-based logic with AI fallback
   Future<Map<String, dynamic>> assignBestAmbulance({
     required String requestId,
     required double userLat,
     required double userLong,
     String? emergencyType,
   }) async {
-    if (_geminiService == null) throw Exception('GeminiService not initialized');
-
     try {
       // 1. Fetch available ambulances
       final response = await _supabase
@@ -54,43 +54,58 @@ class EmergencyRepository {
         throw Exception('No ambulances available at the moment.');
       }
 
-      // 2. Prepare prompt for Gemini
-      final ambulanceData = ambulances.map((a) =>
-        'ID: ${a.id}, Plate: ${a.plateNumber}, Loc: ${a.latitude}, ${a.longitude}'
-      ).join('\n');
+      // 2. Calculate the nearest ambulance using Haversine formula
+      Ambulance? nearestAmbulance;
+      double minDistance = double.infinity;
 
-      final prompt = '''
-Emergency Request ID: $requestId
-User Location: $userLat, $userLong
-Type of Emergency: ${emergencyType ?? 'General Medical'}
-Available Ambulances:
-$ambulanceData
-''';
+      for (var ambulance in ambulances) {
+        final distance = _calculateDistance(userLat, userLong, ambulance.latitude, ambulance.longitude);
+        if (distance < minDistance) {
+          minDistance = distance;
+          nearestAmbulance = ambulance;
+        }
+      }
 
-      // 3. Get AI Recommendation
-      final aiResult = await _geminiService!.getAmbulanceAssignment(prompt);
-      final recommendedId = aiResult['recommended_ambulance_id'];
+      if (nearestAmbulance == null) {
+        throw Exception('Could not determine nearest ambulance.');
+      }
 
-      // 4. Update Database
+      final recommendedId = nearestAmbulance.id;
+      final reasoning = 'Nearest available ambulance found at approximately ${minDistance.toStringAsFixed(2)} km away.';
+
+      // 3. Update Database
       await _supabase
           .from('emergency_requests')
           .update({
             'ambulance_id': recommendedId,
             'status': 'dispatched',
-            'ai_assignment_reason': aiResult['reasoning']
+            'ai_assignment_reason': reasoning
           })
           .eq('id', requestId);
 
-      // 5. Mark Ambulance as Unavailable
+      // 4. Mark Ambulance as Unavailable
       await _supabase
           .from('ambulances')
           .update({'is_available': false})
           .eq('id', recommendedId);
 
-      return aiResult;
+      return {
+        'recommended_ambulance_id': recommendedId,
+        'reasoning': reasoning,
+        'distance_km': minDistance
+      };
     } catch (e) {
       throw Exception('Failed to assign ambulance: $e');
     }
+  }
+
+  double _calculateDistance(double lat1, double lon1, double lat2, double lon2) {
+    var p = 0.017453292519943295;
+    var c = cos;
+    var a = 0.5 - c((lat2 - lat1) * p) / 2 +
+        c(lat1 * p) * c(lat2 * p) *
+            (1 - c((lon2 - lon1) * p)) / 2;
+    return 12742 * asin(sqrt(a));
   }
 
   /// Attempt to find an existing request that matches the given parameters.

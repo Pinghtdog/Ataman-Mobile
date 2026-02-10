@@ -3,12 +3,35 @@ import 'package:qr_flutter/qr_flutter.dart';
 import 'package:intl/intl.dart';
 import '../../../../core/constants/constants.dart';
 import '../../../../core/widgets/widgets.dart';
+import '../../../../core/services/pdf_service.dart';
 import '../../../medical_records/data/models/prescription_model.dart';
 
-class PrescriptionDetailsModal extends StatelessWidget {
+class PrescriptionDetailsModal extends StatefulWidget {
   final Prescription prescription;
 
   const PrescriptionDetailsModal({super.key, required this.prescription});
+
+  @override
+  State<PrescriptionDetailsModal> createState() => _PrescriptionDetailsModalState();
+}
+
+class _PrescriptionDetailsModalState extends State<PrescriptionDetailsModal> {
+  bool _isDownloading = false;
+
+  Future<void> _handleDownload() async {
+    setState(() => _isDownloading = true);
+    try {
+      await PdfService.generatePrescriptionPdf(widget.prescription);
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text("Failed to generate PDF: $e")),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _isDownloading = false);
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -52,7 +75,7 @@ class PrescriptionDetailsModal extends StatelessWidget {
                 ],
               ),
               child: QrImageView(
-                data: prescription.id,
+                data: widget.prescription.id,
                 version: QrVersions.auto,
                 size: 200.0,
                 eyeStyle: const QrEyeStyle(
@@ -68,12 +91,12 @@ class PrescriptionDetailsModal extends StatelessWidget {
           ),
           const SizedBox(height: AppSizes.p24),
           
-          _buildInfoRow("Medication", prescription.medicationName, isBold: true),
-          _buildInfoRow("Dosage", prescription.dosage),
-          _buildInfoRow("Doctor", prescription.doctorName),
-          _buildInfoRow("Valid Until", DateFormat('MMM dd, yyyy').format(prescription.validUntil)),
+          _buildInfoRow("Medication", widget.prescription.medicationName, isBold: true),
+          _buildInfoRow("Dosage", widget.prescription.dosage),
+          _buildInfoRow("Doctor", widget.prescription.doctorName),
+          _buildInfoRow("Valid Until", DateFormat('MMM dd, yyyy').format(widget.prescription.validUntil)),
           
-          if (prescription.instructions != null && prescription.instructions!.isNotEmpty) ...[
+          if (widget.prescription.instructions != null && widget.prescription.instructions!.isNotEmpty) ...[
             const SizedBox(height: AppSizes.p16),
             Text(
               "Instructions",
@@ -81,17 +104,15 @@ class PrescriptionDetailsModal extends StatelessWidget {
             ),
             const SizedBox(height: AppSizes.p4),
             Text(
-              prescription.instructions!,
+              widget.prescription.instructions!,
               style: AppTextStyles.bodyMedium.copyWith(color: AppColors.textSecondary),
             ),
           ],
           
           const SizedBox(height: AppSizes.p32),
           AtamanButton(
-            text: "Download PDF",
-            onPressed: () {
-              // TODO: Implement PDF Download
-            },
+            text: _isDownloading ? "Generating PDF..." : "Download PDF",
+            onPressed: _isDownloading ? null : _handleDownload,
           ),
           const SizedBox(height: AppSizes.p16),
         ],

@@ -33,7 +33,7 @@ dependencies:
   file_picker: ^10.3.8
 
   #news health:
-  intl: ^0.22.0
+  intl: ^0.19.0
   url_launcher: ^6.3.1
 
   # PDF and Printing

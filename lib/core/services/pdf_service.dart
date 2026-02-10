@@ -5,6 +5,7 @@ import 'package:pdf/widgets.dart' as pw;
 import 'package:printing/printing.dart';
 import '../../features/medical_records/data/models/referral_model.dart';
 import '../../features/medical_records/data/models/medical_history_model.dart';
+import '../../features/medical_records/data/models/prescription_model.dart';
 import '../../features/auth/data/models/user_model.dart';
 import 'yakap_form_pdf.dart';
 import 'itr_form_pdf.dart';
@@ -124,6 +125,78 @@ class PdfService {
     await Printing.layoutPdf(
       onLayout: (PdfPageFormat format) async => pdf.save(),
       name: 'Record_${item.id}.pdf',
+    );
+  }
+
+  /// Generates a PDF for a Digital Prescription
+  static Future<void> generatePrescriptionPdf(Prescription prescription) async {
+    final pdf = pw.Document();
+    final image = await _loadLogo();
+
+    pdf.addPage(
+      pw.Page(
+        pageFormat: PdfPageFormat.a4,
+        build: (pw.Context context) {
+          return pw.Padding(
+            padding: const pw.EdgeInsets.all(32),
+            child: pw.Column(
+              crossAxisAlignment: pw.CrossAxisAlignment.start,
+              children: [
+                _buildHeader(image, "DIGITAL PRESCRIPTION"),
+                pw.SizedBox(height: 10),
+                pw.Center(
+                  child: pw.Text("Prescription ID: ${prescription.id}", style: pw.TextStyle(fontSize: 10, color: PdfColors.grey700)),
+                ),
+                pw.SizedBox(height: 30),
+
+                _buildSectionTitle("MEDICATION DETAILS"),
+                pw.SizedBox(height: 10),
+                _buildInfoRow("Medication", prescription.medicationName),
+                _buildInfoRow("Dosage", prescription.dosage),
+                pw.SizedBox(height: 20),
+
+                _buildSectionTitle("DOCTOR INFORMATION"),
+                pw.SizedBox(height: 10),
+                _buildInfoRow("Physician", prescription.doctorName),
+                _buildInfoRow("Date Prescribed", prescription.createdAt.toIso8601String().split('T')[0]),
+                _buildInfoRow("Valid Until", prescription.validUntil.toIso8601String().split('T')[0]),
+                pw.SizedBox(height: 20),
+
+                if (prescription.instructions != null && prescription.instructions!.isNotEmpty) ...[
+                  _buildSectionTitle("INSTRUCTIONS"),
+                  pw.SizedBox(height: 10),
+                  pw.Text(prescription.instructions!, style: pw.TextStyle(fontSize: 10)),
+                  pw.SizedBox(height: 20),
+                ],
+
+                pw.Spacer(),
+                pw.Row(
+                  mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+                  crossAxisAlignment: pw.CrossAxisAlignment.end,
+                  children: [
+                    pw.Container(
+                      width: 100,
+                      height: 100,
+                      child: pw.BarcodeWidget(
+                        barcode: pw.Barcode.qrCode(),
+                        data: prescription.id,
+                      ),
+                    ),
+                    _buildSignatureArea(),
+                  ],
+                ),
+                pw.SizedBox(height: 20),
+                _buildFooter("This is a verified digital prescription from the Ataman Healthcare system."),
+              ],
+            ),
+          );
+        },
+      ),
+    );
+
+    await Printing.layoutPdf(
+      onLayout: (PdfPageFormat format) async => pdf.save(),
+      name: 'Prescription_${prescription.id}.pdf',
     );
   }
 
