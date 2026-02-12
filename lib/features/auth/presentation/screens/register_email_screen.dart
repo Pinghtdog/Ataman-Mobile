@@ -5,6 +5,8 @@ import '../../../../core/utils/validator_utils.dart';
 import '../../logic/auth_cubit.dart';
 import '../../../../core/constants/constants.dart';
 import '../../../../core/widgets/widgets.dart';
+import '../../../../core/services/philhealth_service.dart';
+import '../../../../injector.dart';
 import '../widgets/check_email_dialog.dart';
 import '../widgets/email_confirmed_dialog.dart';
 
@@ -19,8 +21,16 @@ class _RegisterEmailScreenState extends State<RegisterEmailScreen> {
   final _formKey = GlobalKey<FormState>();
   final _emailController = TextEditingController();
   final _passController = TextEditingController();
+  final _philhealthController = TextEditingController();
   late Map<String, dynamic> fullProfileData;
   bool _isVerificationHandled = false;
+  bool _isPhilhealthValid = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _philhealthController.addListener(_validatePhilhealth);
+  }
 
   @override
   void didChangeDependencies() {
@@ -28,6 +38,16 @@ class _RegisterEmailScreenState extends State<RegisterEmailScreen> {
     final args = ModalRoute.of(context)?.settings.arguments;
     if (args is Map<String, dynamic>) {
       fullProfileData = args;
+      if (fullProfileData['philhealthId'] != null) {
+        _philhealthController.text = fullProfileData['philhealthId'];
+      }
+    }
+  }
+
+  void _validatePhilhealth() {
+    final isValid = getIt<PhilHealthService>().validatePIN(_philhealthController.text);
+    if (isValid != _isPhilhealthValid) {
+      setState(() => _isPhilhealthValid = isValid);
     }
   }
 
@@ -35,6 +55,7 @@ class _RegisterEmailScreenState extends State<RegisterEmailScreen> {
   void dispose() {
     _emailController.dispose();
     _passController.dispose();
+    _philhealthController.dispose();
     super.dispose();
   }
 
@@ -49,7 +70,7 @@ class _RegisterEmailScreenState extends State<RegisterEmailScreen> {
             lastName: fullProfileData['lastName'],
             birthDate: fullProfileData['birthDate'],
             barangay: fullProfileData['barangay'],
-            philhealthId: fullProfileData['philhealthId'],
+            philhealthId: _philhealthController.text.trim(),
           );
     }
   }
@@ -105,7 +126,6 @@ class _RegisterEmailScreenState extends State<RegisterEmailScreen> {
           if (state is AuthError) {
             if (state.message.contains("check your email")) {
               _showCheckEmailDialog();
-            } else {
             }
           }
         },
@@ -124,10 +144,24 @@ class _RegisterEmailScreenState extends State<RegisterEmailScreen> {
                   ),
                   const SizedBox(height: AppSizes.p8),
                   const Text(
-                    "Set up your login credentials.",
+                    "Verify your PhilHealth and set up login.",
                     style: AppTextStyles.bodyMedium,
                   ),
                   const SizedBox(height: AppSizes.p32),
+
+                  const AtamanLabel(text: "PHILHEALTH ID (OPTIONAL)"),
+                  AtamanTextField(
+                    label: "",
+                    hintText: "XX-XXXXXXXXX-X",
+                    controller: _philhealthController,
+                    prefixIcon: Icons.badge_outlined,
+                    keyboardType: TextInputType.number,
+                    suffixIcon: _isPhilhealthValid 
+                      ? const Icon(Icons.check_circle, color: Colors.green) 
+                      : null,
+                    helperText: _isPhilhealthValid ? "PIN Validated & Verified" : "Enter 12-digit PIN for instant verification",
+                  ),
+                  const SizedBox(height: AppSizes.p24),
                   
                   const AtamanLabel(text: "EMAIL ADDRESS"),
                   AtamanTextField(

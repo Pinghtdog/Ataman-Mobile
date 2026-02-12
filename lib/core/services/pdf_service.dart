@@ -9,6 +9,7 @@ import '../../features/medical_records/data/models/prescription_model.dart';
 import '../../features/auth/data/models/user_model.dart';
 import 'yakap_form_pdf.dart';
 import 'itr_form_pdf.dart';
+import 'cf1_form_pdf.dart';
 
 class PdfService {
   /// Generates a PDF for a specific Hospital Referral
@@ -283,6 +284,16 @@ class PdfService {
     await Printing.layoutPdf(
       onLayout: (PdfPageFormat format) async => pdf.save(),
       name: 'Yakap_Form_${user.lastName}.pdf',
+    );
+  }
+
+  /// Generates the official PhilHealth Claim Form 1 (CF-1)
+  static Future<void> generateCf1Form(UserModel user) async {
+    final pdf = await Cf1FormPdf.generate(user);
+    
+    await Printing.layoutPdf(
+      onLayout: (PdfPageFormat format) async => pdf.save(),
+      name: 'PhilHealth_CF1_${user.lastName}.pdf',
     );
   }
 

@@ -43,7 +43,6 @@ class _TriageInputScreenState extends State<TriageInputScreen> {
       body: BlocConsumer<TriageCubit, TriageState>(
         listener: (context, state) {
           if (state is TriageSuccess) {
-            // Fix: Pass the current TriageCubit to the next screen
             final cubit = context.read<TriageCubit>();
             Navigator.pushReplacement(
               context,

@@ -2,11 +2,15 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../../../../core/constants/constants.dart';
-import '../../../../core/widgets/ataman_button.dart';
 import '../../../../core/services/notification_service.dart';
+import '../../../../core/services/pdf_service.dart';
+import '../../../../core/services/philhealth_service.dart';
+import '../../../../core/widgets/widgets.dart';
 import '../../../../injector.dart';
+import '../../../auth/logic/auth_cubit.dart';
 import '../../../booking/presentation/screens/booking_details_screen.dart';
 import '../../../facility/data/repositories/facility_repository.dart';
+import '../../../facility/data/models/facility_model.dart';
 import '../../data/models/triage_model.dart';
 import '../../logic/triage_cubit.dart';
 import '../../../home/presentation/screens/ataman_base_screen.dart';
@@ -22,16 +26,48 @@ class TriageResultScreen extends StatefulWidget {
 
 class _TriageResultScreenState extends State<TriageResultScreen> {
   bool _isProcessing = false;
+  PhilHealthBenefit? _matchedBenefit;
+  List<Map<String, String>>? _matchedFacilities;
+  Map<String, dynamic>? _eligibility;
 
   @override
   void initState() {
     super.initState();
+    _runPhilHealthCheck();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       NotificationService.showSimulatedNotification(
         title: "Triage Analysis Ready",
         body: "Status: ${widget.result.urgency.name.toUpperCase()} - ${widget.result.actionText}",
       );
     });
+  }
+
+  void _runPhilHealthCheck() {
+    final authState = context.read<AuthCubit>().state;
+    if (authState is Authenticated) {
+      final philHealthService = getIt<PhilHealthService>();
+      
+      final match = philHealthService.matchBenefitToCondition(
+        widget.result.summaryForProvider ?? widget.result.rawSymptoms
+      );
+      
+      final eligibilityStatus = philHealthService.checkEligibilityStatus(authState.profile!);
+      
+      setState(() {
+        if (match != null) {
+          _matchedBenefit = match['benefit'] as PhilHealthBenefit;
+          _matchedFacilities = match['facilities'] as List<Map<String, String>>;
+        }
+        
+        _eligibility = {
+          'isEligible': eligibilityStatus == "Active Member",
+          'status': eligibilityStatus,
+          'reason': eligibilityStatus == "Active Member" 
+              ? "Membership verified via PhilHealth ID." 
+              : "Verification of membership is required for full benefits.",
+        };
+      });
+    }
   }
 
   @override
@@ -53,6 +89,10 @@ class _TriageResultScreenState extends State<TriageResultScreen> {
         child: Column(
           children: [
             _buildUrgencyHeader(),
+            if (_matchedBenefit != null) ...[
+              const SizedBox(height: AppSizes.p24),
+              _buildPhilHealthCard(),
+            ],
             const SizedBox(height: AppSizes.p32),
             _buildDetails(),
             if (widget.result.soapNote != null) ...[
@@ -68,6 +108,94 @@ class _TriageResultScreenState extends State<TriageResultScreen> {
             ),
           ],
         ),
+      ),
+    );
+  }
+
+  Widget _buildPhilHealthCard() {
+    if (_matchedBenefit == null || _eligibility == null) return const SizedBox.shrink();
+
+    final isEligible = _eligibility!['isEligible'] as bool;
+
+    return Container(
+      padding: const EdgeInsets.all(AppSizes.p20),
+      decoration: BoxDecoration(
+        color: const Color(0xFFE0F2F1), // Light teal color
+        borderRadius: BorderRadius.circular(AppSizes.radiusMedium),
+        border: Border.all(color: AppColors.primary.withOpacity(0.5)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const Icon(Icons.account_balance_wallet_outlined, color: AppColors.primary),
+              const SizedBox(width: 12),
+              const Text("PhilHealth Coverage", style: AppTextStyles.h3),
+            ],
+          ),
+          const SizedBox(height: 16),
+          Text(
+            _matchedBenefit!.name,
+            style: AppTextStyles.bodyLarge.copyWith(fontWeight: FontWeight.bold, color: AppColors.primary),
+          ),
+          Text(
+            "Potential Coverage: ${_matchedBenefit!.amount}",
+            style: AppTextStyles.h2.copyWith(color: AppColors.primary, fontWeight: FontWeight.bold),
+          ),
+          const SizedBox(height: 8),
+          Text(_matchedBenefit!.requirements, style: AppTextStyles.bodySmall),
+          
+          if (_matchedFacilities != null && _matchedFacilities!.isNotEmpty) ...[
+            const SizedBox(height: 12),
+            Text(
+              "Accredited in Naga: ${_matchedFacilities!.map((f) => f['name']).join(', ')}",
+              style: AppTextStyles.bodySmall.copyWith(fontStyle: FontStyle.italic, color: AppColors.primary),
+            ),
+          ],
+
+          if (_matchedBenefit!.treatmentSteps != null) ...[
+            const SizedBox(height: 16),
+            const Text("Step-by-Step Treatment Guide:", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+            const SizedBox(height: 8),
+            ..._matchedBenefit!.treatmentSteps!.map((step) => Padding(
+              padding: const EdgeInsets.only(bottom: 6),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text("• ", style: TextStyle(fontWeight: FontWeight.bold, color: AppColors.primary)),
+                  Expanded(child: Text(step, style: const TextStyle(fontSize: 12))),
+                ],
+              ),
+            )),
+          ],
+
+          const Divider(height: 32, thickness: 1),
+          Row(
+            children: [
+              Icon(isEligible ? Icons.verified_user : Icons.warning_amber_rounded, color: isEligible ? Colors.green : Colors.orange, size: 20),
+              const SizedBox(width: 8),
+              Text("Eligibility: ${_eligibility!['status']}", style: AppTextStyles.bodyMedium.copyWith(fontWeight: FontWeight.bold)),
+            ],
+          ),
+          const SizedBox(height: 4),
+          Text(_eligibility!['reason'], style: AppTextStyles.bodySmall.copyWith(color: AppColors.textSecondary)),
+
+          if (isEligible && widget.result.requiredCapability.contains('PRIMARY_CARE')) ...[
+              const SizedBox(height: 20),
+              AtamanButton(
+                text: "Download Pre-filled Yakap Form",
+                onPressed: () {
+                   final authState = context.read<AuthCubit>().state;
+                   if (authState is Authenticated) {
+                      PdfService.generateYakapForm(authState.profile!);
+                   }
+                },
+                color: AppColors.primary,
+                icon: Icons.download_for_offline_rounded,
+              ),
+          ]
+        ],
       ),
     );
   }
@@ -107,8 +235,8 @@ class _TriageResultScreenState extends State<TriageResultScreen> {
           const SizedBox(height: AppSizes.p16),
         ],
         _buildDetailTile(
-          "Recommended Facility", 
-          widget.result.requiredCapability.replaceAll('_', ' '), 
+          "Recommended Facility Type", 
+          widget.result.requiredCapability.replaceAll('_', ' ').toLowerCase(),
           Icons.account_balance_outlined
         ),
         const SizedBox(height: AppSizes.p16),
@@ -192,7 +320,7 @@ class _TriageResultScreenState extends State<TriageResultScreen> {
   }
 
   Widget _buildActionButton(BuildContext context) {
-    String buttonText = "Proceed to Booking";
+    String buttonText = "Find Accredited Facility";
     if (widget.result.urgency == TriageUrgency.emergency) {
       buttonText = "Call Emergency Services (911)";
     } else if (widget.result.recommendedAction == 'TELEMEDICINE') {
@@ -218,36 +346,36 @@ class _TriageResultScreenState extends State<TriageResultScreen> {
       setState(() => _isProcessing = true);
       
       try {
-        final facility = await getIt<FacilityRepository>().findRecommendedFacility(widget.result.requiredCapability);
+        Facility? recommendedFacility;
+        
+        if (_matchedFacilities != null && _matchedFacilities!.isNotEmpty) {
+           final facilityId = _matchedFacilities!.first['id'];
+           recommendedFacility = await getIt<FacilityRepository>().getFacilityById(facilityId!);
+        }
+        
+        recommendedFacility ??= await getIt<FacilityRepository>().findRecommendedFacility(widget.result.requiredCapability);
         
         if (!mounted) return;
 
-        final cubit = context.read<TriageCubit?>();
-        if (cubit != null && !cubit.isClosed) {
-          cubit.reset();
-        }
-
-        if (facility != null) {
-          // DIRECT NAVIGATION TO BOOKING DETAILS
-          Navigator.of(context).pushAndRemoveUntil(
+        // FIXED: Using standard push so user can go back to triage results
+        if (recommendedFacility != null) {
+          Navigator.of(context).push(
             MaterialPageRoute(
               builder: (context) => BookingDetailsScreen(
-                facility: facility,
+                facility: recommendedFacility!,
                 triageResult: widget.result,
               ),
             ),
-            (route) => false,
           );
         } else {
-          // Fallback to facility list if no specific match
-          Navigator.of(context).pushAndRemoveUntil(
+          // If no specific facility, go to the general list view
+          Navigator.of(context).push(
             MaterialPageRoute(
               builder: (context) => AtamanBaseScreen(
-                initialIndex: 1, 
+                initialIndex: 1, // Navigate to the Facilities tab
                 triageResult: widget.result,
               ),
             ),
-            (route) => false,
           );
         }
       } catch (e) {
@@ -268,6 +396,7 @@ class _TriageResultScreenState extends State<TriageResultScreen> {
       cubit.reset();
     }
     
+    // For exit, we still want to clear the stack to go "Fresh" to Home
     Navigator.of(context).pushAndRemoveUntil(
       MaterialPageRoute(builder: (context) => const AtamanBaseScreen()),
       (route) => false,

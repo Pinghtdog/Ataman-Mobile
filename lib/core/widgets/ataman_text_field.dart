@@ -4,11 +4,14 @@ import '../constants/app_colors.dart';
 class AtamanTextField extends StatefulWidget {
   final String label;
   final String? hintText;
+  final String? helperText;
   final IconData? prefixIcon;
+  final Widget? suffixIcon;
   final bool isPassword;
   final TextEditingController? controller;
   final TextInputType keyboardType;
   final String? Function(String?)? validator;
+  final void Function(String)? onChanged;
   final bool readOnly;
   final bool autoFocus;
   final int? maxLines;
@@ -18,11 +21,14 @@ class AtamanTextField extends StatefulWidget {
     super.key,
     required this.label,
     this.hintText,
+    this.helperText,
     this.prefixIcon,
+    this.suffixIcon,
     this.isPassword = false,
     this.controller,
     this.keyboardType = TextInputType.text,
     this.validator,
+    this.onChanged,
     this.readOnly = false,
     this.autoFocus = false,
     this.maxLines = 1,
@@ -49,13 +55,15 @@ class _AtamanTextFieldState extends State<AtamanTextField> {
       obscureText: widget.isPassword ? _obscureText : false,
       keyboardType: widget.keyboardType,
       validator: widget.validator,
+      onChanged: widget.onChanged,
       readOnly: widget.readOnly,
       autofocus: widget.autoFocus,
       maxLines: widget.isPassword ? 1 : widget.maxLines,
       minLines: widget.minLines,
       decoration: InputDecoration(
-        labelText: widget.label,
+        labelText: widget.label.isEmpty ? null : widget.label,
         hintText: widget.hintText,
+        helperText: widget.helperText,
         alignLabelWithHint: true,
         filled: widget.readOnly,
         fillColor: widget.readOnly ? Colors.grey.shade100 : null,
@@ -74,7 +82,7 @@ class _AtamanTextFieldState extends State<AtamanTextField> {
                   });
                 },
               )
-            : null,
+            : widget.suffixIcon,
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
         ),

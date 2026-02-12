@@ -18,13 +18,15 @@ class EmergencyRequestScreen extends StatefulWidget {
   State<EmergencyRequestScreen> createState() => _EmergencyRequestScreenState();
 }
 
-class _EmergencyRequestScreenState extends State<EmergencyRequestScreen> with SingleTickerProviderStateMixin {
+class _EmergencyRequestScreenState extends State<EmergencyRequestScreen> with TickerProviderStateMixin {
   Position? _currentPosition;
   bool _isRequesting = false;
   EmergencyType _selectedType = EmergencyType.sos;
   
   AnimationController? _animationController;
+  AnimationController? _pulseController;
   Animation<double>? _growAnimation;
+  Animation<double>? _pulseAnimation;
   bool _isGrowing = false;
   
   final Set<Marker> _markers = {};
@@ -34,17 +36,18 @@ class _EmergencyRequestScreenState extends State<EmergencyRequestScreen> with Si
   void initState() {
     super.initState();
     _initLocation();
-    _initAnimation();
+    _initAnimations();
   }
 
-  void _initAnimation() {
+  void _initAnimations() {
+    // SOS Activation Animation (Hold to trigger)
     _animationController = AnimationController(
       vsync: this,
-      duration: const Duration(seconds: 1, milliseconds: 500),
+      duration: const Duration(seconds: 2),
     );
     
-    _growAnimation = Tween<double>(begin: 1.0, end: 12.0).animate(
-      CurvedAnimation(parent: _animationController!, curve: Curves.easeInOutCubic),
+    _growAnimation = Tween<double>(begin: 1.0, end: 15.0).animate(
+      CurvedAnimation(parent: _animationController!, curve: Curves.easeInCubic),
     );
 
     _animationController!.addStatusListener((status) {
@@ -52,11 +55,22 @@ class _EmergencyRequestScreenState extends State<EmergencyRequestScreen> with Si
         _sendEmergencyRequest();
       }
     });
+
+    // Idle Pulse Animation
+    _pulseController = AnimationController(
+      vsync: this,
+      duration: const Duration(seconds: 2),
+    )..repeat(reverse: true);
+
+    _pulseAnimation = Tween<double>(begin: 1.0, end: 1.1).animate(
+      CurvedAnimation(parent: _pulseController!, curve: Curves.easeInOut),
+    );
   }
 
   @override
   void dispose() {
     _animationController?.dispose();
+    _pulseController?.dispose();
     super.dispose();
   }
 
@@ -76,7 +90,7 @@ class _EmergencyRequestScreenState extends State<EmergencyRequestScreen> with Si
     }
   }
 
-  void _startSosAnimation() {
+  void _handleTapDown(TapDownDetails details) {
     if (_currentPosition == null) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text("Unable to get your location. Please try again.")),
@@ -85,6 +99,23 @@ class _EmergencyRequestScreenState extends State<EmergencyRequestScreen> with Si
     }
     setState(() => _isGrowing = true);
     _animationController?.forward();
+    _pulseController?.stop();
+  }
+
+  void _handleTapUp(TapUpDetails details) {
+    if (_animationController!.status != AnimationStatus.completed) {
+      _animationController?.reverse();
+      setState(() => _isGrowing = false);
+      _pulseController?.repeat(reverse: true);
+    }
+  }
+
+  void _handleTapCancel() {
+    if (_animationController!.status != AnimationStatus.completed) {
+      _animationController?.reverse();
+      setState(() => _isGrowing = false);
+      _pulseController?.repeat(reverse: true);
+    }
   }
 
   void _sendEmergencyRequest() {
@@ -119,7 +150,6 @@ class _EmergencyRequestScreenState extends State<EmergencyRequestScreen> with Si
       );
     });
 
-    // Optionally zoom to fit both markers
     if (_currentPosition != null) {
       final bounds = LatLngBounds(
         southwest: LatLng(
@@ -153,12 +183,12 @@ class _EmergencyRequestScreenState extends State<EmergencyRequestScreen> with Si
             setState(() {
               _isGrowing = false;
               _animationController?.reset();
+              _pulseController?.repeat(reverse: true);
             });
             ScaffoldMessenger.of(context).showSnackBar(
               SnackBar(content: Text(state.message)),
             );
           } else if (state is EmergencySuccess) {
-            // Handle completion (e.g., show a summary or navigate away)
             ScaffoldMessenger.of(context).showSnackBar(
               const SnackBar(content: Text("Emergency assistance has arrived.")),
             );
@@ -219,54 +249,83 @@ class _EmergencyRequestScreenState extends State<EmergencyRequestScreen> with Si
                     _buildTypeSelector(),
                     const SizedBox(height: AppSizes.p48),
                     Center(
-                      child: AnimatedBuilder(
-                        animation: _growAnimation!,
-                        builder: (context, child) {
-                          return Transform.scale(
-                            scale: _growAnimation!.value,
-                            child: GestureDetector(
-                              onTap: _isGrowing ? null : _startSosAnimation,
-                              child: Container(
-                                width: 200,
-                                height: 200,
-                                decoration: BoxDecoration(
-                                  color: AppColors.danger,
-                                  shape: BoxShape.circle,
-                                  boxShadow: [
-                                    BoxShadow(
-                                      color: AppColors.danger.withOpacity(0.3),
-                                      blurRadius: 20,
-                                      spreadRadius: 10,
-                                    ),
-                                  ],
-                                ),
-                                child: Center(
-                                  child: Opacity(
-                                    opacity: _isGrowing ? (1.0 - (_animationController!.value * 2.5)).clamp(0.0, 1.0) : 1.0,
-                                    child: const Column(
-                                      mainAxisAlignment: MainAxisAlignment.center,
-                                      children: [
-                                        Icon(Icons.sos, color: Colors.white, size: 60),
-                                        Text(
-                                          "PRESS FOR HELP",
-                                          style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+                      child: Stack(
+                        alignment: Alignment.center,
+                        children: [
+                          // Background progress circle
+                          if (_isGrowing)
+                            SizedBox(
+                              width: 220,
+                              height: 220,
+                              child: CircularProgressIndicator(
+                                value: _animationController!.value,
+                                strokeWidth: 8,
+                                color: AppColors.danger,
+                                backgroundColor: AppColors.danger.withOpacity(0.1),
+                              ),
+                            ),
+                          
+                          AnimatedBuilder(
+                            animation: Listenable.merge([_growAnimation!, _pulseAnimation!]),
+                            builder: (context, child) {
+                              return Transform.scale(
+                                scale: _isGrowing ? _growAnimation!.value : _pulseAnimation!.value,
+                                child: GestureDetector(
+                                  onTapDown: _handleTapDown,
+                                  onTapUp: _handleTapUp,
+                                  onTapCancel: _handleTapCancel,
+                                  child: Container(
+                                    width: 200,
+                                    height: 200,
+                                    decoration: BoxDecoration(
+                                      color: AppColors.danger,
+                                      shape: BoxShape.circle,
+                                      boxShadow: [
+                                        BoxShadow(
+                                          color: AppColors.danger.withOpacity(0.3),
+                                          blurRadius: _isGrowing ? 40 : 20,
+                                          spreadRadius: _isGrowing ? 20 : 10,
                                         ),
                                       ],
                                     ),
+                                    child: Center(
+                                      child: Opacity(
+                                        opacity: _isGrowing ? (1.0 - (_animationController!.value * 2.0)).clamp(0.0, 1.0) : 1.0,
+                                        child: const Column(
+                                          mainAxisAlignment: MainAxisAlignment.center,
+                                          children: [
+                                            Icon(Icons.sos, color: Colors.white, size: 60),
+                                            Text(
+                                              "HOLD TO SEND",
+                                              style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                    ),
                                   ),
                                 ),
-                              ),
-                            ),
-                          );
-                        },
+                              );
+                            },
+                          ),
+                        ],
                       ),
                     ),
-                    const SizedBox(height: AppSizes.p24),
+                    const SizedBox(height: AppSizes.p40),
                     Opacity(
                       opacity: _isGrowing ? (1.0 - (_animationController!.value * 5.0)).clamp(0.0, 1.0) : 1.0,
-                      child: const Text(
-                        "Press once to activate emergency SOS",
-                        style: AppTextStyles.bodySmall,
+                      child: Column(
+                        children: [
+                          const Text(
+                            "Hold button for 2 seconds to activate",
+                            style: AppTextStyles.bodyMedium,
+                          ),
+                          const SizedBox(height: 8),
+                          Text(
+                            "Emergency ${_selectedType.name.toUpperCase()} will be sent",
+                            style: AppTextStyles.bodySmall.copyWith(color: AppColors.danger),
+                          ),
+                        ],
                       ),
                     ),
                   ],
@@ -334,6 +393,7 @@ class _EmergencyRequestScreenState extends State<EmergencyRequestScreen> with Si
                       _isRequesting = false;
                       _isGrowing = false;
                       _animationController?.reset();
+                      _pulseController?.repeat(reverse: true);
                       _markers.removeWhere((m) => m.markerId.value == 'ambulance_live');
                     });
                   },

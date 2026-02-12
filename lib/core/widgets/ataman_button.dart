@@ -7,6 +7,7 @@ class AtamanButton extends StatelessWidget {
   final bool isLoading;
   final bool isOutlined;
   final Color? color;
+  final Color? textColor;
   final double? width;
   final IconData? icon;
 
@@ -17,6 +18,7 @@ class AtamanButton extends StatelessWidget {
     this.isLoading = false,
     this.isOutlined = false,
     this.color,
+    this.textColor,
     this.width,
     this.icon,
   });
@@ -25,14 +27,14 @@ class AtamanButton extends StatelessWidget {
   Widget build(BuildContext context) {
     final double effectiveWidth = width ?? double.infinity;
 
-    Widget buildContent(Color textColor) {
+    Widget buildContent(Color contentColor) {
       if (isLoading) {
         return SizedBox(
           height: 20,
           width: 20,
           child: CircularProgressIndicator(
             strokeWidth: 2,
-            color: isOutlined ? AppColors.primary : Colors.white,
+            color: contentColor,
           ),
         );
       }
@@ -42,12 +44,12 @@ class AtamanButton extends StatelessWidget {
           mainAxisAlignment: MainAxisAlignment.center,
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(icon, color: textColor, size: 20),
+            Icon(icon, color: contentColor, size: 20),
             const SizedBox(width: 8),
             Text(
               text,
               style: TextStyle(
-                color: textColor,
+                color: contentColor,
                 fontSize: 16,
                 fontWeight: isOutlined ? FontWeight.normal : FontWeight.bold,
               ),
@@ -59,7 +61,7 @@ class AtamanButton extends StatelessWidget {
       return Text(
         text,
         style: TextStyle(
-          color: textColor,
+          color: contentColor,
           fontSize: 16,
           fontWeight: isOutlined ? FontWeight.normal : FontWeight.bold,
         ),
@@ -67,6 +69,7 @@ class AtamanButton extends StatelessWidget {
     }
 
     if (isOutlined) {
+      final Color borderAndTextColor = textColor ?? color ?? AppColors.primary;
       return SizedBox(
         width: effectiveWidth,
         child: OutlinedButton(
@@ -76,11 +79,12 @@ class AtamanButton extends StatelessWidget {
             minimumSize: const Size(0, 52),
             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
           ),
-          child: buildContent(color ?? AppColors.primary),
+          child: buildContent(borderAndTextColor),
         ),
       );
     }
 
+    final Color buttonTextColor = textColor ?? Colors.white;
     return SizedBox(
       width: effectiveWidth,
       child: ElevatedButton(
@@ -91,7 +95,7 @@ class AtamanButton extends StatelessWidget {
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
           elevation: 0,
         ),
-        child: buildContent(Colors.white),
+        child: buildContent(buttonTextColor),
       ),
     );
   }

@@ -29,64 +29,126 @@ class HybridAiService implements AiService {
     }
   }
 
-  /// Interactive Mock Logic that mimics AI flow
+  /// Interactive Mock Logic that mimics AI flow with strict branching
   Map<String, dynamic> _handleMockTriage(String prompt) {
-    // Count how many "Q:" turns are in the prompt to simulate progress
+    final String p = prompt.toLowerCase();
     final int turnCount = "Q:".allMatches(prompt).length;
 
+    // --- STEP 0: INITIAL BROAD QUESTION ---
     if (turnCount == 0) {
-      // Step 1: Initial Question
       return {
         "is_final": false,
-        "question": "How long have you been experiencing these symptoms?",
-        "options": ["Just today", "2-3 days", "More than a week"],
+        "question": "Ano po ang maitutulong namin sa inyo ngayon? (What is your main concern or reason for triage today?)",
+        "options": [
+          "May nararamdamang sakit (Pain or Illness)",
+          "Para sa Check-up o Konsulta (Routine Check-up)",
+          "Maternal / Pagbubuntis (Pregnancy)",
+          "Kagat ng Aso o Hayop (Animal Bite)",
+          "Emergency / SOS",
+          "None of the above / I want to describe it differently"
+        ],
       };
-    } else if (turnCount == 1) {
-      // Step 2: Follow-up Question
-      return {
-        "is_final": false,
-        "question": "On a scale of 1-10, how severe is your discomfort?",
-        "options": ["1-3 (Mild)", "4-6 (Moderate)", "7-10 (Severe)"],
-      };
-    } else {
-      // Step 3: Final Result based on Red Flags in the whole conversation
-      final bool hasUrgentKeywords = prompt.toLowerCase().contains('pain') || 
-                                     prompt.toLowerCase().contains('breath') || 
-                                     prompt.toLowerCase().contains('blood') ||
-                                     prompt.toLowerCase().contains('severe');
+    }
 
-      if (hasUrgentKeywords) {
+    // --- STEP 1: BRANCHED FOLLOW-UP ---
+    if (turnCount == 1) {
+      if (p.contains('sakit') || p.contains('pain')) {
         return {
-          "is_final": true,
-          "result": {
-            "urgency": "URGENT",
-            "case_category": "EMERGENCY_SCREENING",
-            "recommended_action": "HOSPITAL_ER",
-            "required_capability": "HOSPITAL_LEVEL_3",
-            "specialty": "Internal Medicine",
-            "reason": "Demo Mode: Potential red flags detected (Pain/Breathing/Blood). Proceed to BMC or NCGH.",
-            "summary_for_provider": "Interactive Demo: Patient reported symptoms indicating urgency.",
-            "is_telemed_suitable": false,
-            "ai_confidence": 0.8
-          }
+          "is_final": false,
+          "question": "Saan po banda ang masakit at gaano na ito katagal? (Where is the pain located and how long has it been?)",
+          "options": ["Tiyan (Stomach)", "Dibdib (Chest)", "Ulo (Head)", "Iba pa (Others)"],
+        };
+      } else if (p.contains('maternal') || p.contains('pagbubuntis')) {
+        return {
+          "is_final": false,
+          "question": "Ilang buwan na po ang inyong pagbubuntis? (How many months pregnant are you?)",
+          "options": ["1-3 buwan", "4-6 buwan", "7-9 buwan", "Manganganak na (Labor)"],
+        };
+      } else if (p.contains('bite') || p.contains('kagat')) {
+        return {
+          "is_final": false,
+          "question": "Anong hayop po ang nakakagat sa inyo? (What animal bit you?)",
+          "options": ["Aso (Dog)", "Pusa (Cat)", "Iba pa (Others)"],
         };
       } else {
         return {
-          "is_final": true,
-          "result": {
-            "urgency": "ROUTINE",
-            "case_category": "GENERAL_MEDICINE",
-            "recommended_action": "HOME_CARE",
-            "required_capability": "BHS",
-            "specialty": "General Medicine",
-            "reason": "Demo Mode: Symptoms appear non-urgent. Local health center monitoring advised.",
-            "summary_for_provider": "Interactive Demo: Patient reported mild symptoms.",
-            "is_telemed_suitable": true,
-            "ai_confidence": 0.9
-          }
+          "is_final": false,
+          "question": "Gaano na po ito katagal? (How long has this been happening?)",
+          "options": ["Ngayon lang", "2-3 araw na", "Mahigit isang linggo na"],
         };
       }
     }
+
+    // --- STEP 2: ALIGNED FINAL RESULT ---
+    // At this point, we determine the final result based on the primary branch
+    
+    if (p.contains('bite') || p.contains('kagat')) {
+      return {
+        "is_final": true,
+        "result": {
+          "urgency": "URGENT",
+          "case_category": "ANIMAL_BITE",
+          "recommended_action": "ANIMAL_BITE_CENTER",
+          "required_capability": "PRIMARY_CARE",
+          "specialty": "Infectious Disease",
+          "reason": "Detected Animal Bite. Needs immediate Rabies vaccination at Naga CHO I.",
+          "summary_for_provider": "Patient reported an animal bite requiring post-exposure prophylaxis.",
+          "is_telemed_suitable": false,
+          "ai_confidence": 1.0
+        }
+      };
+    }
+
+    if (p.contains('maternal') || p.contains('pagbubuntis')) {
+      return {
+        "is_final": true,
+        "result": {
+          "urgency": "ROUTINE",
+          "case_category": "MATERNAL_CARE",
+          "recommended_action": "CLINIC_VISIT",
+          "required_capability": "PRIMARY_CARE",
+          "specialty": "Obstetrics",
+          "reason": "Maternal health monitoring. PhilHealth Maternity Package applies at CHO II Lying-in.",
+          "summary_for_provider": "Patient seeking pregnancy-related consultation and prenatal care.",
+          "is_telemed_suitable": true,
+          "ai_confidence": 0.95
+        }
+      };
+    }
+
+    if (p.contains('tiyan') || p.contains('stomach') || p.contains('pain')) {
+      // Logic for stomach pain (often related to Appendicitis in our benefits)
+      return {
+        "is_final": true,
+        "result": {
+          "urgency": "URGENT",
+          "case_category": "GASTROENTEROLOGY",
+          "recommended_action": "HOSPITAL_ER",
+          "required_capability": "HOSPITAL_LEVEL_2",
+          "specialty": "General Surgery",
+          "reason": "Severe abdominal pain detected. Potential appendicitis screening at BMC or NCGH.",
+          "summary_for_provider": "Patient reported acute stomach pain and discomfort.",
+          "is_telemed_suitable": false,
+          "ai_confidence": 0.85
+        }
+      };
+    }
+
+    // Default Fallback: General Medicine
+    return {
+      "is_final": true,
+      "result": {
+        "urgency": "ROUTINE",
+        "case_category": "GENERAL_MEDICINE",
+        "recommended_action": "KONSULTA_CHECKUP",
+        "required_capability": "PRIMARY_CARE",
+        "specialty": "General Medicine",
+        "reason": "Non-urgent condition. PhilHealth Konsulta checkup recommended at nearest CHO.",
+        "summary_for_provider": "General health consultation for routine symptoms.",
+        "is_telemed_suitable": true,
+        "ai_confidence": 0.9
+      }
+    };
   }
 
   @override

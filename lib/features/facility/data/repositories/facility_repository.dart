@@ -14,13 +14,27 @@ class FacilityRepository {
     return (response as List).map((json) => Facility.fromJson(json)).toList();
   }
 
+  /// Fetches a specific facility by its ID safely
+  Future<Facility?> getFacilityById(String id) async {
+    try {
+      // Use maybeSingle() to return null instead of throwing an error if 0 rows found
+      final response = await _supabase
+          .from('facilities')
+          .select('*, facility_services(*)')
+          .eq('id', id)
+          .maybeSingle();
+      
+      if (response == null) return null;
+      return Facility.fromJson(response);
+    } catch (e) {
+      return null;
+    }
+  }
+
   /// Finds the best matching facility for a triage result
   Future<Facility?> findRecommendedFacility(String requiredCapability) async {
     final facilities = await getFacilities();
 
-    // Simple matching logic:
-    // 1. Match capability (NCGH, BHS, etc.)
-    // 2. Fallback to facility type if exact capability string varies
     for (var f in facilities) {
       final cap = requiredCapability.toUpperCase();
       if (f.capability.name.toUpperCase() == cap || f.shortCode == cap) {
@@ -28,7 +42,6 @@ class FacilityRepository {
       }
     }
 
-    // Broad fallback
     if (requiredCapability.contains('HOSPITAL')) {
       return facilities.firstWhere((f) => f.type == FacilityType.hospital, orElse: () => facilities.first);
     }

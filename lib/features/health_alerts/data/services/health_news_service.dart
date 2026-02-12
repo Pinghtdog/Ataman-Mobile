@@ -13,19 +13,17 @@ class HealthNewsService {
       return [];
     }
 
-    String endpoint;
-    
     // Geographical keywords for Naga City and Bicol
-    const String regionFilter = '("Naga City" OR "Bicol" OR "Camarines Sur")';
+    const String regionFilter = '("Naga City" OR "Bicol" OR "Philippines")';
+    String q = '';
 
     if (category == 'All') {
-      // General Health news in the region
-      // Using /everything because /top-headlines doesn't support local keywords as well
-      endpoint = '$_baseUrl/everything?q=$regionFilter AND (health OR medical OR hospital)&sortBy=publishedAt&language=en&apiKey=$_apiKey';
+      q = '$regionFilter AND (health OR medical OR "DOH")';
     } else {
-      // Category specific news in the region (e.g., "Vaccines" in "Naga City")
-      endpoint = '$_baseUrl/everything?q=$regionFilter AND $category&sortBy=publishedAt&language=en&apiKey=$_apiKey';
+      q = '$regionFilter AND $category';
     }
+
+    final endpoint = '$_baseUrl/everything?q=$q&sortBy=publishedAt&language=en&apiKey=$_apiKey';
 
     try {
       final response = await http.get(Uri.parse(endpoint));
@@ -34,34 +32,51 @@ class HealthNewsService {
         final Map<String, dynamic> data = json.decode(response.body);
         final List<dynamic> articles = data['articles'];
 
-        return articles
+        final results = articles
             .map((json) => HealthArticle.fromJson(json))
             .where((article) => 
                 article.title != '[Removed]' && 
-                article.url.isNotEmpty &&
-                // Extra client-side check to ensure some relevance if keywords were broad
-                (article.title.toLowerCase().contains('naga') || 
-                 article.title.toLowerCase().contains('bicol') || 
-                 article.description.toLowerCase().contains('naga') || 
-                 article.description.toLowerCase().contains('bicol') ||
-                 article.description.toLowerCase().contains('camarines')))
+                article.title.isNotEmpty &&
+                article.url.isNotEmpty)
             .toList();
-      } else {
-        // If we get an error (like too many requests), fall back to PH-wide health news
-        if (category == 'All') {
-          final fallbackUrl = '$_baseUrl/top-headlines?country=ph&category=health&apiKey=$_apiKey';
-          final fallbackResponse = await http.get(Uri.parse(fallbackUrl));
-          if (fallbackResponse.statusCode == 200) {
-            final Map<String, dynamic> data = json.decode(fallbackResponse.body);
-            final List<dynamic> articles = data['articles'];
-            return articles.map((json) => HealthArticle.fromJson(json)).toList();
-          }
+
+        // If no specific results found with "Naga/Bicol", fall back to general PH health news
+        if (results.isEmpty) {
+          return await _fetchPHFallback(category);
         }
-        throw Exception('Failed to load news');
+
+        return results;
+      } else {
+        return await _fetchPHFallback(category);
       }
     } catch (e) {
       print("Error fetching news: $e");
-      return [];
+      return await _fetchPHFallback(category);
     }
+  }
+
+  /// Fallback to top health headlines from the Philippines
+  Future<List<HealthArticle>> _fetchPHFallback(String category) async {
+    String url = '$_baseUrl/top-headlines?country=ph&category=health&apiKey=$_apiKey';
+    
+    // If a specific category like "Vaccines" was requested, use it as a query
+    if (category != 'All') {
+      url = '$_baseUrl/top-headlines?country=ph&q=$category&apiKey=$_apiKey';
+    }
+
+    try {
+      final response = await http.get(Uri.parse(url));
+      if (response.statusCode == 200) {
+        final Map<String, dynamic> data = json.decode(response.body);
+        final List<dynamic> articles = data['articles'];
+        return articles
+            .map((json) => HealthArticle.fromJson(json))
+            .where((a) => a.title != '[Removed]')
+            .toList();
+      }
+    } catch (e) {
+      print("Fallback failed: $e");
+    }
+    return [];
   }
 }

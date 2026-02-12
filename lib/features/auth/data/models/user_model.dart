@@ -18,7 +18,8 @@ class UserModel extends Equatable {
   final String? medicalId;
   final String? fcmToken;
   final bool isProfileComplete;
-  
+  final bool isPhilhealthVerified; 
+
   // Health & Social related fields (DOH/UHC requirements)
   final String? gender;
   final String? bloodType;
@@ -54,6 +55,7 @@ class UserModel extends Equatable {
     this.medicalId,
     this.fcmToken,
     this.isProfileComplete = false,
+    this.isPhilhealthVerified = false,
     this.gender,
     this.bloodType,
     this.civilStatus,
@@ -74,12 +76,12 @@ class UserModel extends Equatable {
     id, email, firstName, middleName, lastName, suffix, maidenName,
     phoneNumber, birthDate, birthplace, motherName, barangay,
     residentialAddress, philhealthId, medicalId, fcmToken, isProfileComplete,
-    gender, bloodType, civilStatus, education, employmentStatus, is4psMember,
-    philhealthStatus, familyPosition, isPcbMember, emergencyContactName,
-    emergencyContactPhone, allergies, medicalConditions,
+    isPhilhealthVerified, gender, bloodType, civilStatus, education, 
+    employmentStatus, is4psMember, philhealthStatus, familyPosition, 
+    isPcbMember, emergencyContactName, emergencyContactPhone, allergies, 
+    medicalConditions,
   ];
 
-  // Computed property for UI display (PH Standard: First Middle Last)
   String get fullName {
     String name = firstName;
     if (middleName != null && middleName!.isNotEmpty) {
@@ -93,37 +95,47 @@ class UserModel extends Equatable {
   }
 
   factory UserModel.fromJson(Map<String, dynamic> map) {
+    // Extra defensive check: If the key exists but is null, default to false.
+    bool toBool(dynamic value) {
+      if (value == null) return false;
+      if (value is bool) return value;
+      if (value is String) return value.toLowerCase() == 'true';
+      if (value is int) return value == 1;
+      return false;
+    }
+
     return UserModel(
-      id: map['id'] ?? '',
-      email: map['email'] ?? '',
-      firstName: map['first_name'] ?? '',
-      middleName: map['middle_name'],
-      lastName: map['last_name'] ?? '',
-      suffix: map['suffix'],
-      maidenName: map['maiden_name'],
-      phoneNumber: map['phone_number'],
-      birthDate: map['birth_date'],
-      birthplace: map['birthplace'],
-      motherName: map['mother_name'],
-      barangay: map['barangay'],
-      residentialAddress: map['residential_address'],
-      philhealthId: map['philhealth_id'],
-      medicalId: map['medical_id'],
-      fcmToken: map['fcm_token'],
-      isProfileComplete: map['is_profile_complete'] ?? false,
-      gender: map['gender'],
-      bloodType: map['blood_type'],
-      civilStatus: map['civil_status'],
-      education: map['educational_attainment'],
-      employmentStatus: map['employment_status'],
-      is4psMember: map['is_4ps_member'] ?? false,
-      philhealthStatus: map['philhealth_status'],
-      familyPosition: map['family_position'],
-      isPcbMember: map['is_pcb_member'] ?? false,
-      emergencyContactName: map['emergency_contact_name'],
-      emergencyContactPhone: map['emergency_contact_phone'],
-      allergies: map['allergies'],
-      medicalConditions: map['medical_conditions'],
+      id: map['id']?.toString() ?? '',
+      email: map['email']?.toString() ?? '',
+      firstName: map['first_name']?.toString() ?? '',
+      middleName: map['middle_name']?.toString(),
+      lastName: map['last_name']?.toString() ?? '',
+      suffix: map['suffix']?.toString(),
+      maidenName: map['maiden_name']?.toString(),
+      phoneNumber: map['phone_number']?.toString(),
+      birthDate: map['birth_date']?.toString(),
+      birthplace: map['birthplace']?.toString(),
+      motherName: map['mother_name']?.toString(),
+      barangay: map['barangay']?.toString(),
+      residentialAddress: map['residential_address']?.toString(),
+      philhealthId: map['philhealth_id']?.toString(),
+      medicalId: map['medical_id']?.toString(),
+      fcmToken: map['fcm_token']?.toString(),
+      isProfileComplete: toBool(map['is_profile_complete']),
+      isPhilhealthVerified: toBool(map['is_philhealth_verified']),
+      gender: map['gender']?.toString(),
+      bloodType: map['blood_type']?.toString(),
+      civilStatus: map['civil_status']?.toString(),
+      education: map['educational_attainment']?.toString(),
+      employmentStatus: map['employment_status']?.toString(),
+      is4psMember: toBool(map['is_4ps_member']),
+      philhealthStatus: map['philhealth_status']?.toString(),
+      familyPosition: map['family_position']?.toString(),
+      isPcbMember: toBool(map['is_pcb_member']),
+      emergencyContactName: map['emergency_contact_name']?.toString(),
+      emergencyContactPhone: map['emergency_contact_phone']?.toString(),
+      allergies: map['allergies']?.toString(),
+      medicalConditions: map['medical_conditions']?.toString(),
     );
   }
 
@@ -146,6 +158,7 @@ class UserModel extends Equatable {
       'medical_id': medicalId,
       'fcm_token': fcmToken,
       'is_profile_complete': isProfileComplete,
+      'is_philhealth_verified': isPhilhealthVerified,
       'gender': gender,
       'blood_type': bloodType,
       'civil_status': civilStatus,
@@ -159,7 +172,6 @@ class UserModel extends Equatable {
       'emergency_contact_phone': emergencyContactPhone,
       'allergies': allergies,
       'medical_conditions': medicalConditions,
-      'updated_at': DateTime.now().toIso8601String(),
     };
   }
 
@@ -181,6 +193,7 @@ class UserModel extends Equatable {
     String? medicalId,
     String? fcmToken,
     bool? isProfileComplete,
+    bool? isPhilhealthVerified,
     String? gender,
     String? bloodType,
     String? civilStatus,
@@ -213,6 +226,7 @@ class UserModel extends Equatable {
       medicalId: medicalId ?? this.medicalId,
       fcmToken: fcmToken ?? this.fcmToken,
       isProfileComplete: isProfileComplete ?? this.isProfileComplete,
+      isPhilhealthVerified: isPhilhealthVerified ?? this.isPhilhealthVerified,
       gender: gender ?? this.gender,
       bloodType: bloodType ?? this.bloodType,
       civilStatus: civilStatus ?? this.civilStatus,
