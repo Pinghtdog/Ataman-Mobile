@@ -5,6 +5,7 @@ import '../../../../core/constants/constants.dart';
 import '../../../../core/widgets/widgets.dart';
 import '../../logic/telemedicine_cubit.dart';
 import '../../data/models/doctor_model.dart';
+import '../../../notification/logic/notification_cubit.dart';
 
 class TelemedBookingSheet extends StatefulWidget {
   final DoctorModel doctor;
@@ -57,7 +58,14 @@ class _TelemedBookingSheetState extends State<TelemedBookingSheet> {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text("Schedule with ${widget.doctor.fullName}", style: AppTextStyles.h3),
+              Expanded(
+                child: Text(
+                  "Schedule with ${widget.doctor.fullName}", 
+                  style: AppTextStyles.h3,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
               IconButton(icon: const Icon(Icons.close), onPressed: () => Navigator.pop(context)),
             ],
           ),
@@ -105,7 +113,6 @@ class _TelemedBookingSheetState extends State<TelemedBookingSheet> {
   }
 
   Future<void> _handleBooking() async {
-    // For demo, we just book for the next occurrence of that weekday at the start time
     final slot = _availability.firstWhere((s) => "${s['id']}" == _selectedSlot);
     final int targetDay = slot['day_of_week'];
     
@@ -114,11 +121,29 @@ class _TelemedBookingSheetState extends State<TelemedBookingSheet> {
       bookingTime = bookingTime.add(const Duration(days: 1));
     }
     
-    // Parse start_time (HH:mm:ss)
     final parts = slot['start_time'].split(':');
     bookingTime = DateTime(bookingTime.year, bookingTime.month, bookingTime.day, int.parse(parts[0]), int.parse(parts[1]));
 
     try {
+      // Prevent double booking on the same day for the same doctor
+      final canBook = await context.read<TelemedicineCubit>().checkBookingConflict(
+        widget.userId,
+        widget.doctor.id,
+        bookingTime,
+      );
+
+      if (!canBook) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text("You already have an appointment with this doctor on this day."),
+              backgroundColor: AppColors.danger,
+            ),
+          );
+        }
+        return;
+      }
+
       await context.read<TelemedicineCubit>().initiateCall(
         widget.userId,
         widget.doctor.id,
@@ -126,9 +151,19 @@ class _TelemedBookingSheetState extends State<TelemedBookingSheet> {
       );
       
       if (mounted) {
+        // Trigger local notification via NotificationCubit
+        context.read<NotificationCubit>().addNotification(
+          title: "Consultation Confirmed",
+          body: "Your session with ${widget.doctor.fullName} is scheduled for ${DateFormat('MMM dd, h:mm a').format(bookingTime)}",
+          type: "telemedicine",
+        );
+
         Navigator.pop(context);
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text("Consultation scheduled for ${DateFormat('MMM dd, h:mm a').format(bookingTime)}")),
+          SnackBar(
+            content: Text("Consultation scheduled for ${DateFormat('MMM dd, h:mm a').format(bookingTime)}"),
+            backgroundColor: AppColors.success,
+          ),
         );
       }
     } catch (e) {

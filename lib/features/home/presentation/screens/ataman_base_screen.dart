@@ -1,9 +1,12 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../../../core/constants/constants.dart';
 import '../../../../core/utils/network_utils.dart';
 import '../../../../core/widgets/widgets.dart';
 
+import '../../../auth/logic/auth_cubit.dart';
 import '../../../booking/presentation/screens/booking_screen.dart';
+import '../../../notification/logic/notification_cubit.dart';
 import '../../../profile/presentation/screens/profile_screen.dart';
 import '../../../telemedicine/presentation/screens/telemedicine_screen.dart';
 import '../../../triage/data/models/triage_model.dart';
@@ -65,66 +68,75 @@ class _AtamanBaseScreenState extends State<AtamanBaseScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: AppColors.background,
-      body: IndexedStack(
-        index: _currentIndex,
-        children: _screens,
-      ),
-      bottomNavigationBar: AnimatedContainer(
-        duration: const Duration(milliseconds: 300),
-        height: _isNavbarVisible ? kBottomNavigationBarHeight + MediaQuery.of(context).padding.bottom : 0,
-        child: SingleChildScrollView(
-          child: Container(
-            decoration: BoxDecoration(
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withOpacity(0.05),
-                  blurRadius: 10,
-                  offset: const Offset(0, -5),
-                ),
-              ],
-            ),
-            child: BottomNavigationBar(
-              currentIndex: _currentIndex,
-              onTap: (index) {
-                setState(() {
-                  _currentIndex = index;
-                });
-              },
-              type: BottomNavigationBarType.fixed,
-              backgroundColor: AppColors.surface,
-              selectedItemColor: AppColors.primary,
-              unselectedItemColor: AppColors.textSecondary.withOpacity(0.5),
-              showUnselectedLabels: true,
-              selectedLabelStyle: AppTextStyles.caption.copyWith(
-                fontWeight: FontWeight.w600,
-                fontSize: 12,
+    return BlocListener<AuthCubit, AuthState>(
+      listener: (context, state) {
+        if (state is Authenticated) {
+          // Re-load notifications when the user is authenticated
+          context.read<NotificationCubit>().loadNotifications();
+        }
+      },
+      child: Scaffold(
+        backgroundColor: AppColors.background,
+        body: IndexedStack(
+          index: _currentIndex,
+          children: _screens,
+        ),
+        bottomNavigationBar: AnimatedContainer(
+          duration: const Duration(milliseconds: 300),
+          height: _isNavbarVisible ? kBottomNavigationBarHeight + MediaQuery.of(context).padding.bottom : 0,
+          child: SingleChildScrollView(
+            child: Container(
+              decoration: BoxDecoration(
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.05),
+                    blurRadius: 10,
+                    offset: const Offset(0, -5),
+                  ),
+                ],
               ),
-              unselectedLabelStyle: AppTextStyles.caption.copyWith(
-                fontWeight: FontWeight.w400,
-                fontSize: 12,
+              child: BottomNavigationBar(
+                currentIndex: _currentIndex,
+                onTap: (index) {
+                  setState(() {
+                    _currentIndex = index;
+                  });
+                },
+                type: BottomNavigationBarType.fixed,
+                backgroundColor: AppColors.surface,
+                selectedItemColor: AppColors.primary,
+                unselectedItemColor: AppColors.textSecondary.withOpacity(0.5),
+                showUnselectedLabels: true,
+                selectedLabelStyle: AppTextStyles.caption.copyWith(
+                  fontWeight: FontWeight.w600,
+                  fontSize: 12,
+                ),
+                unselectedLabelStyle: AppTextStyles.caption.copyWith(
+                  fontWeight: FontWeight.w400,
+                  fontSize: 12,
+                ),
+                elevation: 0,
+                items: const [
+                  BottomNavigationBarItem(
+                    icon: Icon(Icons.home_filled),
+                    activeIcon: Icon(Icons.home_filled),
+                    label: "Home",
+                  ),
+                  BottomNavigationBarItem(
+                    icon: Icon(Icons.calendar_today_rounded),
+                    label: "Booking",
+                  ),
+                  BottomNavigationBarItem(
+                    icon: Icon(Icons.video_camera_front_rounded),
+                    label: "Telemed",
+                    tooltip: "Telemedicine",
+                  ),
+                  BottomNavigationBarItem(
+                    icon: Icon(Icons.person_rounded),
+                    label: "Profile",
+                  ),
+                ],
               ),
-              elevation: 0,
-              items: const [
-                BottomNavigationBarItem(
-                  icon: Icon(Icons.home_filled),
-                  activeIcon: Icon(Icons.home_filled),
-                  label: "Home",
-                ),
-                BottomNavigationBarItem(
-                  icon: Icon(Icons.calendar_today_rounded),
-                  label: "Booking",
-                ),
-                BottomNavigationBarItem(
-                  icon: Icon(Icons.video_camera_front_rounded),
-                  label: "Telemed",
-                ),
-                BottomNavigationBarItem(
-                  icon: Icon(Icons.person_rounded),
-                  label: "Profile",
-                ),
-              ],
             ),
           ),
         ),

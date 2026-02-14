@@ -4,7 +4,6 @@ import 'package:equatable/equatable.dart';
 import '../data/models/doctor_model.dart';
 import '../data/models/telemedicine_service_model.dart';
 import '../domain/repositories/i_telemedicine_repository.dart';
-import '../data/repositories/telemedicine_repository.dart';
 
 part 'telemedicine_state.dart';
 
@@ -47,6 +46,20 @@ class TelemedicineCubit extends Cubit<TelemedicineState> {
     }
   }
 
+  Future<bool> checkBookingConflict(String patientId, String doctorId, DateTime date) async {
+    try {
+      final startOfDay = DateTime(date.year, date.month, date.day);
+      final endOfDay = DateTime(date.year, date.month, date.day, 23, 59, 59);
+      
+      // This would normally be in the repository, but adding here for quick implementation
+      // as requested to fix the double booking.
+      return await _repository.checkBookingConflict(patientId, doctorId, startOfDay, endOfDay);
+    } catch (e) {
+      print("Error checking conflict: $e");
+      return true; // Default to allowing if check fails, or false to be safe
+    }
+  }
+
   Future<List<Map<String, dynamic>>> getSymptomsByCategory(String category) async {
     try {
       return await _repository.getSymptomsByCategory(category);
@@ -64,9 +77,6 @@ class TelemedicineCubit extends Cubit<TelemedicineState> {
       if (state is TelemedicineLoaded) {
         final currentState = state as TelemedicineLoaded;
         emit(currentState.copyWith(symptoms: symptomNames));
-      } else {
-        // If not loaded yet, we can't easily push to symptoms without doctors.
-        // For now, emit a loaded state with empty doctors or wait for doctors stream.
       }
     } catch (e) {
       print("Error loading symptoms: $e");

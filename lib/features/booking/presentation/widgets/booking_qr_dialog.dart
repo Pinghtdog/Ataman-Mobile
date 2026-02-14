@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 import '../../../../core/constants/constants.dart';
@@ -10,6 +11,14 @@ class BookingQrDialog extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // Standardized QR Data for Web Portal Sync
+    final String qrData = jsonEncode({
+      "type": "BOOKING_ID",
+      "data": booking.id,
+      "facility_id": booking.facilityId,
+      "generated_at": DateTime.now().toIso8601String(),
+    });
+
     return Dialog(
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppSizes.radiusLarge)),
       child: Padding(
@@ -37,9 +46,17 @@ class BookingQrDialog extends StatelessWidget {
                 border: Border.all(color: Colors.grey.shade200),
               ),
               child: QrImageView(
-                data: booking.id,
+                data: qrData, // Standardized Data
                 version: QrVersions.auto,
                 size: 200.0,
+                eyeStyle: const QrEyeStyle(
+                  eyeShape: QrEyeShape.square,
+                  color: AppColors.primary,
+                ),
+                dataModuleStyle: const QrDataModuleStyle(
+                  dataModuleShape: QrDataModuleShape.square,
+                  color: AppColors.primary,
+                ),
               ),
             ),
             const SizedBox(height: AppSizes.p24),

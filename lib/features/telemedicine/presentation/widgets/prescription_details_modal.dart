@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 import 'package:intl/intl.dart';
@@ -17,6 +18,18 @@ class PrescriptionDetailsModal extends StatefulWidget {
 
 class _PrescriptionDetailsModalState extends State<PrescriptionDetailsModal> {
   bool _isDownloading = false;
+  late final String _qrData;
+
+  @override
+  void initState() {
+    super.initState();
+    // Generate QR Data ONCE in initState to keep it stable
+    _qrData = jsonEncode({
+      "type": "PRESCRIPTION_ID",
+      "data": widget.prescription.id,
+      "generated_at": DateTime.now().toIso8601String(),
+    });
+  }
 
   Future<void> _handleDownload() async {
     setState(() => _isDownloading = true);
@@ -75,7 +88,7 @@ class _PrescriptionDetailsModalState extends State<PrescriptionDetailsModal> {
                 ],
               ),
               child: QrImageView(
-                data: widget.prescription.id,
+                data: _qrData, // Using the stable QR data
                 version: QrVersions.auto,
                 size: 200.0,
                 eyeStyle: const QrEyeStyle(

@@ -36,6 +36,28 @@ class NotificationCubit extends Cubit<NotificationState> {
     }
   }
 
+  Future<void> addNotification({
+    required String title,
+    required String body,
+    String type = 'general',
+    Map<String, dynamic>? data,
+  }) async {
+    try {
+      final userId = _repository.supabase.auth.currentUser?.id;
+      if (userId == null) return;
+
+      await _repository.addNotification(
+        userId: userId,
+        title: title,
+        body: body,
+        type: type,
+        data: data,
+      );
+    } catch (e) {
+      // Handle error
+    }
+  }
+
   Future<void> markAsRead(String id) async {
     try {
       await _repository.markAsRead(id);

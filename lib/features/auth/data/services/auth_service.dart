@@ -29,7 +29,7 @@ class AuthService {
     return await _supabase.auth.signUp(
       email: email,
       password: password,
-      emailRedirectTo: 'io.supabase.ataman://login-callback',
+      emailRedirectTo: 'https://lambent-tarsier-6e738f.netlify.app/',
       data: {
         'full_name': fullName,
         if (phoneNumber != null) 'phone': phoneNumber,

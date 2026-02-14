@@ -37,6 +37,24 @@ class NotificationRepository extends BaseRepository {
     });
   }
 
+  Future<void> addNotification({
+    required String userId,
+    required String title,
+    required String body,
+    String type = 'general',
+    Map<String, dynamic>? data,
+  }) async {
+    return safeCall(() async {
+      await supabase.from('notifications').insert({
+        'user_id': userId,
+        'title': title,
+        'body': body,
+        'type': type,
+        'data': data,
+      });
+    });
+  }
+
   Stream<List<NotificationModel>> subscribeToNotifications() {
     final userId = supabase.auth.currentUser?.id;
     if (userId == null) return Stream.value([]);

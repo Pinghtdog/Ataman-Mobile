@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'package:add_2_calendar/add_2_calendar.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
@@ -52,6 +53,14 @@ class BookingSuccessDialog extends StatelessWidget {
     final double screenWidth = MediaQuery.of(context).size.width;
     final bool isTablet = screenWidth > 600;
 
+    // Standardized QR Data for Web Portal Sync
+    final String qrData = jsonEncode({
+      "type": "BOOKING_ID",
+      "data": booking.id,
+      "facility_id": booking.facilityId,
+      "generated_at": DateTime.now().toIso8601String(),
+    });
+
     return Dialog(
       backgroundColor: Colors.transparent,
       elevation: 0,
@@ -97,7 +106,7 @@ class BookingSuccessDialog extends StatelessWidget {
                           style: TextStyle(color: Colors.grey.shade500, fontSize: 13),
                           textAlign: TextAlign.center,
                         ),
-                        const SizedBox(height: 24),
+                        const SizedBox(height: 20),
                         
                         Container(
                           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
@@ -115,22 +124,30 @@ class BookingSuccessDialog extends StatelessWidget {
                           ),
                         ),
                         const SizedBox(height: 28),
-                        
-                        _buildDetailItem("HEALTH CENTER", booking.facilityName),
-                        _buildDetailItem("SERVICE", booking.natureOfVisit), 
-                        
-                        Row(
+
+                        // Detail section - Uniform Left Alignment
+                        Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Expanded(child: _buildDetailItem("DATE", DateFormat('MMM dd, yyyy').format(booking.appointmentTime))),
-                            Expanded(child: _buildDetailItem("TIME", DateFormat('h:mm a').format(booking.appointmentTime))),
+                            _buildDetailItem("HEALTH CENTER", booking.facilityName),
+                            _buildDetailItem("SERVICE", booking.natureOfVisit),
+
+                            Row(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Expanded(child: _buildDetailItem("DATE", DateFormat('MMM dd, yyyy').format(booking.appointmentTime))),
+                                const SizedBox(width: 16),
+                                Expanded(child: _buildDetailItem("TIME", DateFormat('h:mm a').format(booking.appointmentTime))),
+                              ],
+                            ),
+
+                            _buildDetailItem("PATIENT", patientName),
                           ],
                         ),
-                        
-                        _buildDetailItem("PATIENT", patientName),
-                        
+
                         const SizedBox(height: 24),
                         
-                        // QR Scan Box - Clickable
+                        // QR Scan Box
                         InkWell(
                           onTap: () => _showQrCode(context),
                           borderRadius: BorderRadius.circular(20),
@@ -151,7 +168,7 @@ class BookingSuccessDialog extends StatelessWidget {
                                     borderRadius: BorderRadius.circular(8),
                                   ),
                                   child: QrImageView(
-                                    data: booking.id,
+                                    data: qrData,
                                     version: QrVersions.auto,
                                     padding: EdgeInsets.zero,
                                   ),
@@ -228,21 +245,27 @@ class BookingSuccessDialog extends StatelessWidget {
 
   Widget _buildDetailItem(String label, String value) {
     return Padding(
-      padding: const EdgeInsets.only(bottom: 14),
+      padding: const EdgeInsets.only(bottom: 16),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
             label,
-            style: const TextStyle(color: Colors.grey, fontSize: 9, fontWeight: FontWeight.bold, letterSpacing: 0.5),
+            style: const TextStyle(
+              color: Colors.grey,
+              fontSize: 10,
+              fontWeight: FontWeight.bold,
+              letterSpacing: 0.8
+            ),
           ),
-          const SizedBox(height: 2),
+          const SizedBox(height: 4),
           Text(
             value,
             style: const TextStyle(
-              fontSize: 14,
-              fontWeight: FontWeight.bold,
+              fontSize: 15,
+              fontWeight: FontWeight.w600,
               color: Color(0xFF333333),
+              height: 1.2,
             ),
           ),
         ],

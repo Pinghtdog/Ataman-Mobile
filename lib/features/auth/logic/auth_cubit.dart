@@ -58,28 +58,21 @@ class AuthCubit extends Cubit<AuthState> {
   }
 
   Future<void> _init() async {
-    // Supabase already has a user cached
     final sb.User? initialUser = _authRepository.currentUser;
     if (initialUser != null) {
-      debugPrint('Found initial user: ${initialUser.id}');
       await _handleUserAuthenticated(initialUser);
     } else {
-      //  Supabase to attempt session recovery
       await Future.delayed(const Duration(milliseconds: 1500));
       if (state is AuthInitial) {
-        debugPrint('No session recovered. Emitting Unauthenticated to unblock splash.');
         emit(Unauthenticated());
       }
     }
 
-    // Handle future sign-ins/outs
     _authStateSubscription = _authRepository.authStateChanges.listen(
       (data) async {
         try {
           final sb.User? user = data.session?.user;
           final sb.AuthChangeEvent event = data.event;
-
-          debugPrint('Auth State Change Event: $event');
           
           if (user != null) {
             if (event == sb.AuthChangeEvent.signedIn && state is! AuthLoading && state is! Authenticated) {
@@ -93,44 +86,30 @@ class AuthCubit extends Cubit<AuthState> {
             }
           }
         } catch (e) {
-          debugPrint('Error in auth state change: $e');
           if (state is AuthInitial) emit(Unauthenticated());
         }
       },
-      onError: (err) {
-        debugPrint('Auth stream error: $err');
-        if (state is AuthInitial) emit(Unauthenticated());
-      }
     );
   }
 
   Future<void> _handleUserAuthenticated(sb.User user) async {
     try {
       final profile = await _userRepository.getUserProfile(user.id);
-      
       try {
         final fcmToken = await NotificationService.getFCMToken();
         if (fcmToken != null) {
           await _userRepository.updateFCMToken(user.id, fcmToken);
         }
-      } catch (e) {
-        debugPrint('Error updating FCM token during init: $e');
-      }
-
+      } catch (e) {}
       emit(Authenticated(user, profile: profile));
     } catch (e) {
-      debugPrint('Authenticated user detected, but profile fetch failed: $e');
-      // If profile fails (e.g. network), still emit Authenticated so user isn't kicked out
       emit(Authenticated(user));
     }
   }
 
   String _handleAuthError(dynamic e) {
-    final String errorString = e.toString().toLowerCase();
-    if (errorString.contains('weak password')) return "Password is too weak.";
-    if (errorString.contains('invalid login credentials')) return "Incorrect email or password.";
-    if (errorString.contains('network') || errorString.contains('socketexception')) return "Connection failed.";
-    return "Something went wrong. Please try again later.";
+    if (e is sb.AuthException) return e.message;
+    return e.toString();
   }
 
   Future<void> login(String identity, String password, {bool isPhoneLogin = false}) async {
@@ -141,10 +120,7 @@ class AuthCubit extends Cubit<AuthState> {
         phone: isPhoneLogin ? identity : null,
         password: password,
       );
-
-      if (response.user != null) {
-        await _handleUserAuthenticated(response.user!);
-      }
+      if (response.user != null) await _handleUserAuthenticated(response.user!);
     } catch (e) {
       emit(AuthError(_handleAuthError(e)));
       emit(Unauthenticated());
@@ -161,6 +137,7 @@ class AuthCubit extends Cubit<AuthState> {
     String? barangay,
     String? philhealthId,
   }) async {
+    print('ATAMAN_DEBUG: Registering $email');
     emit(AuthLoading());
     try {
       String? formattedDate = birthDate;
@@ -171,13 +148,10 @@ class AuthCubit extends Cubit<AuthState> {
         }
       }
 
-      // Combine for full_name as fallback/legacy support
-      final String fullName = "$firstName $lastName";
-
       final response = await _authRepository.signUp(
         email: email,
         password: password,
-        fullName: fullName,
+        fullName: "$firstName $lastName",
         phoneNumber: phoneNumber,
         additionalData: {
           'first_name': firstName,
@@ -189,23 +163,25 @@ class AuthCubit extends Cubit<AuthState> {
         },
       );
 
+      print('ATAMAN_DEBUG: User Created with ID: ${response.user?.id}');
+
       if (response.session == null && response.user != null) {
+        print('ATAMAN_DEBUG: Confirmation Email Required');
         emit(AuthError("Please check your email to confirm your account."));
-      } else if (response.session == null) {
-        emit(AuthError("Registration failed."));
-        emit(Unauthenticated());
+      } else if (response.user == null) {
+        print('ATAMAN_DEBUG: No User object returned');
+        emit(AuthError("Registration failed: No user record created."));
       }
     } catch (e) {
+      print('ATAMAN_DEBUG: ERROR -> $e');
       emit(AuthError(_handleAuthError(e)));
       emit(Unauthenticated());
     }
   }
 
-  /// Refreshes the local profile in the auth state
   void refreshProfile(UserModel profile) {
-    final currentState = state;
-    if (currentState is Authenticated) {
-      emit(Authenticated(currentState.user, profile: profile));
+    if (state is Authenticated) {
+      emit(Authenticated((state as Authenticated).user, profile: profile));
     }
   }
 
@@ -213,9 +189,7 @@ class AuthCubit extends Cubit<AuthState> {
     try {
       await _userRepository.updateProfile(user);
       final sb.User? currentUser = _authRepository.currentUser;
-      if (currentUser != null) {
-        await _handleUserAuthenticated(currentUser);
-      }
+      if (currentUser != null) await _handleUserAuthenticated(currentUser);
     } catch (e) {
       emit(AuthError("Failed to update profile: $e"));
     }

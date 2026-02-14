@@ -131,6 +131,32 @@ class NotificationService {
     );
   }
 
+  /// Listens to real-time scanning events from Supabase
+  /// This simulates the "Website scanned my QR" notification
+  void listenToScanEvents(String userId) {
+    Supabase.instance.client
+        .from('notifications')
+        .stream(primaryKey: ['id'])
+        .eq('user_id', userId)
+        .order('created_at', ascending: false)
+        .limit(1)
+        .listen((data) {
+          if (data.isNotEmpty) {
+            final latest = data.first;
+            final type = latest['type'];
+            
+            // If the notification type is 'check_in' or 'verified'
+            // it means the health worker just scanned the QR code on the web
+            if (type == 'check_in' || type == 'verified') {
+              showNotification(
+                title: latest['title'] ?? 'QR Scanned',
+                body: latest['body'] ?? 'Your record has been successfully retrieved.',
+              );
+            }
+          }
+        });
+  }
+
   static Future<void> _updateUserFcmToken(String token) async {
     final user = Supabase.instance.client.auth.currentUser;
     if (user != null) {

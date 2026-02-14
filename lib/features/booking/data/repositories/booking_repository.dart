@@ -6,13 +6,19 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 class BookingRepository extends BaseRepository {
   
   Future<void> createBooking(Booking booking) async {
-    // 1. Check if the USER already has a booking at this exact time
-    final hasExisting = await _userHasBookingAtTime(booking.userId, booking.appointmentTime);
-    if (hasExisting) {
+    // 1. Check if the USER already has a booking at this exact time (Anywhere)
+    final hasExistingTime = await _userHasBookingAtTime(booking.userId, booking.appointmentTime);
+    if (hasExistingTime) {
       throw Exception("You already have an active appointment scheduled for this time.");
     }
 
-    // 2. Double check FACILITY slot availability
+    // 2. Check if the USER already has an active booking at THIS facility
+    final hasExistingAtFacility = await _userHasBookingAtFacility(booking.userId, booking.facilityId);
+    if (hasExistingAtFacility) {
+      throw Exception("You already have an active appointment at ${booking.facilityName}. Please complete or cancel it before booking another one here.");
+    }
+
+    // 3. Double check FACILITY slot availability
     final isAvailable = await isSlotAvailable(
       booking.facilityId,
       booking.appointmentTime,
@@ -25,11 +31,11 @@ class BookingRepository extends BaseRepository {
 
     await safeCall(() => supabase.from('bookings').insert(booking.toJson()));
 
-    // 3. Insert into notifications table
+    // 4. Insert into notifications table
     await safeCall(() => supabase.from('notifications').insert({
       'user_id': booking.userId,
-      'title': 'Booking Confirmed!',
-      'body': 'Your appointment at ${booking.facilityName} is scheduled for ${DateFormat('MMM dd, h:mm a').format(booking.appointmentTime)}.',
+      'title': 'Booking Received!',
+      'body': 'Your appointment request at ${booking.facilityName} is being processed.',
       'type': 'booking',
       'data': {'booking_id': booking.id},
     }));
@@ -43,6 +49,17 @@ class BookingRepository extends BaseRepository {
         .select('id')
         .eq('user_id', userId)
         .eq('appointment_time', time.toIso8601String())
+        .inFilter('status', ['pending', 'confirmed']);
+
+    return (response as List).isNotEmpty;
+  }
+
+  Future<bool> _userHasBookingAtFacility(String userId, String facilityId) async {
+    final response = await supabase
+        .from('bookings')
+        .select('id')
+        .eq('user_id', userId)
+        .eq('facility_id', int.tryParse(facilityId) ?? facilityId)
         .inFilter('status', ['pending', 'confirmed']);
     
     return (response as List).isNotEmpty;

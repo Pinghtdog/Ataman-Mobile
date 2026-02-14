@@ -113,6 +113,25 @@ class _BookingDetailsScreenState extends State<BookingDetailsScreen> {
   void _confirmBooking() {
     final authState = context.read<AuthCubit>().state;
     if (authState is! Authenticated) return;
+
+    if (widget.facility.isDiversionActive) {
+      showDialog(
+        context: context,
+        builder: (context) => AlertDialog(
+          title: const Text("Facility on Diversion"),
+          content: Text(
+              "${widget.facility.name} is currently not accepting online bookings due to high patient volume. Please choose another facility or contact them directly."),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: const Text("OK"),
+            ),
+          ],
+        ),
+      );
+      return;
+    }
+
     if (_selectedService == null) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text("Please select a service")),
@@ -144,7 +163,7 @@ class _BookingDetailsScreenState extends State<BookingDetailsScreen> {
       facilityId: widget.facility.id,
       facilityName: widget.facility.name,
       appointmentTime: appointmentTime,
-      status: BookingStatus.confirmed, // CHANGED: Automatic confirmation
+      status: BookingStatus.pending,
       createdAt: DateTime.now(),
       serviceId: _selectedService!.id,
       familyMemberId: familyMemberId,
@@ -152,11 +171,53 @@ class _BookingDetailsScreenState extends State<BookingDetailsScreen> {
       triagePriority: widget.triageResult?.urgency.name,
       natureOfVisit: _natureOfVisit,
       chiefComplaint: _complaintController.text,
-      referredFrom: widget.triageResult != null ? "Ataman AI Triage" : null,
+      referredFrom: widget.triageResult != null ? "Ataman AI Triage" : "Self-referral (App)",
       referredTo: widget.facility.name,
     );
 
     context.read<BookingCubit>().createBooking(booking);
+  }
+
+  void _showErrorDialog(String message) {
+    // Remove technical prefix if exists
+    final displayMessage = message.replaceAll("Exception: ", "");
+    
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: Row(
+          children: [
+            const Icon(Icons.info_outline, color: Colors.orange, size: 28),
+            const SizedBox(width: 12),
+            const Text("Booking Notice"),
+          ],
+        ),
+        content: Text(
+          displayMessage,
+          style: AppTextStyles.bodyMedium.copyWith(color: AppColors.textSecondary),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text("Close", style: TextStyle(color: Colors.grey)),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              Navigator.pop(context); // Close dialog
+              Navigator.pop(context); // Go back to facility list or close review
+              Navigator.pushNamed(context, AppRoutes.myAppointments);
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppColors.primary,
+              foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+            ),
+            child: const Text("View My Appointments"),
+          ),
+        ],
+      ),
+    );
   }
 
   @override
@@ -186,9 +247,7 @@ class _BookingDetailsScreenState extends State<BookingDetailsScreen> {
               ),
             );
           } else if (state is BookingError) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(content: Text(state.message), backgroundColor: AppColors.danger),
-            );
+            _showErrorDialog(state.message);
           }
         },
         builder: (context, state) {

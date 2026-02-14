@@ -19,6 +19,7 @@ class AtamanBookingTicket extends StatelessWidget {
   Widget build(BuildContext context) {
     final bool isCancelled = booking.status == BookingStatus.cancelled;
     final bool isCompleted = booking.status == BookingStatus.completed;
+    final bool isMissed = booking.status == BookingStatus.missed;
 
     return Container(
       margin: const EdgeInsets.only(bottom: AppSizes.p16),
@@ -95,7 +96,7 @@ class AtamanBookingTicket extends StatelessWidget {
                         Text("#${_formatId(booking.id)}", style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12)),
                       ],
                     ),
-                    if (onCancel != null && !isCancelled && !isCompleted)
+                    if (onCancel != null && !isCancelled && !isCompleted && !isMissed)
                       TextButton.icon(
                         onPressed: onCancel,
                         icon: const Icon(Icons.cancel_outlined, size: 14),

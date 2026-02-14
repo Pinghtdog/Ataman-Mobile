@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:qr_flutter/qr_flutter.dart';
@@ -44,6 +45,13 @@ class MedicalIdScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // Standardized QR Data for Web Portal Sync
+    final String qrData = jsonEncode({
+      "type": "PATIENT_ID",
+      "data": user.id,
+      "generated_at": DateTime.now().toIso8601String(),
+    });
+
     return Scaffold(
       backgroundColor: AppColors.primary,
       appBar: AppBar(
@@ -103,7 +111,7 @@ class MedicalIdScreen extends StatelessWidget {
                         border: Border.all(color: Colors.grey[200]!),
                       ),
                       child: QrImageView(
-                        data: user.id, // Synced ID
+                        data: qrData, // Synced Standardized Data
                         version: QrVersions.auto,
                         size: 200.0,
                         eyeStyle: const QrEyeStyle(

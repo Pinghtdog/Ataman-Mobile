@@ -1,9 +1,7 @@
 import 'package:flutter/material.dart';
-
 import '../../../../core/constants/constants.dart';
 import '../../../../core/widgets/widgets.dart';
 
-//not working skeleton rani
 class IdVerificationScreen extends StatefulWidget {
   const IdVerificationScreen({super.key});
 
@@ -83,9 +81,10 @@ class _IdVerificationScreenState extends State<IdVerificationScreen> {
             AtamanButton(
               text: "Continue",
               onPressed: () {
+                print('ATAMAN_DEBUG: Navigating from ID Verification to Register Email');
                 Navigator.pushNamed(
                   context,
-                  '/register-email',
+                  AppRoutes.registerEmail, // FIXED: Using constant instead of string
                   arguments: profileData,
                 );
               },

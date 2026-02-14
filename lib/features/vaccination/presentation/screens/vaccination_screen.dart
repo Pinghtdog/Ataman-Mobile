@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import '../../../../core/constants/app_routes.dart';
 import '../../../../core/constants/app_strings.dart';
 import '../../../../injector.dart';
 import '../../data/models/vaccine_model.dart';
@@ -17,6 +16,7 @@ class VaccinationScreen extends StatefulWidget {
 
 class _VaccinationScreenState extends State<VaccinationScreen> {
   late Future<List<Vaccine>> _vaccinesFuture;
+  VaccineCategory _selectedCategory = VaccineCategory.all;
 
   @override
   void initState() {
@@ -50,7 +50,12 @@ class _VaccinationScreenState extends State<VaccinationScreen> {
                   style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
                 ),
                 const SizedBox(height: 16),
-                const FilterChips(),
+                FilterChips(
+                  selectedCategory: _selectedCategory,
+                  onCategoryChanged: (category) {
+                    setState(() => _selectedCategory = category);
+                  },
+                ),
                 const SizedBox(height: 16),
                 FutureBuilder<List<Vaccine>>(
                   future: _vaccinesFuture,
@@ -62,9 +67,24 @@ class _VaccinationScreenState extends State<VaccinationScreen> {
                       return Center(child: Text('Error: ${snapshot.error}'));
                     }
                     
-                    final vaccines = snapshot.data ?? [];
+                    var vaccines = snapshot.data ?? [];
+                    
+                    // Client-side filtering based on minAgeMonths
+                    if (_selectedCategory == VaccineCategory.kids) {
+                      vaccines = vaccines.where((v) => v.minAgeMonths < 216).toList(); // < 18 years
+                    } else if (_selectedCategory == VaccineCategory.adults) {
+                      vaccines = vaccines.where((v) => v.minAgeMonths >= 216).toList(); // >= 18 years
+                    } else if (_selectedCategory == VaccineCategory.seniors) {
+                      vaccines = vaccines.where((v) => v.minAgeMonths >= 720).toList(); // >= 60 years
+                    }
+
                     if (vaccines.isEmpty) {
-                      return const Center(child: Text('No vaccines available.'));
+                      return const Center(
+                        child: Padding(
+                          padding: EdgeInsets.symmetric(vertical: 32),
+                          child: Text('No vaccines found for this category.'),
+                        ),
+                      );
                     }
 
                     return ListView.separated(
@@ -75,9 +95,6 @@ class _VaccinationScreenState extends State<VaccinationScreen> {
                       itemBuilder: (context, index) {
                         final vaccine = vaccines[index];
                         
-                        // Aggregating stock across multiple facilities (Hospitals/Pharmacies)
-                        // This handles the challenge of fragmented inventories by normalizing them
-                        // into a single global status for the user.
                         StockStatus globalStatus = StockStatus.noStock;
                         if (vaccine.inventory != null && vaccine.inventory!.isNotEmpty) {
                           final hasInStock = vaccine.inventory!.any((inv) => inv.status == 'IN_STOCK');
@@ -90,18 +107,11 @@ class _VaccinationScreenState extends State<VaccinationScreen> {
                           }
                         }
 
-                        return GestureDetector(
-                          onTap: () => Navigator.pushNamed(
-                            context, 
-                            AppRoutes.bookVaccination,
-                            arguments: vaccine,
-                          ),
-                          child: VaccineListItem(
-                            abbr: vaccine.abbr ?? vaccine.name.substring(0, 3).toUpperCase(),
-                            name: vaccine.name,
-                            description: vaccine.description ?? 'Available at partnered facilities',
-                            stockStatus: globalStatus,
-                          ),
+                        return VaccineListItem(
+                          abbr: vaccine.abbr ?? vaccine.name.substring(0, 3).toUpperCase(),
+                          name: vaccine.name,
+                          description: vaccine.description ?? 'Available at partnered facilities',
+                          stockStatus: globalStatus,
                         );
                       },
                     );

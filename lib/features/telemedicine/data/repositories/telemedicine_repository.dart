@@ -17,6 +17,7 @@ class TelemedicineRepository implements ITelemedicineRepository {
         .map((data) => data.map((e) => DoctorModel.fromMap(e)).toList());
   }
 
+  @override
   Future<List<Map<String, dynamic>>> getSymptomsByCategory(String category) async {
     final response = await _supabase
         .from('telemed_symptoms')
@@ -84,5 +85,31 @@ class TelemedicineRepository implements ITelemedicineRepository {
         .from('telemed_sessions')
         .stream(primaryKey: ['id'])
         .eq('id', callId);
+  }
+
+  @override
+  Future<bool> checkBookingConflict(String patientId, String doctorId, DateTime startOfDay, DateTime endOfDay) async {
+    final response = await _supabase
+        .from('telemed_sessions')
+        .select()
+        .eq('patient_id', patientId)
+        .eq('doctor_id', doctorId)
+        .gte('scheduled_time', startOfDay.toIso8601String())
+        .lte('scheduled_time', endOfDay.toIso8601String())
+        .not('status', 'eq', 'cancelled');
+    
+    return (response as List).isEmpty;
+  }
+
+  @override
+  Future<bool> hasAnyActiveSessions(String patientId) async {
+    final response = await _supabase
+        .from('telemed_sessions')
+        .select()
+        .eq('patient_id', patientId)
+        .filter('status', 'in', '("scheduled","active")')
+        .limit(1);
+
+    return (response as List).isNotEmpty;
   }
 }

@@ -75,7 +75,7 @@ class TelemedDoctorSection extends StatelessWidget {
         ),
         const SizedBox(height: 12),
         SizedBox(
-          height: 160,
+          height: 170, // Slightly increased to prevent text clipping
           child: ListView.builder(
             scrollDirection: Axis.horizontal,
             itemCount: doctors.length,
@@ -94,8 +94,8 @@ class TelemedDoctorSection extends StatelessWidget {
       onTap: () => _showBookingSheet(context, doctor),
       child: Container(
         width: 140,
-        margin: const EdgeInsets.only(right: 16),
-        padding: const EdgeInsets.all(16),
+        margin: const EdgeInsets.only(right: 16, bottom: 4), // Added bottom margin for shadow
+        padding: const EdgeInsets.all(12),
         decoration: BoxDecoration(
           color: Colors.white,
           borderRadius: BorderRadius.circular(24),
@@ -132,7 +132,7 @@ class TelemedDoctorSection extends StatelessWidget {
                 ),
               ],
             ),
-            const SizedBox(height: 12),
+            const SizedBox(height: 8),
             Text(
               doctor.fullName,
               style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
@@ -144,6 +144,26 @@ class TelemedDoctorSection extends StatelessWidget {
               doctor.specialty ?? "General Practice",
               style: TextStyle(color: Colors.grey.shade500, fontSize: 11),
               textAlign: TextAlign.center,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            ),
+            const SizedBox(height: 4),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+              decoration: BoxDecoration(
+                color: (doctor.isOnline) 
+                    ? Colors.green.withOpacity(0.1) 
+                    : Colors.grey.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Text(
+                doctor.isOnline ? "Available" : "Away",
+                style: TextStyle(
+                  fontSize: 10,
+                  color: doctor.isOnline ? Colors.green : Colors.grey,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
             ),
           ],
         ),

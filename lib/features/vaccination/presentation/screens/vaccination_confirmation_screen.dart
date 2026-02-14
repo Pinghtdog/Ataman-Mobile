@@ -1,5 +1,7 @@
+import 'dart:convert';
 import 'package:add_2_calendar/add_2_calendar.dart';
 import 'package:flutter/material.dart';
+import 'package:qr_flutter/qr_flutter.dart';
 import '../../../../core/constants/constants.dart';
 import '../../data/models/vaccine_model.dart';
 
@@ -62,6 +64,15 @@ class VaccinationConfirmationScreen extends StatelessWidget {
   }
 
   Widget _buildConfirmationCard(BuildContext context) {
+    // Standardized QR Data for Web Portal Sync
+    // Note: Fallback to a placeholder if bookingId is missing in this prototype stage
+    final String qrData = jsonEncode({
+      "type": "VACCINATION_BOOKING_ID",
+      "data": bookingData['id'] ?? "VAX-TEMP-REF",
+      "vaccine_name": bookingData['vaccineName'],
+      "generated_at": DateTime.now().toIso8601String(),
+    });
+
     return Container(
       width: double.infinity,
       decoration: BoxDecoration(
@@ -106,9 +117,9 @@ class VaccinationConfirmationScreen extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(height: 8),
-                const Text(
-                  'REF: VAX-FL-2023',
-                  style: TextStyle(color: Colors.grey, fontSize: 12),
+                Text(
+                  'REF: ${bookingData['id']?.toString().toUpperCase() ?? "VAX-FL-2023"}',
+                  style: const TextStyle(color: Colors.grey, fontSize: 12),
                 ),
                 const SizedBox(height: 24),
                 _buildInfoRow('VACCINE', bookingData['vaccineName'] ?? 'Influenza (Flu)', color: Colors.purple),
@@ -136,19 +147,26 @@ class VaccinationConfirmationScreen extends StatelessWidget {
                       Container(
                         width: 50,
                         height: 50,
+                        padding: const EdgeInsets.all(4),
                         decoration: BoxDecoration(
                           color: Colors.white,
                           borderRadius: BorderRadius.circular(4),
                         ),
-                        child: const Icon(Icons.qr_code, size: 40),
+                        child: QrImageView(
+                          data: qrData,
+                          version: QrVersions.auto,
+                          padding: EdgeInsets.zero,
+                        ),
                       ),
                       const SizedBox(width: 16),
-                      const Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text('Inventory Claim Code', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
-                          Text('Present this to claim vaccine.', style: TextStyle(color: Colors.white70, fontSize: 10)),
-                        ],
+                      const Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text('Inventory Claim Code', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                            Text('Present this to claim vaccine.', style: TextStyle(color: Colors.white70, fontSize: 10)),
+                          ],
+                        ),
                       ),
                     ],
                   ),

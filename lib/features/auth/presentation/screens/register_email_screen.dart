@@ -60,9 +60,14 @@ class _RegisterEmailScreenState extends State<RegisterEmailScreen> {
   }
 
   void _onCompleteRegistration() {
+    print('ATAMAN_DEBUG: "Create Account" button tapped');
     UiUtils.hideKeyboard(context);
     
-    if (_formKey.currentState!.validate()) {
+    final bool isValid = _formKey.currentState?.validate() ?? false;
+    print('ATAMAN_DEBUG: Form validation result: $isValid');
+
+    if (isValid) {
+      print('ATAMAN_DEBUG: Calling AuthCubit.register for ${_emailController.text}');
       context.read<AuthCubit>().register(
             email: _emailController.text.trim(),
             password: _passController.text.trim(),
@@ -72,16 +77,20 @@ class _RegisterEmailScreenState extends State<RegisterEmailScreen> {
             barangay: fullProfileData['barangay'],
             philhealthId: _philhealthController.text.trim(),
           );
+    } else {
+      print('ATAMAN_DEBUG: Registration blocked by local validation errors');
     }
   }
 
   void _showCheckEmailDialog() {
+    print('ATAMAN_DEBUG: Showing CheckEmailDialog for ${_emailController.text}');
     showDialog(
       context: context,
       barrierDismissible: false,
       builder: (context) => CheckEmailDialog(
         email: _emailController.text.trim(),
         onContinue: () {
+          print('ATAMAN_DEBUG: CheckEmailDialog closed, navigating to login');
           Navigator.pushNamedAndRemoveUntil(context, AppRoutes.login, (route) => false);
         },
       ),
@@ -121,12 +130,17 @@ class _RegisterEmailScreenState extends State<RegisterEmailScreen> {
       body: BlocListener<AuthCubit, AuthState>(
         listener: (context, state) {
           if (state is AuthEmailVerified) {
+            print('ATAMAN_DEBUG: AuthState is AuthEmailVerified');
             _showEmailConfirmedDialog();
           }
           if (state is AuthError) {
+            print('ATAMAN_DEBUG: AuthState is AuthError: ${state.message}');
             if (state.message.contains("check your email")) {
               _showCheckEmailDialog();
             }
+          }
+          if (state is Authenticated) {
+            print('ATAMAN_DEBUG: AuthState is Authenticated');
           }
         },
         child: SafeArea(

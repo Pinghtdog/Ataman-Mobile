@@ -2,12 +2,35 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../../../core/constants/constants.dart';
 import '../../../../core/widgets/widgets.dart';
+import '../../../../core/services/notification_service.dart';
+import '../../../../injector.dart';
 import '../../../auth/logic/auth_cubit.dart';
 import '../../../emergency/presentation/widgets/emergency_help_card.dart';
+import '../../../notification/logic/notification_cubit.dart';
+import '../../../notification/logic/notification_state.dart';
 import '../widgets/smart_triage_card.dart';
 
-class HomeScreen extends StatelessWidget {
+class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
+
+  @override
+  State<HomeScreen> createState() => _HomeScreenState();
+}
+
+class _HomeScreenState extends State<HomeScreen> {
+  @override
+  void initState() {
+    super.initState();
+    _setupScanListener();
+  }
+
+  void _setupScanListener() {
+    final authState = context.read<AuthCubit>().state;
+    if (authState is Authenticated) {
+      // Start listening for real-time QR scan events (Sync with Web Portal)
+      getIt<NotificationService>().listenToScanEvents(authState.user.id);
+    }
+  }
 
   String _getGreeting() {
     final hour = DateTime.now().hour;
@@ -32,69 +55,48 @@ class HomeScreen extends StatelessWidget {
         return Scaffold(
           backgroundColor: AppColors.background,
           body: SingleChildScrollView(
-            // physics: const BouncingScrollPhysics(),
             child: Column(
               children: [
                 SizedBox(
-                  height: 360,
+                  height: 380,
                   child: Stack(
                     children: [
                       AtamanHeader(
-                        height: 220,
+                        height: 240,
                         child: SafeArea(
-                          child: Align(
-                            alignment: Alignment.topCenter,
-                            child: Padding(
-                              padding: const EdgeInsets.only(bottom: 40),
-                              child: Row(
-                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                children: [
-                                  Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
-                                    mainAxisSize: MainAxisSize.min,
-                                    children: [
-                                      Text(
-                                        "${_getGreeting()},",
-                                        style: AppTextStyles.bodySmall.copyWith(
-                                          color: Colors.white70,
-                                        ),
-                                      ),
-                                      Text(
-                                        userName,
-                                        style: AppTextStyles.h2.copyWith(
-                                          color: Colors.white,
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                  Align(
-                                    alignment: Alignment.topRight,
-                                    child: GestureDetector(
-                                      onTap: () {
-                                        Navigator.of(context, rootNavigator: true)
-                                            .pushNamed(AppRoutes.notifications);
-                                      },
-                                      child: Container(
-                                        padding: const EdgeInsets.all(AppSizes.p8),
-                                        decoration: BoxDecoration(
-                                          color: Colors.white.withAlpha(51),
-                                          shape: BoxShape.circle,
-                                        ),
-                                        child: const Icon(
-                                          Icons.notifications_none_rounded,
-                                          color: Colors.white,
-                                          size: AppSizes.iconMedium,
-                                        ),
+                          bottom: false,
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Text(
+                                      "${_getGreeting()},",
+                                      style: AppTextStyles.bodySmall.copyWith(
+                                        color: Colors.white70,
                                       ),
                                     ),
-                                  ),
-                                ],
+                                    Text(
+                                      userName,
+                                      style: AppTextStyles.h2.copyWith(
+                                        color: Colors.white,
+                                      ),
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                  ],
+                                ),
                               ),
-                            ),
+                              const SizedBox(width: AppSizes.p16),
+                              _buildNotificationIcon(context),
+                            ],
                           ),
                         ),
                       ),
-                      const SizedBox(height: AppSizes.p24),
 
                       Positioned(
                         bottom: 0,
@@ -167,6 +169,66 @@ class HomeScreen extends StatelessWidget {
                 ),
               ],
             ),
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildNotificationIcon(BuildContext context) {
+    return BlocBuilder<NotificationCubit, NotificationState>(
+      builder: (context, state) {
+        int unreadCount = 0;
+        if (state is NotificationLoaded) {
+          unreadCount = state.notifications.where((n) => !n.isRead).length;
+        }
+
+        return GestureDetector(
+          onTap: () {
+            Navigator.of(context, rootNavigator: true)
+                .pushNamed(AppRoutes.notifications);
+          },
+          child: Stack(
+            clipBehavior: Clip.none,
+            children: [
+              Container(
+                padding: const EdgeInsets.all(AppSizes.p8),
+                decoration: BoxDecoration(
+                  color: Colors.white.withAlpha(51),
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(
+                  Icons.notifications_none_rounded,
+                  color: Colors.white,
+                  size: AppSizes.iconMedium,
+                ),
+              ),
+              if (unreadCount > 0)
+                Positioned(
+                  top: 0,
+                  right: 0,
+                  child: Container(
+                    padding: const EdgeInsets.all(4),
+                    decoration: const BoxDecoration(
+                      color: AppColors.danger,
+                      shape: BoxShape.circle,
+                    ),
+                    constraints: const BoxConstraints(
+                      minWidth: 16,
+                      minHeight: 16,
+                    ),
+                    child: Text(
+                      unreadCount > 9 ? '9+' : unreadCount.toString(),
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 8,
+                        fontWeight: FontWeight.bold,
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
+                  ),
+                ),
+            ],
           ),
         );
       },

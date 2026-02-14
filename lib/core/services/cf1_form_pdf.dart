@@ -100,7 +100,7 @@ class Cf1FormPdf {
           // Other sections would be built here...
           pw.Text("PART II - PATIENT INFORMATION", style: pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 10)),
            pw.SizedBox(height: 10),
-          pw.Text("(To be filled out only if the patient is a dependent)", style: const pw.TextStyle(fontSize: 7, fontStyle: pw.FontStyle.italic)),
+          pw.Text("(To be filled out only if the patient is a dependent)", style: pw.TextStyle(fontSize: 7, fontStyle: pw.FontStyle.italic)),
            pw.SizedBox(height: 20),
 
            pw.Divider(thickness: 1, color: PdfColors.black),

@@ -34,6 +34,10 @@ class ServiceInitializer {
       await Supabase.initialize(
         url: supabaseUrl,
         anonKey: supabaseAnonKey,
+        authOptions: const FlutterAuthClientOptions(
+          // IMPORTANT: Required for Deep Linking and Redirects to work reliably
+          authFlowType: AuthFlowType.pkce,
+        ),
       );
 
       if (geminiApiKey != null) {
@@ -41,13 +45,11 @@ class ServiceInitializer {
       }
 
       // Safe initialization for Firebase/Notifications
-      // This prevents the app from crashing on devices without Google Play Services (like some Huawei phones)
       try {
         await Firebase.initializeApp();
         await NotificationService.initialize();
       } catch (e) {
         debugPrint("FIREBASE/NOTIFICATION INITIALIZATION WARNING: $e");
-        debugPrint("The app will continue without push notification support.");
       }
 
       await initInjector();

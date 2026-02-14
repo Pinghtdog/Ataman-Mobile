@@ -27,10 +27,13 @@ class HealthScreeningCard extends StatelessWidget {
         child: Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            const Text(
-              AppStrings.doYouHaveFever,
-              style: TextStyle(fontWeight: FontWeight.w500),
+            Expanded(
+              child: Text(
+                AppStrings.doYouHaveFever,
+                style: const TextStyle(fontWeight: FontWeight.w500),
+              ),
             ),
+            const SizedBox(width: 8),
             Row(
               children: [
                 _buildChoiceChip(AppStrings.yes, hasFever, () => onChanged(true)),

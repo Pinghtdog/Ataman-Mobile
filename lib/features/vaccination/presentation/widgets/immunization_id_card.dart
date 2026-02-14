@@ -39,24 +39,29 @@ class ImmunizationIdCard extends StatelessWidget {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text(
-                    'PATIENT NAME',
-                    style: TextStyle(color: Colors.white70, fontSize: 10, fontWeight: FontWeight.bold),
-                  ),
-                  Text(
-                    patientName,
-                    style: const TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    'DOB: $dob',
-                    style: const TextStyle(color: Colors.white70, fontSize: 12),
-                  ),
-                ],
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      'PATIENT NAME',
+                      style: TextStyle(color: Colors.white70, fontSize: 10, fontWeight: FontWeight.bold),
+                    ),
+                    Text(
+                      patientName,
+                      style: const TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      'DOB: $dob',
+                      style: const TextStyle(color: Colors.white70, fontSize: 12),
+                    ),
+                  ],
+                ),
               ),
+              const SizedBox(width: 8),
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
                 decoration: BoxDecoration(
@@ -75,19 +80,24 @@ class ImmunizationIdCard extends StatelessWidget {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             crossAxisAlignment: CrossAxisAlignment.end,
             children: [
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text(
-                    'IMMUNIZATION ID',
-                    style: TextStyle(color: Colors.white70, fontSize: 10, fontWeight: FontWeight.bold),
-                  ),
-                  Text(
-                    immunizationId,
-                    style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold, letterSpacing: 1),
-                  ),
-                ],
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      'IMMUNIZATION ID',
+                      style: TextStyle(color: Colors.white70, fontSize: 10, fontWeight: FontWeight.bold),
+                    ),
+                    Text(
+                      immunizationId,
+                      style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold, letterSpacing: 1),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ],
+                ),
               ),
+              const SizedBox(width: 8),
               Container(
                 width: 40,
                 height: 40,

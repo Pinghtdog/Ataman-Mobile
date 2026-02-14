@@ -11,4 +11,8 @@ abstract class ITelemedicineRepository {
   Future<String> initiateCall(String patientId, String doctorId, {Map<String, dynamic>? metadata, DateTime? scheduledTime});
   Future<void> updateCallStatus(String callId, String status);
   Stream<List<Map<String, dynamic>>> watchCall(String callId);
+
+  // New: Conflict checking
+  Future<bool> checkBookingConflict(String patientId, String doctorId, DateTime startOfDay, DateTime endOfDay);
+  Future<bool> hasAnyActiveSessions(String patientId);
 }
