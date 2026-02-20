@@ -150,7 +150,7 @@ class _TriageInputScreenState extends State<TriageInputScreen> {
               child: ClipRRect(
                 borderRadius: BorderRadius.circular(8),
                 child: LinearProgressIndicator(
-                  value: ((state.history.length + 1) / 5).clamp(0.0, 1.0), // Adjusted for hardcoded steps
+                  value: ((state.history.length + 1) / 5).clamp(0.0, 1.0),
                   minHeight: 8,
                   backgroundColor: Colors.grey[200],
                   valueColor: const AlwaysStoppedAnimation<Color>(AppColors.primary),
@@ -174,7 +174,7 @@ class _TriageInputScreenState extends State<TriageInputScreen> {
                     const SizedBox(height: AppSizes.p32),
 
                     if (showButtons) ...[
-                      // 1. Show AI Options (or Retry Button)
+                      // 1. Show AI Options
                       ...step.options.map((option) => Padding(
                         padding: const EdgeInsets.only(bottom: AppSizes.p16),
                         child: AtamanCard(
@@ -196,30 +196,11 @@ class _TriageInputScreenState extends State<TriageInputScreen> {
                           ),
                         ),
                       )),
-
-                      // 2. Show "None of the above" ONLY if NOT in retry state
-                      if (!step.options.any((o) => o.toLowerCase().contains("none")) && !isRetryState)
-                        Padding(
-                          padding: const EdgeInsets.only(bottom: AppSizes.p16),
-                          child: AtamanCard(
-                            onTap: () => setState(() => _forceManualInput = true),
-                            padding: const EdgeInsets.all(AppSizes.p20),
-                            child: Text(
-                              "None of the above / Other",
-                              style: AppTextStyles.bodyLarge.copyWith(
-                                color: AppColors.textSecondary,
-                                fontWeight: FontWeight.w500,
-                                fontStyle: FontStyle.italic,
-                              ),
-                              textAlign: TextAlign.center,
-                            ),
-                          ),
-                        ),
                     ] else ...[
                       // Manual Input Mode
                       AtamanTextField(
                         label: "Your Response",
-                        hintText: "Describe your symptoms or answer the question...",
+                        hintText: step.placeholder ?? "Describe your symptoms or answer the question...",
                         controller: _textController,
                         keyboardType: TextInputType.multiline,
                         maxLines: 3,
@@ -237,6 +218,7 @@ class _TriageInputScreenState extends State<TriageInputScreen> {
                           }
                         },
                       ),
+                      // Only show back button if AI didn't force TEXT mode
                       if (step.inputType == TriageInputType.buttons)
                         TextButton(
                           onPressed: () => setState(() => _forceManualInput = false),

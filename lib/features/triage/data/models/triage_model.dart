@@ -3,9 +3,9 @@ import 'package:flutter/material.dart';
 import '../../../../core/constants/app_colors.dart';
 
 enum TriageUrgency {
-  emergency, // Red - Immediate action
-  urgent,    // Yellow/Orange - Fast care
-  routine,   // Green - Standard care
+  emergency,
+  urgent,
+  routine,
 }
 
 enum TriageInputType {
@@ -17,6 +17,7 @@ class TriageStep extends Equatable {
   final String question;
   final List<String> options;
   final TriageInputType inputType;
+  final String? placeholder;
   final bool isFinal;
   final TriageResult? result;
 
@@ -24,22 +25,27 @@ class TriageStep extends Equatable {
     required this.question,
     this.options = const [],
     this.inputType = TriageInputType.buttons,
+    this.placeholder,
     this.isFinal = false,
     this.result,
   });
 
   factory TriageStep.fromJson(Map<String, dynamic> json) {
+    final bool isFinal = json['is_final'] ?? false;
+    
     return TriageStep(
       question: json['question'] ?? '',
       options: List<String>.from(json['options'] ?? []),
       inputType: json['input_type'] == 'TEXT' ? TriageInputType.text : TriageInputType.buttons,
-      isFinal: json['is_final'] ?? false,
-      result: json['result'] != null ? TriageResult.fromJson(json['result']) : null,
+      placeholder: json['placeholder'],
+      isFinal: isFinal,
+      // Only parse result if is_final is true, to avoid null pointer exceptions
+      result: (isFinal && json['result'] != null) ? TriageResult.fromJson(json['result']) : null,
     );
   }
 
   @override
-  List<Object?> get props => [question, options, inputType, isFinal, result];
+  List<Object?> get props => [question, options, inputType, placeholder, isFinal, result];
 }
 
 class TriageResult extends Equatable {
@@ -108,8 +114,11 @@ class TriageResult extends Equatable {
     );
   }
 
-  static TriageUrgency _parseUrgency(String urgency) {
-    switch (urgency.toUpperCase()) {
+  static TriageUrgency _parseUrgency(dynamic urgency) {
+    if (urgency == null) return TriageUrgency.routine;
+    
+    final String urgencyStr = urgency.toString().toUpperCase();
+    switch (urgencyStr) {
       case 'EMERGENCY':
         return TriageUrgency.emergency;
       case 'URGENT':
@@ -129,20 +138,6 @@ class TriageResult extends Equatable {
         return AppColors.warning;
       case TriageUrgency.routine:
         return AppColors.success;
-    }
-  }
-
-  String get actionText {
-    switch (recommendedAction) {
-      case 'AMBULANCE_DISPATCH':
-        return "Ambulance Dispatch Requested";
-      case 'HOSPITAL_ER':
-        return "Proceed to Emergency Room";
-      case 'BHC_APPOINTMENT':
-        return "Book Appointment at Barangay Health Center";
-      case 'TELEMEDICINE':
-      default:
-        return "Schedule a Telemedicine Consultation";
     }
   }
 

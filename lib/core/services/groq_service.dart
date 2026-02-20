@@ -37,6 +37,7 @@ class GroqService implements AiService {
       "is_final": boolean,
       "question": "string (user's language, mix of Tagalog and English)",
       "input_type": "BUTTONS" | "TEXT",
+      "placeholder": "string (hint for text input, optional)",
       "options": ["string"],
       "result": {
         "urgency": "ROUTINE" | "URGENT" | "EMERGENCY",

@@ -1,3 +1,4 @@
+import 'dart:developer' as developer;
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../../../core/services/ai_service.dart';
 import '../models/triage_model.dart';
@@ -8,43 +9,59 @@ class TriageService {
 
   TriageService(this._aiService);
 
+  /// Initializes the session (required by TriageRepository)
   Future<void> initializeSession() async {
-    // Optional: could re-add profile context fetching here if desired
+    print('DEBUG: TriageService initializing session...');
+    developer.log('TriageService: Session Initialized', name: 'TriageService');
   }
 
   Future<TriageStep> getNextStep(List<Map<String, String>> history) async {
+    print('DEBUG: TriageService fetching next step. History length: ${history.length}');
     try {
       String prompt;
       if (history.isEmpty) {
         prompt = "New triage session. Start now.";
       } else {
         prompt = "Continue Triage. \n";
-        final recentHistory = history.length > 3 ? history.sublist(history.length - 3) : history;
+        final recentHistory = history.length > 5 ? history.sublist(history.length - 5) : history;
         for (var turn in recentHistory) {
           prompt += "Q: ${turn['question']} A: ${turn['answer']}\n";
         }
         prompt += "Next:";
       }
 
+      print('DEBUG: Sending prompt to AI Service...');
       final data = await _aiService.getTriageResponse(prompt);
+      print('DEBUG: AI Response: $data');
+      developer.log('TriageService: AI Response received: $data', name: 'TriageService');
 
       if (data['is_final'] == true && data['result'] != null) {
         return await _saveAndReturnResult(data['result'], history);
       }
+      
       return TriageStep.fromJson(data);
-    } catch (e) {
+    } catch (e, stackTrace) {
+      print('DEBUG ERROR: Triage Interrupted - $e');
+      developer.log('TRIAGE_SERVICE_ERROR: $e', name: 'TriageService', error: e, stackTrace: stackTrace);
       throw Exception('Triage Interrupted. Please try again.');
     }
   }
 
   Future<TriageResult> performTriage(String symptoms) async {
-    final prompt = "SYMPTOMS: $symptoms";
-    final data = await _aiService.getTriageResponse(prompt);
-    if (data['result'] != null) {
-      final step = await _saveAndReturnResult(data['result'], [{'question': 'Symptoms', 'answer': symptoms}]);
-      return step.result!;
+    print('DEBUG: Performing direct triage for symptoms: $symptoms');
+    try {
+      final prompt = "SYMPTOMS: $symptoms";
+      final data = await _aiService.getTriageResponse(prompt);
+      if (data['result'] != null) {
+        final step = await _saveAndReturnResult(data['result'], [{'question': 'Symptoms', 'answer': symptoms}]);
+        return step.result!;
+      }
+      throw Exception('Failed to perform triage');
+    } catch (e) {
+      print('DEBUG ERROR: performTriage failed - $e');
+      developer.log('PERFORM_TRIAGE_ERROR: $e', name: 'TriageService');
+      rethrow;
     }
-    throw Exception('Failed to perform triage');
   }
 
   Future<List<TriageResult>> getTriageHistory() async {
@@ -56,6 +73,7 @@ class TriageService {
 
   Future<TriageStep> _saveAndReturnResult(Map<String, dynamic> resultData, List<Map<String, String>> history) async {
     final user = _supabase.auth.currentUser;
+    print('DEBUG: Triage complete. Saving result for user: ${user?.id}');
     try {
       if (user != null) {
         String historySummary = history.map((e) => "Q: ${e['question']} A: ${e['answer']}").join("\n");
@@ -96,10 +114,23 @@ class TriageService {
           'has_pdf': false,
         });
 
-        return TriageStep(question: "Complete", options: [], isFinal: true, result: TriageResult.fromJson(resultWithSoap));
+        return TriageStep(
+          question: "Complete", 
+          options: const [], 
+          isFinal: true, 
+          result: TriageResult.fromJson(resultWithSoap)
+        );
       }
-    } catch (e) { print("DB Error: $e"); }
+    } catch (e) { 
+      print('DEBUG ERROR: Database save failed - $e');
+      developer.log('DATABASE_SAVE_ERROR: $e', name: 'TriageService');
+    }
     
-    return TriageStep(question: "Complete", options: [], isFinal: true, result: TriageResult.fromJson(resultData));
+    return TriageStep(
+      question: "Complete", 
+      options: const [], 
+      isFinal: true,
+      result: TriageResult.fromJson(resultData)
+    );
   }
 }

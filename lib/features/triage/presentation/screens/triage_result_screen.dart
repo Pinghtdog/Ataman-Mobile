@@ -37,7 +37,7 @@ class _TriageResultScreenState extends State<TriageResultScreen> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       NotificationService.showSimulatedNotification(
         title: "Triage Analysis Ready",
-        body: "Status: ${widget.result.urgency.name.toUpperCase()} - ${widget.result.actionText}",
+        body: "${widget.result.urgency.name.toUpperCase()}: ${widget.result.reason ?? 'Assessment complete'}",
       );
     });
   }
@@ -120,7 +120,7 @@ class _TriageResultScreenState extends State<TriageResultScreen> {
     return Container(
       padding: const EdgeInsets.all(AppSizes.p20),
       decoration: BoxDecoration(
-        color: const Color(0xFFE0F2F1), // Light teal color
+        color: const Color(0xFFE0F2F1),
         borderRadius: BorderRadius.circular(AppSizes.radiusMedium),
         border: Border.all(color: AppColors.primary.withOpacity(0.5)),
       ),
@@ -154,22 +154,6 @@ class _TriageResultScreenState extends State<TriageResultScreen> {
             ),
           ],
 
-          if (_matchedBenefit!.treatmentSteps != null) ...[
-            const SizedBox(height: 16),
-            const Text("Step-by-Step Treatment Guide:", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
-            const SizedBox(height: 8),
-            ..._matchedBenefit!.treatmentSteps!.map((step) => Padding(
-              padding: const EdgeInsets.only(bottom: 6),
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text("• ", style: TextStyle(fontWeight: FontWeight.bold, color: AppColors.primary)),
-                  Expanded(child: Text(step, style: const TextStyle(fontSize: 12))),
-                ],
-              ),
-            )),
-          ],
-
           const Divider(height: 32, thickness: 1),
           Row(
             children: [
@@ -178,23 +162,6 @@ class _TriageResultScreenState extends State<TriageResultScreen> {
               Text("Eligibility: ${_eligibility!['status']}", style: AppTextStyles.bodyMedium.copyWith(fontWeight: FontWeight.bold)),
             ],
           ),
-          const SizedBox(height: 4),
-          Text(_eligibility!['reason'], style: AppTextStyles.bodySmall.copyWith(color: AppColors.textSecondary)),
-
-          if (isEligible && widget.result.requiredCapability.contains('PRIMARY_CARE')) ...[
-              const SizedBox(height: 20),
-              AtamanButton(
-                text: "Download Pre-filled Yakap Form",
-                onPressed: () {
-                   final authState = context.read<AuthCubit>().state;
-                   if (authState is Authenticated) {
-                      PdfService.generateYakapForm(authState.profile!);
-                   }
-                },
-                color: AppColors.primary,
-                icon: Icons.download_for_offline_rounded,
-              ),
-          ]
         ],
       ),
     );
@@ -218,7 +185,7 @@ class _TriageResultScreenState extends State<TriageResultScreen> {
           ),
           const SizedBox(height: AppSizes.p8),
           Text(
-            widget.result.actionText,
+            widget.result.reason ?? "Assessment Complete",
             textAlign: TextAlign.center,
             style: AppTextStyles.bodyLarge.copyWith(fontWeight: FontWeight.bold),
           ),
@@ -230,25 +197,19 @@ class _TriageResultScreenState extends State<TriageResultScreen> {
   Widget _buildDetails() {
     return Column(
       children: [
-        if (widget.result.summaryForProvider != null) ...[
-          _buildDetailTile("Summary", widget.result.summaryForProvider!, Icons.summarize_outlined),
-          const SizedBox(height: AppSizes.p16),
-        ],
         _buildDetailTile(
-          "Recommended Facility Type", 
+          "Action Required", 
+          widget.result.recommendedAction.replaceAll('_', ' '),
+          Icons.pending_actions_rounded
+        ),
+        const SizedBox(height: AppSizes.p16),
+        _buildDetailTile(
+          "Facility Level", 
           widget.result.requiredCapability.replaceAll('_', ' ').toLowerCase(),
           Icons.account_balance_outlined
         ),
         const SizedBox(height: AppSizes.p16),
         _buildDetailTile("Likely Specialty", widget.result.specialty, Icons.medical_services_outlined),
-        if (widget.result.aiConfidence > 0) ...[
-          const SizedBox(height: AppSizes.p16),
-          _buildDetailTile(
-            "AI Confidence", 
-            "${(widget.result.aiConfidence * 100).toInt()}%", 
-            Icons.verified_user_outlined
-          ),
-        ],
       ],
     );
   }
@@ -268,14 +229,13 @@ class _TriageResultScreenState extends State<TriageResultScreen> {
             children: [
               const Icon(Icons.description_outlined, size: 20, color: AppColors.primary),
               const SizedBox(width: 8),
-              Text("Provider SOAP Note", style: AppTextStyles.h3),
+              Text("AI Assessment Summary", style: AppTextStyles.h3),
             ],
           ),
           const SizedBox(height: 16),
-          _buildSoapField("Subjective", widget.result.soapNote!.subjective),
-          _buildSoapField("Objective", widget.result.soapNote!.objective),
+          _buildSoapField("Subjective Symptoms", widget.result.soapNote!.subjective),
           _buildSoapField("Assessment", widget.result.soapNote!.assessment),
-          _buildSoapField("Plan", widget.result.soapNote!.plan),
+          _buildSoapField("Proposed Plan", widget.result.soapNote!.plan),
         ],
       ),
     );
@@ -320,83 +280,75 @@ class _TriageResultScreenState extends State<TriageResultScreen> {
   }
 
   Widget _buildActionButton(BuildContext context) {
-    String buttonText = "Find Accredited Facility";
-    if (widget.result.urgency == TriageUrgency.emergency) {
-      buttonText = "Call Emergency Services (911)";
-    } else if (widget.result.recommendedAction == 'TELEMEDICINE') {
-      buttonText = "Start Telemedicine";
+    String buttonText = "Find Facility";
+    
+    switch (widget.result.recommendedAction) {
+      case 'AMBULANCE_DISPATCH':
+        buttonText = "Call 911 Immediately";
+        break;
+      case 'HOSPITAL_ER':
+        buttonText = "Locate Nearest ER";
+        break;
+      case 'TELEMEDICINE':
+        buttonText = "Start Telemedicine Now";
+        break;
+      case 'BHC_APPOINTMENT':
+        buttonText = "Book BHC Appointment";
+        break;
     }
 
     return AtamanButton(
-      text: _isProcessing ? "Finding Facility..." : buttonText,
+      text: _isProcessing ? "Processing..." : buttonText,
       color: widget.result.urgencyColor,
       onPressed: _isProcessing ? null : () => _handleProceed(context),
     );
   }
 
   Future<void> _handleProceed(BuildContext context) async {
-    if (widget.result.recommendedAction == 'AMBULANCE_DISPATCH' || widget.result.urgency == TriageUrgency.emergency) {
+    if (widget.result.recommendedAction == 'AMBULANCE_DISPATCH') {
       final Uri url = Uri.parse("tel:911");
-      if (await canLaunchUrl(url)) {
-        await launchUrl(url);
-      }
-    } else if (widget.result.recommendedAction == 'TELEMEDICINE') {
-      _exitTriage(context);
-    } else {
-      setState(() => _isProcessing = true);
-      
-      try {
-        Facility? recommendedFacility;
-        
-        if (_matchedFacilities != null && _matchedFacilities!.isNotEmpty) {
-           final facilityId = _matchedFacilities!.first['id'];
-           recommendedFacility = await getIt<FacilityRepository>().getFacilityById(facilityId!);
-        }
-        
-        recommendedFacility ??= await getIt<FacilityRepository>().findRecommendedFacility(widget.result.requiredCapability);
-        
-        if (!mounted) return;
+      if (await canLaunchUrl(url)) await launchUrl(url);
+      return;
+    }
 
-        // FIXED: Using standard push so user can go back to triage results
-        if (recommendedFacility != null) {
-          Navigator.of(context).push(
-            MaterialPageRoute(
-              builder: (context) => BookingDetailsScreen(
-                facility: recommendedFacility!,
-                triageResult: widget.result,
-              ),
+    if (widget.result.recommendedAction == 'TELEMEDICINE') {
+       Navigator.of(context).pushAndRemoveUntil(
+        MaterialPageRoute(builder: (context) => const AtamanBaseScreen(initialIndex: 2)),
+        (route) => false,
+      );
+      return;
+    }
+
+    setState(() => _isProcessing = true);
+    try {
+      Facility? recommendedFacility = await getIt<FacilityRepository>().findRecommendedFacility(widget.result.requiredCapability);
+      
+      if (!mounted) return;
+
+      if (recommendedFacility != null) {
+        Navigator.of(context).push(
+          MaterialPageRoute(
+            builder: (context) => BookingDetailsScreen(
+              facility: recommendedFacility!,
+              triageResult: widget.result,
             ),
-          );
-        } else {
-          // If no specific facility, go to the general list view
-          Navigator.of(context).push(
-            MaterialPageRoute(
-              builder: (context) => AtamanBaseScreen(
-                initialIndex: 1, // Navigate to the Facilities tab
-                triageResult: widget.result,
-              ),
-            ),
-          );
-        }
-      } catch (e) {
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text("Error finding facility: $e")),
-          );
-        }
-      } finally {
-        if (mounted) setState(() => _isProcessing = false);
+          ),
+        );
+      } else {
+        Navigator.of(context).push(
+          MaterialPageRoute(
+            builder: (context) => AtamanBaseScreen(initialIndex: 1, triageResult: widget.result),
+          ),
+        );
       }
+    } catch (e) {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Error: $e")));
+    } finally {
+      if (mounted) setState(() => _isProcessing = false);
     }
   }
 
   void _exitTriage(BuildContext context) {
-    final cubit = context.read<TriageCubit?>();
-    if (cubit != null && !cubit.isClosed) {
-      cubit.reset();
-    }
-    
-    // For exit, we still want to clear the stack to go "Fresh" to Home
     Navigator.of(context).pushAndRemoveUntil(
       MaterialPageRoute(builder: (context) => const AtamanBaseScreen()),
       (route) => false,
