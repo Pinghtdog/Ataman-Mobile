@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../../../core/constants/constants.dart';
+import '../../logic/auth_cubit.dart';
 
 class MyNagaAuthDialog extends StatelessWidget {
   const MyNagaAuthDialog({super.key});
@@ -77,7 +79,7 @@ class MyNagaAuthDialog extends StatelessWidget {
             ElevatedButton(
               onPressed: () {
                 Navigator.pop(context);
-                // context.read<AuthCubit>().connectMyNaga();
+                context.read<AuthCubit>().connectMyNaga();
               },
               style: ElevatedButton.styleFrom(
                 backgroundColor: const Color(0xFF00695C),

@@ -86,6 +86,19 @@ class TelemedicineRepository implements ITelemedicineRepository {
         .stream(primaryKey: ['id'])
         .eq('id', callId);
   }
+  
+  @override
+  Stream<List<Map<String, dynamic>>> watchUserSessions(String patientId) {
+    return _supabase
+        .from('telemed_sessions')
+        .stream(primaryKey: ['id'])
+        .eq('patient_id', patientId)
+        .order('scheduled_time', ascending: true)
+        .map((data) => data.where((session) {
+              final status = session['status'];
+              return status == 'scheduled' || status == 'active';
+            }).toList());
+  }
 
   @override
   Future<bool> checkBookingConflict(String patientId, String doctorId, DateTime startOfDay, DateTime endOfDay) async {

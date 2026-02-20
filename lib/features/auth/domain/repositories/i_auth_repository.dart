@@ -7,7 +7,9 @@ abstract class IAuthRepository {
   Future<AuthResponse> signUp({
     required String email,
     required String password,
-    required String fullName,
+    required String firstName,
+    required String lastName,
+    String? middleName,
     String? phoneNumber,
     Map<String, dynamic>? additionalData,
   });

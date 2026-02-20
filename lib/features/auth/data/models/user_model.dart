@@ -15,27 +15,32 @@ class UserModel extends Equatable {
   final String? barangay;
   final String? residentialAddress;
   final String? philhealthId;
-  final String? medicalId;
+  final String? medicalId; // Maps to medical_id in DB
   final String? fcmToken;
   final bool isProfileComplete;
   final bool isPhilhealthVerified; 
+  final bool isTemporary;
 
-  // Health & Social related fields (DOH/UHC requirements)
+  // Health & Social related fields (Matching your DB exactly)
   final String? gender;
   final String? bloodType;
   final String? civilStatus;
-  final String? education;
+  final String? educationalAttainment; // Changed from education
   final String? employmentStatus;
   final bool is4psMember;
-  final String? philhealthStatus; // Member or Dependent
-  final String? familyPosition;   // Father, Mother, Son, etc.
-  final bool isPcbMember;         // Primary Care Benefit
+  final String? philhealthStatus;
+  final String? familyPosition;
+  final bool isPcbMember;
   
   // Emergency & Clinical
   final String? emergencyContactName;
   final String? emergencyContactPhone;
   final String? allergies;
   final String? medicalConditions;
+
+  // Virtual fields for the MyNaga Mock (Not in DB yet)
+  final String? mynagaId;
+  final bool isMynagaVerified;
 
   const UserModel({
     required this.id,
@@ -56,10 +61,13 @@ class UserModel extends Equatable {
     this.fcmToken,
     this.isProfileComplete = false,
     this.isPhilhealthVerified = false,
+    this.isTemporary = false,
+    this.mynagaId,
+    this.isMynagaVerified = false,
     this.gender,
     this.bloodType,
     this.civilStatus,
-    this.education,
+    this.educationalAttainment,
     this.employmentStatus,
     this.is4psMember = false,
     this.philhealthStatus,
@@ -76,10 +84,10 @@ class UserModel extends Equatable {
     id, email, firstName, middleName, lastName, suffix, maidenName,
     phoneNumber, birthDate, birthplace, motherName, barangay,
     residentialAddress, philhealthId, medicalId, fcmToken, isProfileComplete,
-    isPhilhealthVerified, gender, bloodType, civilStatus, education, 
-    employmentStatus, is4psMember, philhealthStatus, familyPosition, 
-    isPcbMember, emergencyContactName, emergencyContactPhone, allergies, 
-    medicalConditions,
+    isPhilhealthVerified, isTemporary, mynagaId, isMynagaVerified, gender,
+    bloodType, civilStatus, educationalAttainment, employmentStatus,
+    is4psMember, philhealthStatus, familyPosition, isPcbMember,
+    emergencyContactName, emergencyContactPhone, allergies, medicalConditions,
   ];
 
   String get fullName {
@@ -95,7 +103,6 @@ class UserModel extends Equatable {
   }
 
   factory UserModel.fromJson(Map<String, dynamic> map) {
-    // Extra defensive check: If the key exists but is null, default to false.
     bool toBool(dynamic value) {
       if (value == null) return false;
       if (value is bool) return value;
@@ -123,15 +130,16 @@ class UserModel extends Equatable {
       fcmToken: map['fcm_token']?.toString(),
       isProfileComplete: toBool(map['is_profile_complete']),
       isPhilhealthVerified: toBool(map['is_philhealth_verified']),
-      gender: map['gender']?.toString(),
-      bloodType: map['blood_type']?.toString(),
-      civilStatus: map['civil_status']?.toString(),
-      education: map['educational_attainment']?.toString(),
+      isTemporary: toBool(map['is_temporary']),
+      educationalAttainment: map['educational_attainment']?.toString(),
       employmentStatus: map['employment_status']?.toString(),
       is4psMember: toBool(map['is_4ps_member']),
       philhealthStatus: map['philhealth_status']?.toString(),
       familyPosition: map['family_position']?.toString(),
       isPcbMember: toBool(map['is_pcb_member']),
+      gender: map['gender']?.toString(),
+      bloodType: map['blood_type']?.toString(),
+      civilStatus: map['civil_status']?.toString(),
       emergencyContactName: map['emergency_contact_name']?.toString(),
       emergencyContactPhone: map['emergency_contact_phone']?.toString(),
       allergies: map['allergies']?.toString(),
@@ -159,10 +167,11 @@ class UserModel extends Equatable {
       'fcm_token': fcmToken,
       'is_profile_complete': isProfileComplete,
       'is_philhealth_verified': isPhilhealthVerified,
+      'is_temporary': isTemporary,
       'gender': gender,
       'blood_type': bloodType,
       'civil_status': civilStatus,
-      'educational_attainment': education,
+      'educational_attainment': educationalAttainment,
       'employment_status': employmentStatus,
       'is_4ps_member': is4psMember,
       'philhealth_status': philhealthStatus,
@@ -194,10 +203,13 @@ class UserModel extends Equatable {
     String? fcmToken,
     bool? isProfileComplete,
     bool? isPhilhealthVerified,
+    bool? isTemporary,
+    String? mynagaId,
+    bool? isMynagaVerified,
     String? gender,
     String? bloodType,
     String? civilStatus,
-    String? education,
+    String? educationalAttainment,
     String? employmentStatus,
     bool? is4psMember,
     String? philhealthStatus,
@@ -227,10 +239,13 @@ class UserModel extends Equatable {
       fcmToken: fcmToken ?? this.fcmToken,
       isProfileComplete: isProfileComplete ?? this.isProfileComplete,
       isPhilhealthVerified: isPhilhealthVerified ?? this.isPhilhealthVerified,
+      isTemporary: isTemporary ?? this.isTemporary,
+      mynagaId: mynagaId ?? this.mynagaId,
+      isMynagaVerified: isMynagaVerified ?? this.isMynagaVerified,
       gender: gender ?? this.gender,
       bloodType: bloodType ?? this.bloodType,
       civilStatus: civilStatus ?? this.civilStatus,
-      education: education ?? this.education,
+      educationalAttainment: educationalAttainment ?? this.educationalAttainment,
       employmentStatus: employmentStatus ?? this.employmentStatus,
       is4psMember: is4psMember ?? this.is4psMember,
       philhealthStatus: philhealthStatus ?? this.philhealthStatus,

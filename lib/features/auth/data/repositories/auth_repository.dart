@@ -19,14 +19,18 @@ class AuthRepository extends BaseRepository implements IAuthRepository {
   Future<AuthResponse> signUp({
     required String email,
     required String password,
-    required String fullName,
+    required String firstName,
+    required String lastName,
+    String? middleName,
     String? phoneNumber,
     Map<String, dynamic>? additionalData,
   }) async {
     return await safeCall(() => _authService.signUp(
       email: email,
       password: password,
-      fullName: fullName,
+      firstName: firstName,
+      lastName: lastName,
+      middleName: middleName,
       phoneNumber: phoneNumber,
       additionalData: additionalData,
     ));

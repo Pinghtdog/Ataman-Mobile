@@ -22,17 +22,21 @@ class AuthService {
   Future<AuthResponse> signUp({
     required String email,
     required String password,
-    required String fullName,
+    required String firstName,
+    required String lastName,
+    String? middleName,
     String? phoneNumber,
     Map<String, dynamic>? additionalData,
   }) async {
     return await _supabase.auth.signUp(
       email: email,
       password: password,
-      emailRedirectTo: 'https://lambent-tarsier-6e738f.netlify.app/',
+      emailRedirectTo: 'https://benevolent-muffin-aeafa7.netlify.app/',
       data: {
-        'full_name': fullName,
-        if (phoneNumber != null) 'phone': phoneNumber,
+        'first_name': firstName,
+        'last_name': lastName,
+        if (middleName != null) 'middle_name': middleName,
+        if (phoneNumber != null) 'phone_number': phoneNumber,
         ...?additionalData,
       },
     );

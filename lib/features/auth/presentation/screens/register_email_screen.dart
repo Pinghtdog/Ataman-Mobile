@@ -72,6 +72,7 @@ class _RegisterEmailScreenState extends State<RegisterEmailScreen> {
             email: _emailController.text.trim(),
             password: _passController.text.trim(),
             firstName: fullProfileData['firstName'],
+            middleName: fullProfileData['middleName'],
             lastName: fullProfileData['lastName'],
             birthDate: fullProfileData['birthDate'],
             barangay: fullProfileData['barangay'],

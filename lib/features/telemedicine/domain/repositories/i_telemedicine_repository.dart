@@ -12,6 +12,9 @@ abstract class ITelemedicineRepository {
   Future<void> updateCallStatus(String callId, String status);
   Stream<List<Map<String, dynamic>>> watchCall(String callId);
 
+  // New: Watch user sessions for "Join" functionality
+  Stream<List<Map<String, dynamic>>> watchUserSessions(String patientId);
+
   // New: Conflict checking
   Future<bool> checkBookingConflict(String patientId, String doctorId, DateTime startOfDay, DateTime endOfDay);
   Future<bool> hasAnyActiveSessions(String patientId);

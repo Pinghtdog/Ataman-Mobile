@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:intl/intl.dart';
 import '../../../auth/logic/auth_cubit.dart';
 import '../../logic/prescription_cubit.dart';
 import '../../logic/prescription_state.dart';
@@ -9,6 +10,9 @@ import '../../../../core/widgets/widgets.dart';
 import '../widgets/telemed_doctor_section.dart';
 import '../widgets/telemed_prescription_section.dart';
 import '../widgets/prescription_details_modal.dart';
+import '../widgets/ataman_konsulta_card.dart';
+import 'video_call_screen.dart';
+import '../../data/models/doctor_model.dart';
 
 class TelemedicineScreen extends StatefulWidget {
   const TelemedicineScreen({super.key});
@@ -24,12 +28,22 @@ class _TelemedicineScreenState extends State<TelemedicineScreen> {
     final authState = context.read<AuthCubit>().state;
     if (authState is Authenticated) {
       context.read<PrescriptionCubit>().startWatchingPrescriptions(authState.user.id);
-      context.read<TelemedicineCubit>().startWatchingDoctors();
+      final telemedCubit = context.read<TelemedicineCubit>();
+      telemedCubit.startWatchingDoctors();
+      telemedCubit.startWatchingSessions(authState.user.id);
     }
   }
 
   @override
   Widget build(BuildContext context) {
+    final authState = context.read<AuthCubit>().state;
+    String userName = "User";
+    String userId = "";
+    if (authState is Authenticated) {
+      userName = authState.profile?.fullName ?? "User";
+      userId = authState.user.id;
+    }
+
     return Scaffold(
       backgroundColor: AppColors.background,
       body: Column(
@@ -72,6 +86,14 @@ class _TelemedicineScreenState extends State<TelemedicineScreen> {
                       return ListView(
                         padding: const EdgeInsets.all(AppSizes.p24),
                         children: [
+                          // 1. ACTIVE SESSION CARD (REAL DATA)
+                          if (telemedState is TelemedicineLoaded && telemedState.activeSessions.isNotEmpty)
+                            _buildActiveSessionSection(context, telemedState, userId, userName)
+                          else if (telemedState is TelemedicineLoaded && telemedState.activeSessions.isEmpty)
+                            _buildNoActiveSessionPlaceholder(),
+                          
+                          const SizedBox(height: AppSizes.p24),
+                          
                           TelemedDoctorSection(
                             state: telemedState,
                           ),
@@ -135,6 +157,75 @@ class _TelemedicineScreenState extends State<TelemedicineScreen> {
           ),
         ],
       ),
+    );
+  }
+
+  Widget _buildActiveSessionSection(BuildContext context, TelemedicineLoaded state, String userId, String userName) {
+    final session = state.activeSessions.first;
+    final doctorId = session['doctor_id'];
+    
+    // Find doctor info from the loaded doctors list
+    final doctor = state.doctors.cast<DoctorModel?>().firstWhere(
+      (d) => d?.id == doctorId,
+      orElse: () => null,
+    );
+
+    final String doctorName = doctor?.fullName ?? "Doctor";
+    final String specialty = doctor?.specialty ?? "Medical Specialist";
+    final DateTime? scheduledTime = session['scheduled_time'] != null 
+        ? DateTime.parse(session['scheduled_time']) 
+        : null;
+    
+    String timeStr = "Now";
+    bool canJoin = true;
+
+    if (scheduledTime != null) {
+      final now = DateTime.now();
+      final difference = scheduledTime.difference(now);
+      
+      // Allow joining 10 minutes before OR if status is active
+      canJoin = session['status'] == 'active' || difference.inMinutes <= 10;
+
+      if (scheduledTime.day == now.day) {
+        timeStr = "Today, ${DateFormat('hh:mm a').format(scheduledTime)}";
+      } else {
+        timeStr = DateFormat('MMM dd, hh:mm a').format(scheduledTime);
+      }
+
+      if (!canJoin) {
+        final joinTime = scheduledTime.subtract(const Duration(minutes: 10));
+        timeStr = "Joinable at ${DateFormat('hh:mm a').format(joinTime)}";
+      }
+    }
+
+    final bool isActive = session['status'] == 'active';
+
+    return AtamanKonsultaCard(
+      title: isActive ? "Live Consultation" : "Upcoming Consultation",
+      subtitle: "$doctorName • $specialty",
+      nextAvailable: timeStr,
+      onJoinTap: canJoin ? () {
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => VideoCallScreen(
+              callId: session['id'].toString(),
+              userId: userId,
+              userName: userName,
+              isCaller: true,
+            ),
+          ),
+        );
+      } : null,
+    );
+  }
+
+  Widget _buildNoActiveSessionPlaceholder() {
+    return AtamanKonsultaCard(
+      title: "Tele-Consult",
+      subtitle: "Speak with a doctor from home",
+      nextAvailable: "Book a slot below",
+      onJoinTap: null, // Join disabled if no session
     );
   }
 }

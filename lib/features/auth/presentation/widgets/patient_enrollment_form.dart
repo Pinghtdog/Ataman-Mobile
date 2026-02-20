@@ -149,8 +149,8 @@ class _PatientEnrollmentFormState extends State<PatientEnrollmentForm> {
         _buildDropdown(
             "Educational Attainment",
             ["No Formal Education", "Elementary", "High School", "Vocational", "College", "Post Graduate"],
-            _updatedUser.education, (val) {
-          setState(() => _updatedUser = _updatedUser.copyWith(education: val));
+            _updatedUser.educationalAttainment, (val) {
+          setState(() => _updatedUser = _updatedUser.copyWith(educationalAttainment: val));
         }),
         const SizedBox(height: 16),
         _buildDropdown(

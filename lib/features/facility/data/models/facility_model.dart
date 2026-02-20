@@ -36,6 +36,12 @@ class Facility {
   final String? website;
   final String distance;
   final List<FacilityService> services;
+  
+  // New fields for Appointment Model
+  final double rating;
+  final int reviewCount;
+  final String openingTime;
+  final String closingTime;
 
   const Facility({
     required this.id,
@@ -59,25 +65,22 @@ class Facility {
     this.website,
     this.distance = "Calculating...",
     this.services = const [],
+    this.rating = 4.8, // Default for demo
+    this.reviewCount = 120, // Default for demo
+    this.openingTime = "08:00 AM",
+    this.closingTime = "05:00 PM",
   });
 
-  String get estimatedWaitTime {
-    if (status == FacilityStatus.closed) return "Closed";
-
-    int minutesPerPatient = type == FacilityType.hospital ? 10 : 15;
-    int totalMinutes = queueCount * minutesPerPatient;
-
-    if (totalMinutes == 0) return "No wait";
-    if (totalMinutes < 60) return "$totalMinutes mins";
-
-    double hours = totalMinutes / 60;
-    return "${hours.toStringAsFixed(1)} hrs";
+  // Replaces estimatedWaitTime logic with status-based availability strings
+  String get availabilityStatus {
+    if (status == FacilityStatus.closed) return "Closed Today";
+    if (isDiversionActive || status == FacilityStatus.congested) return "Fully Booked Today";
+    return "Next Available: Today, 2:00 PM"; 
   }
 
-  String get queueStatus {
-    if (queueCount < 5) return "Light";
-    if (queueCount < 15) return "Moderate";
-    return "Busy";
+  String get operatingStatus {
+    if (status == FacilityStatus.closed) return "Closed";
+    return "Open until $closingTime";
   }
 
   Facility copyWith({
@@ -102,6 +105,10 @@ class Facility {
     String? website,
     String? distance,
     List<FacilityService>? services,
+    double? rating,
+    int? reviewCount,
+    String? openingTime,
+    String? closingTime,
   }) {
     return Facility(
       id: id ?? this.id,
@@ -125,6 +132,10 @@ class Facility {
       website: website ?? this.website,
       distance: distance ?? this.distance,
       services: services ?? this.services,
+      rating: rating ?? this.rating,
+      reviewCount: reviewCount ?? this.reviewCount,
+      openingTime: openingTime ?? this.openingTime,
+      closingTime: closingTime ?? this.closingTime,
     );
   }
 
@@ -148,7 +159,6 @@ class Facility {
         case 'GOVERNMENT_NATIONAL': return FacilityOwnership.governmentNational;
         case 'GOVERNMENT_LGU': return FacilityOwnership.governmentLgu;
         case 'PRIVATE': return FacilityOwnership.private;
-        case 'NGO_CHARITABLE': return FacilityOwnership.governmentLgu; // Defaulting for simplicity
         default: return FacilityOwnership.governmentLgu;
       }
     }
@@ -190,6 +200,10 @@ class Facility {
       services: (json['facility_services'] as List?)
           ?.map((s) => FacilityService.fromJson(s))
           .toList() ?? const [],
+      rating: (json['rating'] ?? 4.8).toDouble(),
+      reviewCount: json['review_count'] ?? 120,
+      openingTime: json['opening_time'] ?? "08:00 AM",
+      closingTime: json['closing_time'] ?? "05:00 PM",
     );
   }
 }

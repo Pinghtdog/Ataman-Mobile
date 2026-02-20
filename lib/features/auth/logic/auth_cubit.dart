@@ -1,9 +1,11 @@
 import 'dart:async';
-import 'package:flutter/foundation.dart';
+import 'dart:io';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:equatable/equatable.dart';
 import 'package:supabase_flutter/supabase_flutter.dart' as sb;
 import '../../../core/services/notification_service.dart';
+import '../../../core/services/mynaga_service.dart';
+import '../../../injector.dart';
 import '../data/models/user_model.dart';
 import '../domain/repositories/i_auth_repository.dart';
 import '../domain/repositories/i_user_repository.dart';
@@ -46,13 +48,16 @@ class AuthError extends AuthState {
 class AuthCubit extends Cubit<AuthState> {
   final IAuthRepository _authRepository;
   final IUserRepository _userRepository;
+  final MyNagaService _myNagaService;
   StreamSubscription<sb.AuthState>? _authStateSubscription;
 
   AuthCubit({
     required IAuthRepository authRepository,
     required IUserRepository userRepository,
+    MyNagaService? myNagaService,
   })  : _authRepository = authRepository,
         _userRepository = userRepository,
+        _myNagaService = myNagaService ?? MyNagaService(),
         super(AuthInitial()) {
     _init();
   }
@@ -109,6 +114,12 @@ class AuthCubit extends Cubit<AuthState> {
 
   String _handleAuthError(dynamic e) {
     if (e is sb.AuthException) return e.message;
+    if (e is SocketException || e.toString().contains('SocketException') || e.toString().contains('host lookup')) {
+      return "Network connection error. Please check your internet and try again.";
+    }
+    if (e.toString().contains('Connection closed')) {
+      return "Connection lost. Please try again.";
+    }
     return e.toString();
   }
 
@@ -132,12 +143,12 @@ class AuthCubit extends Cubit<AuthState> {
     required String password,
     required String firstName,
     required String lastName,
+    String? middleName,
     String? phoneNumber,
     String? birthDate,
     String? barangay,
     String? philhealthId,
   }) async {
-    print('ATAMAN_DEBUG: Registering $email');
     emit(AuthLoading());
     try {
       String? formattedDate = birthDate;
@@ -151,11 +162,11 @@ class AuthCubit extends Cubit<AuthState> {
       final response = await _authRepository.signUp(
         email: email,
         password: password,
-        fullName: "$firstName $lastName",
+        firstName: firstName,
+        lastName: lastName,
+        middleName: middleName,
         phoneNumber: phoneNumber,
         additionalData: {
-          'first_name': firstName,
-          'last_name': lastName,
           'birth_date': formattedDate,
           'barangay': barangay,
           'philhealth_id': philhealthId,
@@ -163,18 +174,33 @@ class AuthCubit extends Cubit<AuthState> {
         },
       );
 
-      print('ATAMAN_DEBUG: User Created with ID: ${response.user?.id}');
-
       if (response.session == null && response.user != null) {
-        print('ATAMAN_DEBUG: Confirmation Email Required');
         emit(AuthError("Please check your email to confirm your account."));
       } else if (response.user == null) {
-        print('ATAMAN_DEBUG: No User object returned');
         emit(AuthError("Registration failed: No user record created."));
       }
     } catch (e) {
-      print('ATAMAN_DEBUG: ERROR -> $e');
       emit(AuthError(_handleAuthError(e)));
+    }
+  }
+
+  Future<void> connectMyNaga() async {
+    emit(AuthLoading());
+    try {
+      // 1. Call the new MyNaga Service
+      final citizenData = await _myNagaService.fetchCitizenProfile("MOCK_CODE_123");
+      
+      // 2. Log in using the credentials from the service
+      final response = await _authRepository.signIn(
+        email: citizenData['email'],
+        password: "password123", // In real life, this would be a secure token exchange
+      );
+
+      if (response.user != null) {
+        await _handleUserAuthenticated(response.user!);
+      }
+    } catch (e) {
+      emit(AuthError("MyNaga connection failed: ${e.toString()}"));
       emit(Unauthenticated());
     }
   }

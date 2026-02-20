@@ -15,27 +15,31 @@ class TelemedicineLoaded extends TelemedicineState {
   final List<DoctorModel> doctors;
   final List<TelemedicineService> services;
   final List<String> symptoms;
+  final List<Map<String, dynamic>> activeSessions;
 
   const TelemedicineLoaded(
     this.doctors, {
     this.services = const [],
     this.symptoms = const [],
+    this.activeSessions = const [],
   });
 
   TelemedicineLoaded copyWith({
     List<DoctorModel>? doctors,
     List<TelemedicineService>? services,
     List<String>? symptoms,
+    List<Map<String, dynamic>>? activeSessions,
   }) {
     return TelemedicineLoaded(
       doctors ?? this.doctors,
       services: services ?? this.services,
       symptoms: symptoms ?? this.symptoms,
+      activeSessions: activeSessions ?? this.activeSessions,
     );
   }
 
   @override
-  List<Object?> get props => [doctors, services, symptoms];
+  List<Object?> get props => [doctors, services, symptoms, activeSessions];
 }
 
 class TelemedicineError extends TelemedicineState {

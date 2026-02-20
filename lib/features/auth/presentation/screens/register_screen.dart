@@ -18,6 +18,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
   final _formKey = GlobalKey<FormState>();
   
   final _firstNameController = TextEditingController();
+  final _middleNameController = TextEditingController();
   final _lastNameController = TextEditingController();
   final _birthdateController = TextEditingController();
   final _barangayController = TextEditingController();
@@ -51,6 +52,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
   @override
   void dispose() {
     _firstNameController.dispose();
+    _middleNameController.dispose();
     _lastNameController.dispose();
     _birthdateController.dispose();
     _barangayController.dispose();
@@ -151,6 +153,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
       final profileData = {
         'firstName': _firstNameController.text.trim(),
+        'middleName': _middleNameController.text.trim(),
         'lastName': _lastNameController.text.trim(),
         'birthDate': _birthdateController.text.trim(),
         'barangay': _barangayController.text.trim(),
@@ -224,40 +227,32 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
                 const SizedBox(height: AppSizes.p32),
                 
-                Row(
-                  children: [
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          const AtamanLabel(text: "FIRST NAME"),
-                          AtamanTextField(
-                            label: "",
-                            hintText: "Juan",
-                            controller: _firstNameController,
-                            prefixIcon: Icons.person_outline,
-                            validator: ValidatorUtils.validateFirstName,
-                          ),
-                        ],
-                      ),
-                    ),
-                    const SizedBox(width: AppSizes.p16),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          const AtamanLabel(text: "LAST NAME"),
-                          AtamanTextField(
-                            label: "",
-                            hintText: "Dela Cruz",
-                            controller: _lastNameController,
-                            prefixIcon: Icons.person_outline,
-                            validator: ValidatorUtils.validateLastName,
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
+                const AtamanLabel(text: "FIRST NAME"),
+                AtamanTextField(
+                  label: "",
+                  hintText: "Juan",
+                  controller: _firstNameController,
+                  prefixIcon: Icons.person_outline,
+                  validator: ValidatorUtils.validateFirstName,
+                ),
+                const SizedBox(height: AppSizes.p24),
+
+                const AtamanLabel(text: "MIDDLE NAME (OPTIONAL)"),
+                AtamanTextField(
+                  label: "",
+                  hintText: "Santos",
+                  controller: _middleNameController,
+                  prefixIcon: Icons.person_outline,
+                ),
+                const SizedBox(height: AppSizes.p24),
+
+                const AtamanLabel(text: "LAST NAME"),
+                AtamanTextField(
+                  label: "",
+                  hintText: "Dela Cruz",
+                  controller: _lastNameController,
+                  prefixIcon: Icons.person_outline,
+                  validator: ValidatorUtils.validateLastName,
                 ),
                 const SizedBox(height: AppSizes.p24),
         
