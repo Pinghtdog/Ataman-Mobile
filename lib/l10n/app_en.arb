@@ -1,0 +1,18 @@
+{
+  "@@locale": "en",
+  "language": "Language",
+  "welcomeBack": "Welcome Back",
+  "healthAssistant": "AI-Powered Healthcare Assistant",
+  "english": "English",
+  "filipino": "Filipino",
+  "bikolNaga": "Bikol Naga",
+  "settings": "Settings",
+  "account": "ACCOUNT",
+  "personalInformation": "Personal Information",
+  "changePassword": "Change Password",
+  "preferences": "PREFERENCES",
+  "notifications": "Notifications",
+  "legal": "LEGAL",
+  "privacyPolicy": "Privacy Policy",
+  "termsOfService": "Terms of Service"
+}

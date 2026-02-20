@@ -5,7 +5,10 @@ import 'package:ataman/features/vaccination/presentation/screens/vaccination_rec
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
+import '../../../../l10n/app_localizations.dart';
 import 'core/constants/constants.dart';
+import 'core/logic/locale_cubit.dart';
 import 'core/services/service_initializer.dart';
 import 'core/services/local_storage_service.dart';
 import 'core/services/sync_service.dart';
@@ -96,6 +99,9 @@ class AtamanApp extends StatelessWidget {
 
     return MultiBlocProvider(
       providers: [
+        BlocProvider<LocaleCubit>(
+          create: (context) => LocaleCubit(),
+        ),
         BlocProvider<AuthCubit>(
           create: (context) => AuthCubit(
             authRepository: getIt<IAuthRepository>(),
@@ -131,13 +137,25 @@ class AtamanApp extends StatelessWidget {
           create: (context) => PrescriptionCubit(prescriptionRepository: getIt<PrescriptionRepository>()),
         ),
       ],
-      child: MaterialApp(
-        title: AppStrings.appName,
-        debugShowCheckedModeBanner: false,
-        theme: AppTheme.lightTheme,
-        initialRoute: AppRoutes.splash,
-        onGenerateRoute: _onGenerateRoute,
-        routes: _appRoutes,
+      child: BlocBuilder<LocaleCubit, Locale>(
+        builder: (context, locale) {
+          return MaterialApp(
+            title: AppStrings.appName,
+            debugShowCheckedModeBanner: false,
+            theme: AppTheme.lightTheme,
+            initialRoute: AppRoutes.splash,
+            onGenerateRoute: _onGenerateRoute,
+            routes: _appRoutes,
+            locale: locale,
+            supportedLocales: AppLocalizations.supportedLocales,
+            localizationsDelegates: const [
+              AppLocalizations.delegate,
+              GlobalMaterialLocalizations.delegate,
+              GlobalWidgetsLocalizations.delegate,
+              GlobalCupertinoLocalizations.delegate,
+            ],
+          );
+        },
       ),
     );
   }

@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
+import '../../../../l10n/app_localizations.dart';
 import '../../../../core/constants/constants.dart';
 import '../../../../core/widgets/widgets.dart';
+import '../../../../core/logic/locale_cubit.dart';
 import 'settings/change_password_screen.dart';
 import 'settings/notifications_settings_screen.dart';
 import 'edit_profile_screen.dart';
@@ -20,6 +22,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
+    
     return Scaffold(
       backgroundColor: AppColors.background,
       body: Column(
@@ -35,9 +39,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   onPressed: () => Navigator.pop(context),
                 ),
                 const SizedBox(width: 8),
-                const Text(
-                  "Settings",
-                  style: TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold),
+                Text(
+                  l10n.settings,
+                  style: const TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold),
                 ),
               ],
             ),
@@ -46,18 +50,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
             child: ListView(
               padding: const EdgeInsets.all(24),
               children: [
-                _buildSectionTitle("ACCOUNT"),
+                _buildSectionTitle(l10n.account),
                 _buildCard([
                   _buildSettingTile(
-                    title: "Personal Information",
+                    title: l10n.personalInformation,
                     onTap: () {
                       final profileState = context.read<ProfileCubit>().state;
                       if (profileState is ProfileSuccess) {
-                        Navigator.pushNamed(
-                          context,
-                          AppRoutes.settings, // Assuming this is linked to Personal info or use EditProfile
-                        );
-                        // Better to use current EditProfileScreen route or direct widget if not in AppRoutes
                         Navigator.push(
                           context,
                           MaterialPageRoute(
@@ -69,17 +68,17 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   ),
                   const Divider(height: 1, indent: 20, endIndent: 20),
                   _buildSettingTile(
-                    title: "Change Password",
+                    title: l10n.changePassword,
                     onTap: () {
                       Navigator.pushNamed(context, AppRoutes.changePassword);
                     },
                   ),
                 ]),
                 const SizedBox(height: 24),
-                _buildSectionTitle("PREFERENCES"),
+                _buildSectionTitle(l10n.preferences),
                 _buildCard([
                   _buildSettingTile(
-                    title: "Notifications",
+                    title: l10n.notifications,
                     trailing: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
@@ -97,13 +96,21 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   ),
                   const Divider(height: 1, indent: 20, endIndent: 20),
                   _buildSettingTile(
-                    title: "Language",
+                    title: l10n.language,
                     trailing: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        Text(
-                          "English",
-                          style: TextStyle(color: Colors.grey.shade600, fontSize: 14),
+                        BlocBuilder<LocaleCubit, Locale>(
+                          builder: (context, locale) {
+                            String languageName = l10n.english;
+                            if (locale.languageCode == 'tl') languageName = l10n.filipino;
+                            if (locale.languageCode == 'bik') languageName = l10n.bikolNaga;
+                            
+                            return Text(
+                              languageName,
+                              style: TextStyle(color: Colors.grey.shade600, fontSize: 14),
+                            );
+                          },
                         ),
                         const SizedBox(width: 4),
                         Icon(Icons.chevron_right_rounded, color: Colors.grey.shade400),
@@ -115,15 +122,15 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   ),
                 ]),
                 const SizedBox(height: 24),
-                _buildSectionTitle("LEGAL"),
+                _buildSectionTitle(l10n.legal),
                 _buildCard([
                   _buildSettingTile(
-                    title: "Privacy Policy",
+                    title: l10n.privacyPolicy,
                     onTap: () {},
                   ),
                   const Divider(height: 1, indent: 20, endIndent: 20),
                   _buildSettingTile(
-                    title: "Terms of Service",
+                    title: l10n.termsOfService,
                     onTap: () {},
                   ),
                 ]),

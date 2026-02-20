@@ -1,0 +1,18 @@
+{
+  "@@locale": "tl",
+  "language": "Wika",
+  "welcomeBack": "Maligayang Pagbabalik",
+  "healthAssistant": "AI-Powered Healthcare Assistant",
+  "english": "Ingles",
+  "filipino": "Filipino",
+  "bikolNaga": "Bikol Naga",
+  "settings": "Mga Setting",
+  "account": "AKOUNT",
+  "personalInformation": "Personal na Impormasyon",
+  "changePassword": "Palitan ang Password",
+  "preferences": "MGA PREPERENSYA",
+  "notifications": "Mga Notipikasyon",
+  "legal": "LEGAL",
+  "privacyPolicy": "Patakaran sa Privacy",
+  "termsOfService": "Mga Tuntunin ng Serbisyo"
+}

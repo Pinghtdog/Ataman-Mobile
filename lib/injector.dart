@@ -40,7 +40,7 @@ Future<void> initInjector() async {
   final supabase = Supabase.instance.client;
   getIt.registerLazySingleton<SupabaseClient>(() => supabase);
 
-  // AI Service - Using Hybrid (OpenAI -> Gemini -> Mock) for maximum reliability
+  getIt.registerLazySingleton<GeminiService>(() => GeminiService());
   getIt.registerLazySingleton<AiService>(() => HybridAiService());
 
   // Services

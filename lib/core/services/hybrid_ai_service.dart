@@ -11,7 +11,7 @@ class HybridAiService implements AiService {
 
   @override
   Future<Map<String, dynamic>> getTriageResponse(String userPrompt) async {
-    // Directly using Groq for triage as requested.
+    // only using groq now
     try {
       return await _groq.getTriageResponse(userPrompt);
     } catch (e) {

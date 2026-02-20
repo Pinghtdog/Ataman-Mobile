@@ -1,21 +1,23 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+import '../../../../l10n/app_localizations.dart';
 import '../../../../core/constants/constants.dart';
 import '../../../../core/widgets/widgets.dart';
+import '../../../../core/logic/locale_cubit.dart';
 
-class LanguageScreen extends StatefulWidget {
+class LanguageScreen extends StatelessWidget {
   const LanguageScreen({super.key});
 
   @override
-  State<LanguageScreen> createState() => _LanguageScreenState();
-}
-
-class _LanguageScreenState extends State<LanguageScreen> {
-  String _selectedLanguage = "English";
-
-  final List<String> _languages = ["English", "Filipino", "Bikol Naga"];
-
-  @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
+
+    final Map<String, String> languages = {
+      l10n.english: "en",
+      l10n.filipino: "tl",
+      l10n.bikolNaga: "bik",
+    };
+
     return Scaffold(
       backgroundColor: Colors.white,
       body: Column(
@@ -31,36 +33,43 @@ class _LanguageScreenState extends State<LanguageScreen> {
                   onPressed: () => Navigator.pop(context),
                 ),
                 const SizedBox(width: 8),
-                const Text(
-                  "Language",
-                  style: TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold),
+                Text(
+                  l10n.language,
+                  style: const TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold),
                 ),
               ],
             ),
           ),
           Expanded(
-            child: ListView.separated(
-              padding: EdgeInsets.zero,
-              itemCount: _languages.length,
-              separatorBuilder: (context, index) => const Divider(height: 1),
-              itemBuilder: (context, index) {
-                final language = _languages[index];
-                final isSelected = _selectedLanguage == language;
+            child: BlocBuilder<LocaleCubit, Locale>(
+              builder: (context, currentLocale) {
+                return ListView.separated(
+                  padding: EdgeInsets.zero,
+                  itemCount: languages.length,
+                  separatorBuilder: (context, index) => const Divider(height: 1),
+                  itemBuilder: (context, index) {
+                    final languageName = languages.keys.elementAt(index);
+                    final languageCode = languages[languageName]!;
+                    final isSelected = currentLocale.languageCode == languageCode;
 
-                return ListTile(
-                  onTap: () => setState(() => _selectedLanguage = language),
-                  contentPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
-                  title: Text(
-                    language,
-                    style: TextStyle(
-                      color: isSelected ? AppColors.primary : Colors.black87,
-                      fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-                      fontSize: 16,
-                    ),
-                  ),
-                  trailing: isSelected
-                      ? const Icon(Icons.check_rounded, color: AppColors.primary)
-                      : null,
+                    return ListTile(
+                      onTap: () {
+                        context.read<LocaleCubit>().changeLocale(languageCode);
+                      },
+                      contentPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
+                      title: Text(
+                        languageName,
+                        style: TextStyle(
+                          color: isSelected ? AppColors.primary : Colors.black87,
+                          fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                          fontSize: 16,
+                        ),
+                      ),
+                      trailing: isSelected
+                          ? const Icon(Icons.check_rounded, color: AppColors.primary)
+                          : null,
+                    );
+                  },
                 );
               },
             ),
