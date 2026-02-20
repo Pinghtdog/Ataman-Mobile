@@ -64,8 +64,27 @@ class TriageService {
     try {
       if (user != null) {
         String historySummary = history.map((e) => "Q: ${e['question']} A: ${e['answer']}").join("\n");
-        final soap = resultData['soap_note'] ?? {};
         
+        // Extract SOAP data from any possible structure the AI returns
+        final dynamic rawSoap = resultData['soap_note'];
+        Map<String, String> soapMap = {};
+        
+        if (rawSoap is Map) {
+          soapMap = {
+            'subjective': (rawSoap['subjective'] ?? resultData['soap_subjective'] ?? '').toString(),
+            'objective': (rawSoap['objective'] ?? resultData['soap_objective'] ?? '').toString(),
+            'assessment': (rawSoap['assessment'] ?? resultData['soap_assessment'] ?? '').toString(),
+            'plan': (rawSoap['plan'] ?? resultData['soap_plan'] ?? '').toString(),
+          };
+        } else {
+          soapMap = {
+            'subjective': (resultData['soap_subjective'] ?? '').toString(),
+            'objective': (resultData['soap_objective'] ?? '').toString(),
+            'assessment': (resultData['soap_assessment'] ?? '').toString(),
+            'plan': (resultData['soap_plan'] ?? '').toString(),
+          };
+        }
+
         final insertData = {
           'user_id': user.id,
           'raw_symptoms': historySummary,
@@ -78,14 +97,30 @@ class TriageService {
           'specialty': resultData['specialty'],
           'reason': resultData['reason'],
           'summary_for_provider': resultData['summary_for_provider'],
-          // Ensure SOAP fields are saved to DB
-          'soap_subjective': soap['subjective'] ?? '',
-          'soap_objective': soap['objective'] ?? '',
-          'soap_assessment': soap['assessment'] ?? '',
-          'soap_plan': soap['plan'] ?? '',
+          // Save to individual columns
+          'soap_subjective': soapMap['subjective'],
+          'soap_objective': soapMap['objective'],
+          'soap_assessment': soapMap['assessment'],
+          'soap_plan': soapMap['plan'],
+          // Also save to the JSONB column for redundancy
+          'soap_note': soapMap,
         };
 
         final savedResult = await _supabase.from('triage_results').insert(insertData).select().single();
+
+        if (resultData['urgency'] != 'ROUTINE') {
+          try {
+            await _supabase.from('referrals').insert({
+              'patient_id': user.id,
+              'chief_complaint': resultData['reason'] ?? (history.isNotEmpty ? history.first['answer'] : 'Triage Assessment'),
+              'diagnosis_impression': soapMap['assessment']!.isNotEmpty ? soapMap['assessment'] : resultData['case_category'],
+              'status': 'PENDING',
+              'ai_priority_score': (resultData['ai_confidence'] ?? 0.0).toDouble(),
+            });
+          } catch (refError) {
+            developer.log('REFERRAL_INSERT_ERROR: $refError', name: 'TriageService');
+          }
+        }
 
         await _supabase.from('medical_history').insert({
           'user_id': user.id,

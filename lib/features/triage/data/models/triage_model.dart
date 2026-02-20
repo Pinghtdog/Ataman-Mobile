@@ -39,7 +39,6 @@ class TriageStep extends Equatable {
       inputType: json['input_type'] == 'TEXT' ? TriageInputType.text : TriageInputType.buttons,
       placeholder: json['placeholder'],
       isFinal: isFinal,
-      // Only parse result if is_final is true, to avoid null pointer exceptions
       result: (isFinal && json['result'] != null) ? TriageResult.fromJson(json['result']) : null,
     );
   }
@@ -83,21 +82,30 @@ class TriageResult extends Equatable {
 
   factory TriageResult.fromJson(Map<String, dynamic> json) {
     SoapNote? soap;
-    if (json['soap_subjective'] != null || json['soap_note'] != null) {
-      if (json['soap_note'] != null) {
-        soap = SoapNote.fromJson(json['soap_note']);
-      } else {
-        soap = SoapNote(
-          subjective: json['soap_subjective'] ?? '',
-          objective: json['soap_objective'] ?? '',
-          assessment: json['soap_assessment'] ?? '',
-          plan: json['soap_plan'] ?? '',
-        );
+    
+    // Check individual columns first as they are more reliable in this setup
+    final String subj = json['soap_subjective'] ?? '';
+    final String obj = json['soap_objective'] ?? '';
+    final String assess = json['soap_assessment'] ?? '';
+    final String plan = json['soap_plan'] ?? '';
+
+    if (subj.isNotEmpty || obj.isNotEmpty || assess.isNotEmpty || plan.isNotEmpty) {
+      soap = SoapNote(
+        subjective: subj,
+        objective: obj,
+        assessment: assess,
+        plan: plan,
+      );
+    } else if (json['soap_note'] != null && json['soap_note'] is Map) {
+      // Fallback to JSONB field if individual columns are empty
+      final soapData = json['soap_note'] as Map<String, dynamic>;
+      if (soapData.isNotEmpty) {
+        soap = SoapNote.fromJson(soapData);
       }
     }
 
     return TriageResult(
-      id: json['id'],
+      id: json['id']?.toString(),
       userId: json['user_id'],
       rawSymptoms: json['raw_symptoms'] ?? '',
       urgency: _parseUrgency(json['urgency']),
@@ -175,10 +183,10 @@ class SoapNote extends Equatable {
 
   factory SoapNote.fromJson(Map<String, dynamic> json) {
     return SoapNote(
-      subjective: json['subjective'] ?? '',
-      objective: json['objective'] ?? '',
-      assessment: json['assessment'] ?? '',
-      plan: json['plan'] ?? '',
+      subjective: json['subjective'] ?? json['soap_subjective'] ?? '',
+      objective: json['objective'] ?? json['soap_objective'] ?? '',
+      assessment: json['assessment'] ?? json['soap_assessment'] ?? '',
+      plan: json['plan'] ?? json['soap_plan'] ?? '',
     );
   }
 

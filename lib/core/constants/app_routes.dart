@@ -22,6 +22,7 @@ class AppRoutes {
   
   // New Routes
   static const String patientEnrollment = '/patient-enrollment';
+  static const String philhealthVerification = '/philhealth-verification'; // New
   static const String telemedicine = '/telemedicine';
   static const String videoCall = '/video-call';
   static const String reproductiveHealth = '/reproductive-health';

@@ -86,6 +86,9 @@ class _ReferralsScreenState extends State<ReferralsScreen> {
   }
 
   Widget _buildReferralCard(Referral referral) {
+    final authState = context.read<AuthCubit>().state;
+    final user = authState is Authenticated ? authState.profile : null;
+
     return Container(
       margin: const EdgeInsets.only(bottom: 16),
       decoration: BoxDecoration(
@@ -123,7 +126,7 @@ class _ReferralsScreenState extends State<ReferralsScreen> {
             SizedBox(
               width: double.infinity,
               child: ElevatedButton.icon(
-                onPressed: () => PdfService.generateReferralSlip(referral),
+                onPressed: user != null ? () => PdfService.generateReferralSlip(referral, user) : null,
                 icon: const Icon(Icons.file_download_outlined, size: 18),
                 label: const Text("Download Referral Slip"),
                 style: ElevatedButton.styleFrom(

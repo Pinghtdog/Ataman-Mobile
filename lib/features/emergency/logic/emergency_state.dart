@@ -43,6 +43,16 @@ class EmergencyQueued extends EmergencyState {
   List<Object?> get props => [queuedData];
 }
 
+class EmergencyOffline extends EmergencyState {
+  final EmergencyRequest request;
+  final String smsPayload;
+
+  const EmergencyOffline({required this.request, required this.smsPayload});
+
+  @override
+  List<Object?> get props => [request, smsPayload];
+}
+
 class EmergencyError extends EmergencyState {
   final String message;
   const EmergencyError(this.message);

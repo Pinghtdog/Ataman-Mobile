@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:intl/intl.dart';
 import '../../logic/profile_cubit.dart';
 import '../../logic/profile_state.dart';
 import '../../../auth/data/models/user_model.dart';
 import '../../../auth/logic/auth_cubit.dart';
+import '../../../auth/presentation/screens/philhealth_verification_screen.dart';
 import '../../../../core/constants/constants.dart';
 import '../../../../core/widgets/widgets.dart';
 import '../../../../core/services/address_service.dart';
@@ -46,8 +48,8 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
   @override
   void initState() {
     super.initState();
-    _isVerified = widget.user.isPhilhealthVerified;
-    _isPhilhealthValid = _isVerified;
+    _isVerified = widget.user.isPhilhealthVerificationValid;
+    _isPhilhealthValid = getIt<PhilHealthService>().validatePIN(widget.user.philhealthId ?? "");
     
     _firstNameController = TextEditingController(text: widget.user.firstName);
     _middleNameController = TextEditingController(text: widget.user.middleName);
@@ -60,10 +62,23 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     _emergencyNameController = TextEditingController(text: widget.user.emergencyContactName);
     _emergencyPhoneController = TextEditingController(text: widget.user.emergencyContactPhone);
     _selectedBloodType = widget.user.bloodType;
-    _selectedGender = widget.user.gender;
+    _selectedGender = _normalizeGender(widget.user.gender);
 
     _philhealthController.addListener(_validatePhilhealth);
     _loadBarangays();
+  }
+
+  String? _normalizeGender(String? gender) {
+    if (gender == null) return null;
+    final items = ['Male', 'Female', 'Other', 'Prefer not to say'];
+    try {
+      return items.firstWhere(
+        (i) => i.toLowerCase() == gender.toLowerCase(),
+        orElse: () => items.contains(gender) ? gender : items.first,
+      );
+    } catch (e) {
+      return null;
+    }
   }
 
   void _validatePhilhealth() {
@@ -105,7 +120,6 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
   void _saveProfile() {
     if (!_formKey.currentState!.validate()) return;
     
-    // CLEAN PIN: Remove non-numeric characters before saving to match DB requirement
     final String cleanPIN = _philhealthController.text.replaceAll(RegExp(r'[^0-9]'), '');
 
     final updatedUser = widget.user.copyWith(
@@ -136,7 +150,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
           if (state is ProfileSuccess) {
             context.read<AuthCubit>().refreshProfile(state.user);
             UiUtils.showSuccess(context, "Profile updated successfully!");
-            Navigator.of(context).pop(true); // Return true to indicate update happened
+            Navigator.of(context).pop(true);
           } else if (state is ProfileError) {
             UiUtils.showError(context, state.message);
           }
@@ -146,12 +160,11 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
             children: [
               AtamanHeader(
                 isSimple: true,
-                height: 120,
                 child: Row(
                   children: [
                     IconButton(
                       icon: const Icon(Icons.arrow_back_ios_new, color: Colors.white, size: 20),
-                      onPressed: () => Navigator.of(context).pop(false), // Return false for manual back
+                      onPressed: () => Navigator.of(context).pop(false),
                     ),
                     const Expanded(
                       child: Text(
@@ -180,41 +193,91 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                           Padding(
                             padding: const EdgeInsets.only(top: 8, bottom: 16),
                             child: Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                              padding: const EdgeInsets.all(12),
                               decoration: BoxDecoration(
                                 color: Colors.blue.withOpacity(0.1),
                                 borderRadius: BorderRadius.circular(12),
                                 border: Border.all(color: Colors.blue.withOpacity(0.3)),
                               ),
-                              child: const Row(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
-                                  Icon(Icons.verified_user_rounded, color: Colors.blue, size: 20),
-                                  SizedBox(width: 12),
-                                  Expanded(
-                                    child: Text(
-                                      "PHILHEALTH VERIFIED: Core identity fields are secured and cannot be modified.",
-                                      style: TextStyle(color: Colors.blue, fontSize: 11, fontWeight: FontWeight.bold),
-                                    ),
+                                  Row(
+                                    children: [
+                                      const Icon(Icons.verified_user_rounded, color: Colors.blue, size: 20),
+                                      const SizedBox(width: 12),
+                                      const Expanded(
+                                        child: Text(
+                                          "PHILHEALTH VERIFIED: Core identity fields are secured.",
+                                          style: TextStyle(color: Colors.blue, fontSize: 11, fontWeight: FontWeight.bold),
+                                        ),
+                                      ),
+                                    ],
                                   ),
+                                  if (widget.user.philhealthVerifiedAt != null) ...[
+                                    const SizedBox(height: 4),
+                                    Text(
+                                      "Expires on: ${DateFormat('MMM dd, yyyy').format(widget.user.philhealthVerifiedAt!.add(const Duration(days: 3)))}",
+                                      style: TextStyle(color: Colors.blue.withOpacity(0.7), fontSize: 10),
+                                    ),
+                                  ],
                                 ],
                               ),
                             ),
                           ),
                         
                         const AtamanLabel(text: "PHILHEALTH ID"),
-                        AtamanTextField(
-                          label: "",
-                          hintText: "Enter 12-digit PIN",
-                          controller: _philhealthController,
-                          prefixIcon: Icons.badge_outlined,
-                          keyboardType: TextInputType.number,
-                          readOnly: _isVerified,
-                          suffixIcon: _isPhilhealthValid 
-                            ? const Icon(Icons.check_circle, color: Colors.green) 
-                            : null,
-                          helperText: _isVerified 
-                            ? "Verified PhilHealth identity cannot be changed." 
-                            : "Enter 12 digits for instant verification",
+                        Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Expanded(
+                              child: AtamanTextField(
+                                label: "",
+                                hintText: "Enter 12-digit PIN",
+                                controller: _philhealthController,
+                                prefixIcon: Icons.badge_outlined,
+                                keyboardType: TextInputType.number,
+                                readOnly: _isVerified,
+                                suffixIcon: _isPhilhealthValid 
+                                  ? const Icon(Icons.check_circle, color: Colors.green) 
+                                  : null,
+                              ),
+                            ),
+                            if (!_isVerified && _isPhilhealthValid) ...[
+                              const SizedBox(width: 12),
+                              Padding(
+                                padding: const EdgeInsets.only(top: 4),
+                                child: AtamanButton(
+                                  text: "VERIFY",
+                                  width: 100,
+                                  onPressed: () async {
+                                    final result = await Navigator.push(
+                                      context,
+                                      MaterialPageRoute(
+                                        builder: (context) => PhilHealthVerificationScreen(user: widget.user),
+                                      ),
+                                    );
+                                    if (result == true) {
+                                      await Future.delayed(const Duration(milliseconds: 500));
+                                      final authState = context.read<AuthCubit>().state;
+                                      if (authState is Authenticated && authState.profile != null) {
+                                        setState(() {
+                                          _isVerified = true;
+                                          _firstNameController.text = authState.profile!.firstName;
+                                          _lastNameController.text = authState.profile!.lastName;
+                                          _middleNameController.text = authState.profile!.middleName ?? "";
+                                          _philhealthController.text = authState.profile!.philhealthId ?? "";
+                                          _selectedGender = _normalizeGender(authState.profile!.gender);
+                                        });
+                                      } else {
+                                        setState(() => _isVerified = true);
+                                      }
+                                    }
+                                  },
+                                ),
+                              ),
+                            ],
+                          ],
                         ),
                         const SizedBox(height: AppSizes.p24),
 
@@ -264,7 +327,8 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                         const SizedBox(height: AppSizes.p16),
                         const AtamanLabel(text: "BARANGAY"),
                         DropdownButtonFormField<String>(
-                          value: _barangayController.text.isEmpty ? null : _barangayController.text,
+                          isExpanded: true,
+                          value: _barangayController.text.isEmpty ? null : (_barangays.contains(_barangayController.text) ? _barangayController.text : null),
                           decoration: InputDecoration(
                             prefixIcon: const Icon(Icons.location_on_outlined, color: AppColors.primary),
                             border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
@@ -274,7 +338,10 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                             ),
                           ),
                           hint: Text(_isLoadingBarangays ? "Loading..." : "Select Barangay"),
-                          items: _barangays.map((b) => DropdownMenuItem(value: b, child: Text(b))).toList(),
+                          items: _barangays.map((b) => DropdownMenuItem(
+                            value: b, 
+                            child: Text(b, overflow: TextOverflow.ellipsis)
+                          )).toList(),
                           onChanged: (val) => setState(() => _barangayController.text = val!),
                           validator: (val) => val == null || val.isEmpty ? "Required" : null,
                         ),
@@ -284,68 +351,68 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                         const SizedBox(height: AppSizes.p16),
                         
                         Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Expanded(
                               child: _buildDropdown(
                                 label: "Gender",
                                 value: _selectedGender,
-                                items: ['Male', 'Female', 'Other', 'Prefer not to say'],
+                                items: const ['Male', 'Female', 'Other', 'Prefer not to say'],
                                 onChanged: _isVerified ? null : (val) => setState(() => _selectedGender = val),
                               ),
                             ),
-                            const SizedBox(width: AppSizes.p16),
+                            const SizedBox(width: AppSizes.p12),
                             Expanded(
                               child: _buildDropdown(
-                                label: "Blood Type",
+                                label: "Blood",
                                 value: _selectedBloodType,
-                                items: ['A+', 'A-', 'B+', 'B-', 'O+', 'O-', 'AB+', 'AB-'],
+                                items: const ['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-'],
                                 onChanged: (val) => setState(() => _selectedBloodType = val),
                               ),
                             ),
                           ],
                         ),
-                        
                         const SizedBox(height: AppSizes.p16),
                         AtamanTextField(
                           label: "Allergies",
                           controller: _allergiesController,
-                          prefixIcon: Icons.warning_amber_rounded,
+                          hintText: "e.g. Penicillin, Peanuts (Optional)",
+                          prefixIcon: Icons.warning_amber_outlined,
                         ),
                         const SizedBox(height: AppSizes.p16),
                         AtamanTextField(
                           label: "Medical Conditions",
                           controller: _conditionsController,
-                          prefixIcon: Icons.medical_information_outlined,
+                          hintText: "e.g. Hypertension, Diabetes (Optional)",
+                          prefixIcon: Icons.history_edu_outlined,
                         ),
-    
+
                         const SizedBox(height: AppSizes.p32),
                         const SectionHeader(title: "Emergency Contact"),
                         const SizedBox(height: AppSizes.p16),
                         AtamanTextField(
-                          label: "Contact Name",
+                          label: "Contact Person Name",
                           controller: _emergencyNameController,
                           prefixIcon: Icons.contact_emergency_outlined,
+                          validator: (val) => val != null && val.isNotEmpty && val.length < 3 ? "Invalid name" : null,
                         ),
                         const SizedBox(height: AppSizes.p16),
-                        TextFormField(
+                        AtamanTextField(
+                          label: "Contact Person Phone",
                           controller: _emergencyPhoneController,
+                          prefixIcon: Icons.phone_android_outlined,
                           keyboardType: TextInputType.phone,
-                          validator: ValidatorUtils.validatePhoneNumber,
-                          inputFormatters: [
-                            FilteringTextInputFormatter.digitsOnly,
-                            LengthLimitingTextInputFormatter(11),
-                          ],
-                          decoration: InputDecoration(
-                            labelText: "Contact Phone",
-                            hintText: "09XXXXXXXXX",
-                            prefixIcon: const Icon(Icons.phone_callback_outlined, color: AppColors.primary),
-                            border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-                          ),
+                          validator: (val) {
+                            if (val != null && val.isNotEmpty) {
+                              return ValidatorUtils.validatePhoneNumber(val);
+                            }
+                            return null;
+                          },
                         ),
-                        
-                        const SizedBox(height: AppSizes.p40),
+
+                        const SizedBox(height: AppSizes.p48),
                         AtamanButton(
-                          text: "Save Changes",
+                          text: "Save Profile",
                           onPressed: _saveProfile,
                           isLoading: state is ProfileLoading,
                         ),
@@ -366,29 +433,32 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     required String label,
     required String? value,
     required List<String> items,
-    required Function(String?)? onChanged,
+    required void Function(String?)? onChanged,
   }) {
+    // Ensure the value exists in items to avoid the "There should be exactly one item..." crash
+    final String? effectiveValue = items.contains(value) ? value : null;
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(label, style: AppTextStyles.bodySmall.copyWith(fontWeight: FontWeight.bold)),
-        const SizedBox(height: 8),
-        Container(
-          padding: const EdgeInsets.symmetric(horizontal: 12),
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: Colors.grey.shade300),
-            color: onChanged == null ? Colors.grey[100] : Colors.white,
-          ),
-          child: DropdownButtonHideUnderline(
-            child: DropdownButton<String>(
-              value: value,
-              isExpanded: true,
-              hint: const Text("Select"),
-              items: items.map((e) => DropdownMenuItem(value: e, child: Text(e))).toList(),
-              onChanged: onChanged,
+        AtamanLabel(text: label),
+        DropdownButtonFormField<String>(
+          isExpanded: true,
+          value: effectiveValue,
+          onChanged: onChanged,
+          items: items.map((i) => DropdownMenuItem(
+            value: i, 
+            child: Text(i, style: const TextStyle(fontSize: 13), overflow: TextOverflow.ellipsis)
+          )).toList(),
+          decoration: InputDecoration(
+            contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 15),
+            border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+            enabledBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+              borderSide: BorderSide(color: Colors.grey.shade300),
             ),
           ),
+          validator: (val) => val == null || val.isEmpty ? "Required" : null,
         ),
       ],
     );

@@ -1,7 +1,9 @@
 import 'dart:async';
+import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:ataman/core/services/local_storage_service.dart';
 import 'package:ataman/injector.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../data/models/emergency_request_model.dart';
 import '../data/repositories/emergency_repository.dart';
 import 'emergency_state.dart';
@@ -11,12 +13,25 @@ class EmergencyCubit extends Cubit<EmergencyState> {
   StreamSubscription? _requestSubscription;
   StreamSubscription? _ambulanceSubscription;
 
+  // Naga City Emergency Hotline (Example number, adjust as needed)
+  static const String emergencyHotline = "09452235495";
+
   EmergencyCubit({required EmergencyRepository emergencyRepository})
       : _emergencyRepository = emergencyRepository,
         super(EmergencyInitial());
 
   Future<void> requestEmergency(EmergencyRequest request) async {
     emit(EmergencyLoading());
+
+    // Check connectivity first
+    final connectivityResults = await Connectivity().checkConnectivity();
+    final hasNoInternet = connectivityResults.contains(ConnectivityResult.none);
+
+    if (hasNoInternet) {
+      await _handleOfflineEmergency(request);
+      return;
+    }
+
     try {
       // 1. Create the request
       final newRequest = await _emergencyRepository.createEmergencyRequest(request);
@@ -32,19 +47,57 @@ class EmergencyCubit extends Cubit<EmergencyState> {
           emergencyType: request.type,
         );
       } catch (aiError) {
-        // Log AI error but don't fail the request. 
-        // A dispatcher or manual process might still pick it up.
         print('AI Assignment failed: $aiError');
       }
       
     } catch (e) {
-      // On failure (likely network), save to local queue for later sync
-      try {
-        await getIt<LocalStorageService>().savePendingEmergency(request.toJson());
-        emit(EmergencyQueued(request.toJson()));
-      } catch (e2) {
-        emit(EmergencyError(e.toString()));
+      // On failure (likely network), save to local queue and handle offline
+      await _handleOfflineEmergency(request);
+    }
+  }
+
+  Future<void> _handleOfflineEmergency(EmergencyRequest request) async {
+    try {
+      // Save to local queue for SyncService to pick up later
+      await getIt<LocalStorageService>().savePendingEmergency(request.toJson());
+      
+      // Generate SMS payload
+      final String payload = _generateSmsPayload(request);
+      
+      emit(EmergencyOffline(
+        request: request,
+        smsPayload: payload,
+      ));
+    } catch (e) {
+      emit(EmergencyError("Offline error: ${e.toString()}"));
+    }
+  }
+
+  String _generateSmsPayload(EmergencyRequest request) {
+    // Format: ATAMAN-SOS: [TYPE] @ [LAT],[LONG] (Shortened for SMS limits)
+    final type = request.type.name.toUpperCase();
+    final coords = "${request.latitude.toStringAsFixed(5)},${request.longitude.toStringAsFixed(5)}";
+    final time = DateTime.now().millisecondsSinceEpoch.toString().substring(7);
+    return "ATAMAN SOS: $type at $coords (Ref:$time)";
+  }
+
+  Future<void> sendSmsSos(String payload) async {
+    final Uri smsUri = Uri(
+      scheme: 'sms',
+      path: emergencyHotline,
+      queryParameters: <String, String>{
+        'body': payload,
+      },
+    );
+
+    try {
+      if (await canLaunchUrl(smsUri)) {
+        await launchUrl(smsUri);
+      } else {
+        emit(const EmergencyError("Could not launch SMS app. Please text the hotline manually."));
       }
+    } catch (e) {
+      emit(EmergencyError("SMS Error: ${e.toString()}"));
     }
   }
 
@@ -65,9 +118,7 @@ class EmergencyCubit extends Cubit<EmergencyState> {
             emit(EmergencySuccess());
           }
 
-          // If an ambulance is assigned, start watching its location
           if (request.assignedAmbulanceId != null) {
-             // If we aren't watching yet, or the ID changed
              _startWatchingAmbulance(request.assignedAmbulanceId!);
           }
         }
@@ -79,8 +130,6 @@ class EmergencyCubit extends Cubit<EmergencyState> {
   }
 
   void _startWatchingAmbulance(String ambulanceId) {
-    // Only restart if the ID is different or not yet watching
-    // (Optimization to avoid flickering/re-subscribing on every DB update)
     _ambulanceSubscription?.cancel();
     _ambulanceSubscription = _emergencyRepository.watchAmbulanceLocation(ambulanceId).listen(
       (ambulance) {
@@ -90,7 +139,6 @@ class EmergencyCubit extends Cubit<EmergencyState> {
         }
       },
       onError: (error) {
-        // We don't want to break the whole flow if ambulance tracking fails
         print('Ambulance tracking error: $error');
       },
     );

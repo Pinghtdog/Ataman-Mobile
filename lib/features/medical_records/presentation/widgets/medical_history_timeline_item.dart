@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:intl/intl.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../../../../core/constants/constants.dart';
 import '../../../../core/services/pdf_service.dart';
+import '../../../../features/auth/logic/auth_cubit.dart';
 import '../../data/models/medical_history_model.dart';
 
 class MedicalHistoryTimelineItem extends StatelessWidget {
@@ -15,15 +17,21 @@ class MedicalHistoryTimelineItem extends StatelessWidget {
     required this.isLast,
   });
 
-  Future<void> _viewDocument() async {
+  Future<void> _viewDocument(BuildContext context) async {
     if (item.fileUrl != null) {
       final Uri url = Uri.parse(item.fileUrl!);
       if (await canLaunchUrl(url)) {
         await launchUrl(url, mode: LaunchMode.externalApplication);
       }
     } else if (item.hasPdf) {
-      // If it's a generated PDF from the system
-      await PdfService.generateMedicalRecordPdf(item);
+      final authState = context.read<AuthCubit>().state;
+      if (authState is Authenticated && authState.profile != null) {
+        await PdfService.generateMedicalRecordPdf(item, authState.profile!);
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text("Unable to generate PDF: User profile not found")),
+        );
+      }
     }
   }
 
@@ -158,7 +166,7 @@ class MedicalHistoryTimelineItem extends StatelessWidget {
                         Align(
                           alignment: Alignment.centerRight,
                           child: ElevatedButton.icon(
-                            onPressed: _viewDocument,
+                            onPressed: () => _viewDocument(context),
                             icon: const Icon(Icons.remove_red_eye_outlined, size: 14),
                             style: ElevatedButton.styleFrom(
                               backgroundColor: Colors.blue.shade50,

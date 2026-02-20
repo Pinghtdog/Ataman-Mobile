@@ -1,5 +1,6 @@
 import '../../features/auth/data/models/user_model.dart';
 import '../../features/triage/data/models/triage_model.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 enum PhilHealthBenefitType { inpatient, outpatient, zBenefit, sdgRelated, maternity, primaryCare }
 
@@ -11,9 +12,9 @@ class PhilHealthBenefit {
   final List<String> keywords; 
   final List<String> recommendedFacilityIds;
   final List<String>? treatmentSteps;
-  final double minimumConfidence; // Threshold for matching
+  final double minimumConfidence; 
 
-  PhilHealthBenefit({
+   PhilHealthBenefit({
     required this.name,
     required this.amount,
     required this.requirements,
@@ -26,8 +27,9 @@ class PhilHealthBenefit {
 }
 
 class PhilHealthService {
+  final SupabaseClient _supabase = Supabase.instance.client;
+
   final List<PhilHealthBenefit> _benefits = [
-    // --- PRIMARY CARE (KONSULTA) ---
     PhilHealthBenefit(
       name: "PhilHealth Konsulta (Yakap Naga)",
       amount: "100% Coverage (OPD)",
@@ -36,8 +38,6 @@ class PhilHealthService {
       keywords: ['sipon', 'ubo', 'lagnat', 'checkup', 'konsulta', 'mild', 'routine', 'headache', 'sore throat'],
       recommendedFacilityIds: ['CHO1', 'CHO2'],
     ),
-
-    // --- INPATIENT COMMON ---
     PhilHealthBenefit(
       name: "Dengue Fever (Level 1)",
       amount: "₱10,000",
@@ -54,8 +54,6 @@ class PhilHealthService {
       keywords: ['pneumonia', 'difficulty breathing', 'chest pain', 'severe cough'],
       recommendedFacilityIds: ['2255', '2277'],
     ),
-
-    // --- Z BENEFITS (CATASTROPHIC) ---
     PhilHealthBenefit(
       name: "Breast Cancer (Stage 0-IV)",
       amount: "₱1.4 Million",
@@ -84,8 +82,6 @@ class PhilHealthService {
         "Obtain Pre-authorization for standard risk package."
       ],
     ),
-
-    // --- SDG / PUBLIC HEALTH (Naga CHO Specialties) ---
     PhilHealthBenefit(
       name: "Animal Bite Treatment Package",
       amount: "₱3,900",
@@ -102,8 +98,6 @@ class PhilHealthService {
       keywords: ['tuberculosis', 'tb', 'coughing blood', 'dots'],
       recommendedFacilityIds: ['CHO1'],
     ),
-
-    // --- MATERNITY ---
     PhilHealthBenefit(
       name: "Maternity Care Package",
       amount: "₱6,500 - ₱8,000",
@@ -141,7 +135,6 @@ class PhilHealthService {
     },
   ];
 
-  /// Intelligent matching of symptoms/diagnosis to benefits
   Map<String, dynamic>? matchBenefitToTriage(TriageResult result) {
     final String input = (result.summaryForProvider ?? result.rawSymptoms).toLowerCase();
     
@@ -159,20 +152,16 @@ class PhilHealthService {
       }
 
       if (matchCount > 0) {
-        // Calculate basic score
         score = matchCount / benefit.keywords.length;
 
-        // Contextual Adjustments
-        // 1. Urgency Match
         if (result.urgency == TriageUrgency.routine && benefit.type == PhilHealthBenefitType.primaryCare) {
           score += 0.5;
         } else if (result.urgency != TriageUrgency.routine && benefit.type == PhilHealthBenefitType.inpatient) {
           score += 0.3;
         }
 
-        // 2. Specialty Match
         if (input.contains(benefit.name.toLowerCase())) {
-          score += 1.0; // Exact condition mentioned
+          score += 1.0; 
         }
 
         if (score > highestScore && score >= benefit.minimumConfidence) {
@@ -195,10 +184,12 @@ class PhilHealthService {
     return null;
   }
 
-  /// Returns the User's Eligibility Status string
   String checkEligibilityStatus(UserModel user) {
-    if (user.philhealthId != null && validatePIN(user.philhealthId!)) {
+    if (user.isPhilhealthVerificationValid) {
       return "Active Member";
+    }
+    if (user.philhealthId != null && validatePIN(user.philhealthId!)) {
+      return "PIN Detected (Verify Now)";
     }
     if (user.is4psMember) {
       return "Active (Indigent/4Ps)";
@@ -206,9 +197,42 @@ class PhilHealthService {
     return "Verification Required";
   }
 
-  /// PhilHealth PIN Validation (12 digits)
   bool validatePIN(String pin) {
     final cleanPIN = pin.replaceAll(RegExp(r'[^0-9]'), '');
     return cleanPIN.length == 12;
+  }
+
+  Future<void> syncVerifiedData(String userId, Map<String, dynamic> portalData) async {
+    // Standardize DOB format from MM-DD-YYYY to YYYY-MM-DD for Supabase
+    String dob = portalData['dob'] ?? '';
+    if (dob.contains('-')) {
+      final parts = dob.split('-');
+      if (parts.length == 3) {
+        dob = "${parts[2]}-${parts[0]}-${parts[1]}";
+      }
+    }
+
+    await _supabase.from('users').update({
+      'is_philhealth_verified': true,
+      'philhealth_verified_at': DateTime.now().toIso8601String(),
+      'philhealth_id': portalData['pin'],
+      'first_name': portalData['firstName'],
+      'last_name': portalData['lastName'],
+      'middle_name': portalData['middleName'],
+      'suffix': portalData['suffix'],
+      'birth_date': dob,
+      'gender': portalData['sex'],
+      'philhealth_status': 'Active Member',
+      'is_profile_complete': true,
+      'updated_at': DateTime.now().toIso8601String(),
+    }).eq('id', userId);
+  }
+
+  Future<void> updateVerificationStatus(String userId, bool status) async {
+    await _supabase.from('users').update({
+      'is_philhealth_verified': status,
+      'philhealth_verified_at': status ? DateTime.now().toIso8601String() : null,
+      'philhealth_status': status ? 'Active Member' : 'Verification Required',
+    }).eq('id', userId);
   }
 }

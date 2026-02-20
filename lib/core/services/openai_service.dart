@@ -10,7 +10,7 @@ class OpenAiService implements AiService {
   static const String _model = 'gpt-4o-mini';
 
   static const String triageSystemPrompt = '''
-Role: Medical Triage AI (Naga, PH). 
+Role: Medical Triage AI (Naga, PH).
 Goal: Assess urgency and routing.
 Instructions: Output JSON ONLY. No text before or after.
 Schema: {
@@ -33,7 +33,7 @@ Schema: {
 
   static const String followUpSystemPrompt = '''
 Role: Medical Scheduler AI. Suggest a follow-up appointment date and reason based on consultation notes.
-Instructions: Output JSON ONLY. 
+Instructions: Output JSON ONLY.
 Schema: {"days_until_follow_up":int,"reason":"str","urgency":"str"}
 ''';
 

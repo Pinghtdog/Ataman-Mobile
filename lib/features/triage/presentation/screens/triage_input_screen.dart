@@ -55,12 +55,12 @@ class _TriageInputScreenState extends State<TriageInputScreen> {
             );
           }
           if (state is TriageStepLoaded) {
-            if (_forceManualInput) {
-              setState(() {
-                _forceManualInput = false;
-                _textController.clear();
-              });
-            }
+            // Always clear the text controller when a new step is loaded
+            // to prevent old responses from persisting.
+            setState(() {
+              _textController.clear();
+              _forceManualInput = false;
+            });
           }
         },
         builder: (context, state) {
@@ -200,7 +200,7 @@ class _TriageInputScreenState extends State<TriageInputScreen> {
                       // Manual Input Mode
                       AtamanTextField(
                         label: "Your Response",
-                        hintText: step.placeholder ?? "Describe your symptoms or answer the question...",
+                        hintText: "Describe your symptoms or answer the question...",
                         controller: _textController,
                         keyboardType: TextInputType.multiline,
                         maxLines: 3,
@@ -208,7 +208,7 @@ class _TriageInputScreenState extends State<TriageInputScreen> {
                       ),
                       const SizedBox(height: AppSizes.p24),
                       AtamanButton(
-                        text: "Submit Response",
+                        text: step.placeholder ?? "Submit Response",
                         onPressed: () {
                           if (_textController.text.trim().isNotEmpty) {
                             context.read<TriageCubit>().selectOption(

@@ -73,9 +73,9 @@ class _BookingDetailsScreenState extends State<BookingDetailsScreen> {
             _familyMembers = family;
             _services = facilityServices;
             _occupiedSlots = occupied;
-            if (_services.isNotEmpty) {
-              _selectedService = _services.first;
-            }
+            
+            // We no longer auto-select the first service to allow it to be optional
+            // or "General Consultation" if not specified.
             _isLoadingData = false;
           });
         }
@@ -132,12 +132,8 @@ class _BookingDetailsScreenState extends State<BookingDetailsScreen> {
       return;
     }
 
-    if (_selectedService == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Please select a service")),
-      );
-      return;
-    }
+    // Service selection is now optional. If null, it defaults to a general consultation 
+    // handled by the facility based on the triage result/chief complaint.
 
     final timeParts = _selectedTime.split(' ');
     final hourMinute = timeParts[0].split(':');
@@ -165,7 +161,7 @@ class _BookingDetailsScreenState extends State<BookingDetailsScreen> {
       appointmentTime: appointmentTime,
       status: BookingStatus.pending,
       createdAt: DateTime.now(),
-      serviceId: _selectedService!.id,
+      serviceId: _selectedService?.id, // Nullable serviceId
       familyMemberId: familyMemberId,
       triageResult: widget.triageResult?.summaryForProvider,
       triagePriority: widget.triageResult?.urgency.name,
@@ -321,10 +317,16 @@ class _BookingDetailsScreenState extends State<BookingDetailsScreen> {
                       ),
                       const SizedBox(height: 24),
 
-                      const Text("Select Service", style: AppTextStyles.h3),
+                      Row(
+                        children: [
+                          const Text("Select Service", style: AppTextStyles.h3),
+                          const SizedBox(width: 8),
+                          Text("(Optional)", style: AppTextStyles.bodySmall.copyWith(color: AppColors.textSecondary)),
+                        ],
+                      ),
                       const SizedBox(height: 12),
                       _services.isEmpty 
-                        ? const Text("No services available for this facility.")
+                        ? const Text("No specific services listed. Proceed for General Consultation.")
                         : BookingServiceSelector(
                             services: _services,
                             selectedService: _selectedService,

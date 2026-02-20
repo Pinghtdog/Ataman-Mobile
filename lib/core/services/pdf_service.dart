@@ -13,7 +13,7 @@ import 'cf1_form_pdf.dart';
 
 class PdfService {
   /// Generates a PDF for a specific Hospital Referral
-  static Future<void> generateReferralSlip(Referral referral) async {
+  static Future<void> generateReferralSlip(Referral referral, UserModel user) async {
     final pdf = pw.Document();
     final image = await _loadLogo();
 
@@ -33,7 +33,10 @@ class PdfService {
                 ),
                 pw.SizedBox(height: 30),
 
-                _buildSectionTitle("PATIENT INFORMATION"),
+                _buildPatientInfoSection(user),
+                pw.SizedBox(height: 20),
+
+                _buildSectionTitle("REFERRAL DETAILS"),
                 pw.SizedBox(height: 10),
                 pw.Row(
                   children: [
@@ -51,11 +54,11 @@ class PdfService {
 
                 _buildSectionTitle("CLINICAL SUMMARY"),
                 pw.SizedBox(height: 10),
-                pw.Text("Chief Complaint:", style: pw.TextStyle(fontWeight: pw.FontWeight.bold)),
-                pw.Text(referral.chiefComplaint),
+                pw.Text("Chief Complaint:", style: pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 10)),
+                pw.Text(referral.chiefComplaint, style: pw.TextStyle(fontSize: 10)),
                 pw.SizedBox(height: 10),
-                pw.Text("Clinical Impression / Diagnosis:", style: pw.TextStyle(fontWeight: pw.FontWeight.bold)),
-                pw.Text(referral.diagnosisImpression ?? "N/A"),
+                pw.Text("Clinical Impression / Diagnosis:", style: pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 10)),
+                pw.Text(referral.diagnosisImpression ?? "N/A", style: pw.TextStyle(fontSize: 10)),
                 pw.SizedBox(height: 40),
 
                 _buildSignatureArea(),
@@ -75,7 +78,7 @@ class PdfService {
   }
 
   /// Generates a PDF for a general Medical Record/History item
-  static Future<void> generateMedicalRecordPdf(MedicalHistoryItem item) async {
+  static Future<void> generateMedicalRecordPdf(MedicalHistoryItem item, UserModel user) async {
     final pdf = pw.Document();
     final image = await _loadLogo();
 
@@ -95,6 +98,9 @@ class PdfService {
                 ),
                 pw.SizedBox(height: 30),
 
+                _buildPatientInfoSection(user),
+                pw.SizedBox(height: 20),
+
                 _buildSectionTitle("GENERAL INFORMATION"),
                 pw.SizedBox(height: 10),
                 _buildInfoRow("Type", item.type.name.toUpperCase()),
@@ -108,8 +114,18 @@ class PdfService {
                 if (item.tag != null) _buildInfoRow("Summary/Tag", item.tag!),
                 if (item.extraInfo != null) ...[
                   pw.SizedBox(height: 10),
-                  pw.Text("Notes / Extra Info:", style: pw.TextStyle(fontWeight: pw.FontWeight.bold)),
-                  pw.Text(item.extraInfo!),
+                  pw.Text("Notes / Extra Info:", style: pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 10)),
+                  pw.Text(item.extraInfo!, style: pw.TextStyle(fontSize: 10)),
+                ],
+
+                if (item.hasSoapNotes) ...[
+                  pw.SizedBox(height: 20),
+                  _buildSectionTitle("SOAP NOTES"),
+                  pw.SizedBox(height: 10),
+                  if (item.subjective != null) _buildSoapSection("S", "Subjective", item.subjective!),
+                  if (item.objective != null) _buildSoapSection("O", "Objective", item.objective!),
+                  if (item.assessment != null) _buildSoapSection("A", "Assessment", item.assessment!),
+                  if (item.plan != null) _buildSoapSection("P", "Plan", item.plan!),
                 ],
                 
                 pw.SizedBox(height: 40),
@@ -130,7 +146,7 @@ class PdfService {
   }
 
   /// Generates a PDF for a Digital Prescription
-  static Future<void> generatePrescriptionPdf(Prescription prescription) async {
+  static Future<void> generatePrescriptionPdf(Prescription prescription, UserModel user) async {
     final pdf = pw.Document();
     final image = await _loadLogo();
 
@@ -149,6 +165,9 @@ class PdfService {
                   child: pw.Text("Prescription ID: ${prescription.id}", style: pw.TextStyle(fontSize: 10, color: PdfColors.grey700)),
                 ),
                 pw.SizedBox(height: 30),
+
+                _buildPatientInfoSection(user),
+                pw.SizedBox(height: 20),
 
                 _buildSectionTitle("MEDICATION DETAILS"),
                 pw.SizedBox(height: 10),
@@ -218,30 +237,7 @@ class PdfService {
                 _buildHeader(image, "DIGITAL MEDICAL ID & CASE SUMMARY"),
                 pw.SizedBox(height: 20),
 
-                _buildSectionTitle("PATIENT PROFILE"),
-                pw.SizedBox(height: 10),
-                pw.Row(
-                  mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
-                  children: [
-                    pw.Column(
-                      crossAxisAlignment: pw.CrossAxisAlignment.start,
-                      children: [
-                        _buildInfoRow("Full Name", user.fullName),
-                        _buildInfoRow("Blood Type", user.bloodType ?? "Unspecified"),
-                        _buildInfoRow("Gender", user.gender ?? "Unspecified"),
-                        _buildInfoRow("Barangay", user.barangay ?? "Naga City"),
-                      ],
-                    ),
-                    pw.Container(
-                      width: 80,
-                      height: 80,
-                      child: pw.BarcodeWidget(
-                        barcode: pw.Barcode.qrCode(),
-                        data: user.id,
-                      ),
-                    ),
-                  ],
-                ),
+                _buildPatientInfoSection(user, showQr: true),
                 pw.SizedBox(height: 20),
 
                 if (triageResult != null) ...[
@@ -334,9 +330,45 @@ class PdfService {
 
   static pw.Widget _buildSectionTitle(String title) {
     return pw.Container(
+      width: double.infinity,
       padding: const pw.EdgeInsets.symmetric(vertical: 4, horizontal: 8),
       decoration: const pw.BoxDecoration(color: PdfColors.teal50),
       child: pw.Text(title, style: pw.TextStyle(fontWeight: pw.FontWeight.bold, color: PdfColors.teal900, fontSize: 10)),
+    );
+  }
+
+  static pw.Widget _buildPatientInfoSection(UserModel user, {bool showQr = false}) {
+    return pw.Column(
+      crossAxisAlignment: pw.CrossAxisAlignment.start,
+      children: [
+        _buildSectionTitle("PATIENT INFORMATION"),
+        pw.SizedBox(height: 10),
+        pw.Row(
+          mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+          crossAxisAlignment: pw.CrossAxisAlignment.start,
+          children: [
+            pw.Column(
+              crossAxisAlignment: pw.CrossAxisAlignment.start,
+              children: [
+                _buildInfoRow("Full Name", user.fullName),
+                _buildInfoRow("Birth Date", user.birthDate ?? "N/A"),
+                _buildInfoRow("Gender", user.gender ?? "Unspecified"),
+                _buildInfoRow("PhilHealth ID", user.philhealthId ?? "N/A"),
+                _buildInfoRow("Barangay", user.barangay ?? "Naga City"),
+              ],
+            ),
+            if (showQr)
+              pw.Container(
+                width: 80,
+                height: 80,
+                child: pw.BarcodeWidget(
+                  barcode: pw.Barcode.qrCode(),
+                  data: user.id,
+                ),
+              ),
+          ],
+        ),
+      ],
     );
   }
 
@@ -346,10 +378,31 @@ class PdfService {
       child: pw.RichText(
         text: pw.TextSpan(
           children: [
-            pw.TextSpan(text: "$label: ", style: pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 10)),
-            pw.TextSpan(text: value, style: pw.TextStyle(fontSize: 10)),
+            pw.TextSpan(text: "$label: ", style: pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 10, color: PdfColors.black)),
+            pw.TextSpan(text: value, style: pw.TextStyle(fontSize: 10, color: PdfColors.black)),
           ],
         ),
+      ),
+    );
+  }
+
+  static pw.Widget _buildSoapSection(String letter, String title, String content) {
+    return pw.Padding(
+      padding: const pw.EdgeInsets.only(bottom: 8),
+      child: pw.Row(
+        crossAxisAlignment: pw.CrossAxisAlignment.start,
+        children: [
+          pw.Text("$letter: ", style: pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 10)),
+          pw.Expanded(
+            child: pw.Column(
+              crossAxisAlignment: pw.CrossAxisAlignment.start,
+              children: [
+                pw.Text(title, style: pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 10)),
+                pw.Text(content, style: pw.TextStyle(fontSize: 10)),
+              ],
+            ),
+          ),
+        ],
       ),
     );
   }

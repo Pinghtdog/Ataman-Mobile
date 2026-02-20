@@ -1,10 +1,12 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 import 'package:intl/intl.dart';
 import '../../../../core/constants/constants.dart';
 import '../../../../core/widgets/widgets.dart';
 import '../../../../core/services/pdf_service.dart';
+import '../../../../features/auth/logic/auth_cubit.dart';
 import '../../../medical_records/data/models/prescription_model.dart';
 
 class PrescriptionDetailsModal extends StatefulWidget {
@@ -32,9 +34,17 @@ class _PrescriptionDetailsModalState extends State<PrescriptionDetailsModal> {
   }
 
   Future<void> _handleDownload() async {
+    final authState = context.read<AuthCubit>().state;
+    if (authState is! Authenticated || authState.profile == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Unable to generate PDF: User profile not found")),
+      );
+      return;
+    }
+
     setState(() => _isDownloading = true);
     try {
-      await PdfService.generatePrescriptionPdf(widget.prescription);
+      await PdfService.generatePrescriptionPdf(widget.prescription, authState.profile!);
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(

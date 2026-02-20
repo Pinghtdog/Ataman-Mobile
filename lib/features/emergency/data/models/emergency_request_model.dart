@@ -14,6 +14,11 @@ class EmergencyRequest {
   final String? assignedAmbulanceId;
   final DateTime createdAt;
 
+  // AI Triage Data Bridge
+  final String? aiSummary;
+  final String? requiredCapability;
+  final Map<String, dynamic>? soapNote;
+
   EmergencyRequest({
     required this.id,
     required this.userId,
@@ -26,6 +31,9 @@ class EmergencyRequest {
     this.address,
     this.assignedAmbulanceId,
     required this.createdAt,
+    this.aiSummary,
+    this.requiredCapability,
+    this.soapNote,
   });
 
   factory EmergencyRequest.fromJson(Map<String, dynamic> json) {
@@ -41,6 +49,9 @@ class EmergencyRequest {
       address: json['address'],
       assignedAmbulanceId: json['assigned_ambulance_id']?.toString(),
       createdAt: DateTime.parse(json['created_at']),
+      aiSummary: json['ai_summary'],
+      requiredCapability: json['required_capability'],
+      soapNote: json['soap_note'],
     );
   }
 
@@ -55,6 +66,9 @@ class EmergencyRequest {
       'longitude': longitude,
       'address': address,
       'assigned_ambulance_id': assignedAmbulanceId,
+      'ai_summary': aiSummary,
+      'required_capability': requiredCapability,
+      'soap_note': soapNote,
     };
   }
 
@@ -66,8 +80,15 @@ class EmergencyRequest {
   }
 
   static EmergencyType _parseType(String? type) {
+    if (type == null) return EmergencyType.other;
+    // Map AI case categories to EmergencyType if possible
+    final String typeStr = type.toLowerCase();
+    if (typeStr.contains('maternal') || typeStr.contains('pregnancy')) return EmergencyType.maternal;
+    if (typeStr.contains('cardiac') || typeStr.contains('heart')) return EmergencyType.cardiac;
+    if (typeStr.contains('accident') || typeStr.contains('trauma')) return EmergencyType.accident;
+    
     return EmergencyType.values.firstWhere(
-      (e) => e.name == type,
+      (e) => e.name == typeStr,
       orElse: () => EmergencyType.other,
     );
   }

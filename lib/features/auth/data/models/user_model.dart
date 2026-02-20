@@ -19,6 +19,7 @@ class UserModel extends Equatable {
   final String? fcmToken;
   final bool isProfileComplete;
   final bool isPhilhealthVerified; 
+  final DateTime? philhealthVerifiedAt;
   final bool isTemporary;
 
   // Health & Social related fields (Matching your DB exactly)
@@ -61,6 +62,7 @@ class UserModel extends Equatable {
     this.fcmToken,
     this.isProfileComplete = false,
     this.isPhilhealthVerified = false,
+    this.philhealthVerifiedAt,
     this.isTemporary = false,
     this.mynagaId,
     this.isMynagaVerified = false,
@@ -79,12 +81,18 @@ class UserModel extends Equatable {
     this.medicalConditions,
   });
 
+  bool get isPhilhealthVerificationValid {
+    if (!isPhilhealthVerified || philhealthVerifiedAt == null) return false;
+    final expiryDate = philhealthVerifiedAt!.add(const Duration(days: 3));
+    return DateTime.now().isBefore(expiryDate);
+  }
+
   @override
   List<Object?> get props => [
     id, email, firstName, middleName, lastName, suffix, maidenName,
     phoneNumber, birthDate, birthplace, motherName, barangay,
     residentialAddress, philhealthId, medicalId, fcmToken, isProfileComplete,
-    isPhilhealthVerified, isTemporary, mynagaId, isMynagaVerified, gender,
+    isPhilhealthVerified, philhealthVerifiedAt, isTemporary, mynagaId, isMynagaVerified, gender,
     bloodType, civilStatus, educationalAttainment, employmentStatus,
     is4psMember, philhealthStatus, familyPosition, isPcbMember,
     emergencyContactName, emergencyContactPhone, allergies, medicalConditions,
@@ -130,6 +138,9 @@ class UserModel extends Equatable {
       fcmToken: map['fcm_token']?.toString(),
       isProfileComplete: toBool(map['is_profile_complete']),
       isPhilhealthVerified: toBool(map['is_philhealth_verified']),
+      philhealthVerifiedAt: map['philhealth_verified_at'] != null 
+          ? DateTime.parse(map['philhealth_verified_at']) 
+          : null,
       isTemporary: toBool(map['is_temporary']),
       educationalAttainment: map['educational_attainment']?.toString(),
       employmentStatus: map['employment_status']?.toString(),
@@ -167,6 +178,7 @@ class UserModel extends Equatable {
       'fcm_token': fcmToken,
       'is_profile_complete': isProfileComplete,
       'is_philhealth_verified': isPhilhealthVerified,
+      'philhealth_verified_at': philhealthVerifiedAt?.toIso8601String(),
       'is_temporary': isTemporary,
       'gender': gender,
       'blood_type': bloodType,
@@ -203,6 +215,7 @@ class UserModel extends Equatable {
     String? fcmToken,
     bool? isProfileComplete,
     bool? isPhilhealthVerified,
+    DateTime? philhealthVerifiedAt,
     bool? isTemporary,
     String? mynagaId,
     bool? isMynagaVerified,
@@ -239,6 +252,7 @@ class UserModel extends Equatable {
       fcmToken: fcmToken ?? this.fcmToken,
       isProfileComplete: isProfileComplete ?? this.isProfileComplete,
       isPhilhealthVerified: isPhilhealthVerified ?? this.isPhilhealthVerified,
+      philhealthVerifiedAt: philhealthVerifiedAt ?? this.philhealthVerifiedAt,
       isTemporary: isTemporary ?? this.isTemporary,
       mynagaId: mynagaId ?? this.mynagaId,
       isMynagaVerified: isMynagaVerified ?? this.isMynagaVerified,
