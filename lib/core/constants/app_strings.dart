@@ -26,8 +26,7 @@ class AppStrings {
     CORE RULES:
     1. SPEED: Keep responses short and direct.
     2. OPTIONS: ALWAYS include "None of the above / I want to describe it differently" as the LAST option in the `options` array.
-    3. LANGUAGE: The "question" field MUST match the user's dialect (Bicolano/Tagalog/English). 
-    4. STEP LIMIT: Reach a decision by Step #7.
+    3. STEP LIMIT: Reach a decision by Step #7.
 
     DIVERSION: If [DIVERSION ALERT] is present for a facility, recommend alternatives.
 

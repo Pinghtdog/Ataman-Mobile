@@ -5,16 +5,58 @@ import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'ai_service.dart';
 
 class GroqService implements AiService {
-  final String? _apiKey = dotenv.env['GROQ_API_KEY'];
+  String? get _apiKey => dotenv.env['GROQ_API_KEY'];
   static const String _baseUrl = 'https://api.groq.com/openai/v1/chat/completions';
+  
+  // Updated to the latest stable Llama 3 model on Groq
   static const String _model = 'llama-3.3-70b-versatile';
 
   static const String triageSystemPrompt = '''
-Role: Medical Triage AI (Naga, PH). 
-Goal: Assess urgency and routing.
-Instructions: Output JSON ONLY.
-Schema matches OpenAI service.
-''';
+    You are the ATAMAN AI Triage Engine for Naga City, Philippines.
+    
+    CORE RULES:
+    1. SPEED: Keep responses short and direct.
+    2. OPTIONS: ALWAYS include "None of the above / I want to describe it differently" as the LAST option in the `options` array.
+    3. STEP LIMIT: Reach a decision by Step #7.
+
+    FACILITY CAPABILITIES (Based on Naga Health Infrastructure):
+    - BARANGAY_HEALTH_STATION (BHC): Primary care, PhilHealth Konsulta, vaccinations. (CHO I, CHO II).
+    - INFIRMARY: Basic emergency and inpatient services.
+    - HOSPITAL_LEVEL_1: Surgery, maternity, standard ER (e.g., NCGH).
+    - HOSPITAL_LEVEL_2 / HOSPITAL_LEVEL_3: Specialized surgery, ICU, trauma (e.g., BMC).
+
+    ROUTING LOGIC:
+    - EMERGENCY: Severe trauma, chest pain, difficulty breathing -> HOSPITAL_ER (Level 2/3) + AMBULANCE_DISPATCH.
+    - URGENT: High fever, suspected fractures, animal bites -> HOSPITAL_ER (Level 1) or INFIRMARY.
+    - ROUTINE: Cold, mild pain, follow-ups -> BHC_APPOINTMENT or TELEMEDICINE.
+    
+    DIVERSION: If [DIVERSION ALERT] is present for a facility, recommend alternatives with the same or higher capability.
+
+    OUTPUT FORMAT (STRICT JSON):
+    {
+      "is_final": boolean,
+      "question": "string (user's language, mix of Tagalog and English)",
+      "input_type": "BUTTONS" | "TEXT",
+      "options": ["string"],
+      "result": {
+        "urgency": "ROUTINE" | "URGENT" | "EMERGENCY",
+        "case_category": "string",
+        "recommended_action": "TELEMEDICINE" | "BHC_APPOINTMENT" | "HOSPITAL_ER" | "AMBULANCE_DISPATCH",
+        "required_capability": "BARANGAY_HEALTH_STATION" | "INFIRMARY" | "HOSPITAL_LEVEL_1" | "HOSPITAL_LEVEL_2" | "HOSPITAL_LEVEL_3",
+        "is_telemed_suitable": boolean,
+        "ai_confidence": number,
+        "specialty": "string",
+        "reason": "string (English explanation of routing logic)",
+        "summary_for_provider": "string",
+        "soap_note": { 
+          "subjective": "string", 
+          "objective": "string (based on history)", 
+          "assessment": "string", 
+          "plan": "string" 
+        }
+      }
+    }
+  ''';
 
   @override
   Future<Map<String, dynamic>> getTriageResponse(String userPrompt) async {
@@ -23,7 +65,8 @@ Schema matches OpenAI service.
 
   @override
   Future<Map<String, dynamic>> getFollowUpRecommendation(String notes) async {
-    return _generateChatCompletion("Suggest medical follow-up date and reason. JSON ONLY.", notes);
+    const prompt = "Based on these medical notes, suggest a follow-up timeframe and reason. Return JSON: { \"days_until_follow_up\": int, \"reason\": string }";
+    return _generateChatCompletion(prompt, notes);
   }
 
   @override
@@ -31,19 +74,24 @@ Schema matches OpenAI service.
     required String transcriptOrNotes,
     required Map<String, dynamic> patientProfile,
   }) async {
-    final prompt = "Patient: \${patientProfile['full_name']}\nNotes: \$transcriptOrNotes";
-    return _generateChatCompletion("Generate professional SOAP note. JSON ONLY.", prompt);
+    final prompt = "Patient: ${patientProfile['first_name']} ${patientProfile['last_name']}\nNotes: $transcriptOrNotes";
+    const system = "Generate a professional SOAP note (Subjective, Objective, Assessment, Plan) in JSON format.";
+    return _generateChatCompletion(system, prompt);
   }
 
   Future<Map<String, dynamic>> _generateChatCompletion(String systemPrompt, String userPrompt) async {
-    if (_apiKey == null) throw Exception('Groq API Key missing');
+    final apiKey = _apiKey;
+    if (apiKey == null || apiKey.isEmpty) {
+      developer.log('GROQ_API_KEY is missing or empty', name: 'AiService');
+      throw Exception('Groq API Key missing');
+    }
 
     try {
       final response = await http.post(
         Uri.parse(_baseUrl),
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': 'Bearer \$_apiKey',
+          'Authorization': 'Bearer $apiKey',
         },
         body: jsonEncode({
           'model': _model,
@@ -58,19 +106,32 @@ Schema matches OpenAI service.
 
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
-        final text = data['choices']?[0]?['message']?['content'];
-        return jsonDecode(_extractJson(text));
+        final text = data['choices']?[0]?['message']?['content'] ?? '';
+        final extractedJson = _extractJson(text);
+        
+        try {
+          return jsonDecode(extractedJson);
+        } catch (e) {
+          developer.log('Failed to parse JSON from Groq response: $text', name: 'AiService');
+          throw Exception('Invalid JSON response from AI');
+        }
       }
-      throw Exception('Groq Error \${response.statusCode}: \${response.body}');
+      
+      final errorBody = response.body;
+      developer.log('Groq API Error ${response.statusCode}: $errorBody', name: 'AiService');
+      throw Exception('Groq Error ${response.statusCode}');
     } catch (e) {
-      developer.log('GROQ_EXCEPTION: \$e', name: 'AiService');
+      developer.log('GROQ_EXCEPTION: $e', name: 'AiService');
       rethrow;
     }
   }
 
   String _extractJson(String text) {
-    final RegExp jsonRegex = RegExp(r'\{[\s\S]*\}');
+    final RegExp jsonRegex = RegExp(r'(\{[\s\S]*\})');
     final match = jsonRegex.firstMatch(text);
-    return match?.group(0) ?? text.trim();
+    if (match != null) {
+      return match.group(1) ?? text.trim();
+    }
+    return text.trim();
   }
 }

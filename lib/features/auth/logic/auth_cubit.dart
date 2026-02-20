@@ -187,10 +187,9 @@ class AuthCubit extends Cubit<AuthState> {
   Future<void> connectMyNaga() async {
     emit(AuthLoading());
     try {
-      // 1. Call the new MyNaga Service
       final citizenData = await _myNagaService.fetchCitizenProfile("MOCK_CODE_123");
       
-      // 2. Log in using the credentials from the service
+      // Log in using the credentials from the service
       final response = await _authRepository.signIn(
         email: citizenData['email'],
         password: "password123", // In real life, this would be a secure token exchange

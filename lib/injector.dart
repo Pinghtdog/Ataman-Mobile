@@ -9,6 +9,7 @@ import 'core/services/medical_document_service.dart';
 import 'core/services/medicine_alert_service.dart';
 import 'core/services/notification_service.dart';
 import 'core/services/philhealth_service.dart';
+import 'core/services/mynaga_service.dart';
 import 'features/auth/data/repositories/auth_repository.dart';
 import 'features/auth/data/repositories/user_repository.dart';
 import 'features/auth/data/services/auth_service.dart';
@@ -45,6 +46,7 @@ Future<void> initInjector() async {
   // Services
   getIt.registerLazySingleton<NotificationService>(() => NotificationService());
   getIt.registerLazySingleton<AuthService>(() => AuthService());
+  getIt.registerLazySingleton<MyNagaService>(() => MyNagaService());
   
   // Triage Service
   getIt.registerLazySingleton<TriageService>(
