@@ -29,7 +29,7 @@ class EmergencyCubit extends Cubit<EmergencyState> {
           requestId: newRequest.id,
           userLat: request.latitude,
           userLong: request.longitude,
-          emergencyType: request.type.toString(),
+          emergencyType: request.type,
         );
       } catch (aiError) {
         // Log AI error but don't fail the request. 

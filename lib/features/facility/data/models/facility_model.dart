@@ -36,8 +36,8 @@ class Facility {
   final String? website;
   final String distance;
   final List<FacilityService> services;
-  
-  // New fields for Appointment Model
+  final DateTime updatedAt; // Heartbeat field
+
   final double rating;
   final int reviewCount;
   final String openingTime;
@@ -65,16 +65,23 @@ class Facility {
     this.website,
     this.distance = "Calculating...",
     this.services = const [],
-    this.rating = 4.8, // Default for demo
-    this.reviewCount = 120, // Default for demo
+    required this.updatedAt,
+    this.rating = 4.8,
+    this.reviewCount = 120,
     this.openingTime = "08:00 AM",
     this.closingTime = "05:00 PM",
   });
 
-  // Replaces estimatedWaitTime logic with status-based availability strings
+  bool get isStale {
+    final fiveMinutesAgo = DateTime.now().subtract(const Duration(minutes: 5));
+    return updatedAt.isBefore(fiveMinutesAgo);
+  }
+
   String get availabilityStatus {
     if (status == FacilityStatus.closed) return "Closed Today";
-    if (isDiversionActive || status == FacilityStatus.congested) return "Fully Booked Today";
+    if (isDiversionActive || status == FacilityStatus.congested || isStale) {
+       return isStale ? "Status Stale (Caution)" : "Fully Booked Today";
+    }
     return "Next Available: Today, 2:00 PM"; 
   }
 
@@ -105,6 +112,7 @@ class Facility {
     String? website,
     String? distance,
     List<FacilityService>? services,
+    DateTime? updatedAt,
     double? rating,
     int? reviewCount,
     String? openingTime,
@@ -132,6 +140,7 @@ class Facility {
       website: website ?? this.website,
       distance: distance ?? this.distance,
       services: services ?? this.services,
+      updatedAt: updatedAt ?? this.updatedAt,
       rating: rating ?? this.rating,
       reviewCount: reviewCount ?? this.reviewCount,
       openingTime: openingTime ?? this.openingTime,
@@ -196,7 +205,7 @@ class Facility {
       contactNumber: json['contact_number'],
       email: json['email'],
       website: json['website'],
-      distance: 'Calculating...',
+      updatedAt: json['updated_at'] != null ? DateTime.parse(json['updated_at']) : DateTime.now(),
       services: (json['facility_services'] as List?)
           ?.map((s) => FacilityService.fromJson(s))
           .toList() ?? const [],
