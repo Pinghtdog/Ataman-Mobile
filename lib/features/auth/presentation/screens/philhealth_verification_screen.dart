@@ -86,7 +86,8 @@ class _PhilHealthVerificationScreenState extends State<PhilHealthVerificationScr
     _pageCheckTimer?.cancel();
     _pageCheckTimer = Timer.periodic(const Duration(seconds: 2), (timer) async {
       if (!mounted) return;
-      final String checkJs = "(function() { return document.body.innerText.includes('PIN:'); })();";
+      // Look for PIN or PhilHealth Identification Number
+      final String checkJs = "(function() { return document.body.innerText.includes('PIN') || document.body.innerText.includes('PhilHealth'); })();";
       try {
         final dynamic hasResults = await _controller.runJavaScriptReturningResult(checkJs);
         if (hasResults == true || hasResults.toString() == "true") {
@@ -209,20 +210,30 @@ class _PhilHealthVerificationScreenState extends State<PhilHealthVerificationScr
                 return tds[i].nextElementSibling.innerText.trim();
               }
             }
+            // Fallback for different structures (e.g. spans)
+            var spans = document.getElementsByTagName('span');
+            for (var i = 0; i < spans.length; i++) {
+              var text = spans[i].innerText.toLowerCase().replace(':', '').trim();
+              if (text.includes(search)) {
+                return spans[i].nextElementSibling ? spans[i].nextElementSibling.innerText.trim() : '';
+              }
+            }
             return '';
           }
           var results = {
-            pin: getVal('PIN'),
+            pin: getVal('PIN') || getVal('Identification Number') || getVal('PhilHealth ID'),
             lastName: getVal('Last Name'),
             firstName: getVal('First Name'),
             middleName: getVal('Middle Name'),
-            dob: getVal('Date of birth'),
+            suffix: getVal('Suffix'),
+            dob: getVal('Date of birth') || getVal('DOB'),
+            sex: getVal('Sex') || getVal('Gender'),
             found: true
           };
           if(!results.pin && !results.lastName) results.found = false;
           return JSON.stringify(results);
         } catch(e) {
-          return JSON.stringify({found: false});
+          return JSON.stringify({found: false, error: e.toString()});
         }
       })();
     """;
@@ -270,6 +281,7 @@ class _PhilHealthVerificationScreenState extends State<PhilHealthVerificationScr
             _buildDataRow("Name", portalName),
             _buildDataRow("PIN", portalData['pin'] ?? 'N/A'),
             _buildDataRow("DOB", portalData['dob'] ?? 'N/A'),
+            _buildDataRow("Sex", portalData['sex'] ?? 'N/A'),
           ],
         ),
         actions: [

@@ -112,6 +112,14 @@ class AuthCubit extends Cubit<AuthState> {
     }
   }
 
+  /// Refreshes the user profile from the database
+  Future<void> getProfile() async {
+    final sb.User? user = _authRepository.currentUser;
+    if (user != null) {
+      await _handleUserAuthenticated(user);
+    }
+  }
+
   String _handleAuthError(dynamic e) {
     if (e is sb.AuthException) return e.message;
     if (e is SocketException || e.toString().contains('SocketException') || e.toString().contains('host lookup')) {

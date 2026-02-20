@@ -259,6 +259,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                                     );
                                     if (result == true) {
                                       await Future.delayed(const Duration(milliseconds: 500));
+                                      await context.read<AuthCubit>().getProfile();
                                       final authState = context.read<AuthCubit>().state;
                                       if (authState is Authenticated && authState.profile != null) {
                                         setState(() {
