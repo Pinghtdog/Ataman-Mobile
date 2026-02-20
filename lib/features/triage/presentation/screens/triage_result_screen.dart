@@ -29,6 +29,7 @@ class _TriageResultScreenState extends State<TriageResultScreen> {
   PhilHealthBenefit? _matchedBenefit;
   List<Map<String, String>>? _matchedFacilities;
   Map<String, dynamic>? _eligibility;
+  int? _confidence;
 
   @override
   void initState() {
@@ -42,31 +43,42 @@ class _TriageResultScreenState extends State<TriageResultScreen> {
     });
   }
 
-  void _runPhilHealthCheck() {
+  void _runPhilHealthCheck() async {
     final authState = context.read<AuthCubit>().state;
     if (authState is Authenticated) {
       final philHealthService = getIt<PhilHealthService>();
       
-      final match = philHealthService.matchBenefitToCondition(
-        widget.result.summaryForProvider ?? widget.result.rawSymptoms
-      );
+      // Dynamic matching based on the full Triage Result
+      final match = philHealthService.matchBenefitToTriage(widget.result);
       
       final eligibilityStatus = philHealthService.checkEligibilityStatus(authState.profile!);
       
-      setState(() {
-        if (match != null) {
-          _matchedBenefit = match['benefit'] as PhilHealthBenefit;
-          _matchedFacilities = match['facilities'] as List<Map<String, String>>;
+      // Update facility level if we found a specific recommended facility
+      String? facilityName;
+      try {
+        final facility = await getIt<FacilityRepository>().findRecommendedFacility(widget.result.requiredCapability);
+        if (facility != null) {
+          facilityName = "${facility.name} (${facility.barangay ?? ''})";
         }
-        
-        _eligibility = {
-          'isEligible': eligibilityStatus == "Active Member",
-          'status': eligibilityStatus,
-          'reason': eligibilityStatus == "Active Member" 
-              ? "Membership verified via PhilHealth ID." 
-              : "Verification of membership is required for full benefits.",
-        };
-      });
+      } catch (e) {}
+
+      if (mounted) {
+        setState(() {
+          if (match != null) {
+            _matchedBenefit = match['benefit'] as PhilHealthBenefit;
+            _matchedFacilities = match['facilities'] as List<Map<String, String>>;
+            _confidence = match['confidence'] as int;
+          }
+          
+          _eligibility = {
+            'isEligible': eligibilityStatus == "Active Member",
+            'status': eligibilityStatus,
+            'reason': eligibilityStatus == "Active Member" 
+                ? "Membership verified via PhilHealth ID." 
+                : "Verification of membership is required for full benefits.",
+          };
+        });
+      }
     }
   }
 
@@ -128,10 +140,27 @@ class _TriageResultScreenState extends State<TriageResultScreen> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              const Icon(Icons.account_balance_wallet_outlined, color: AppColors.primary),
-              const SizedBox(width: 12),
-              const Text("PhilHealth Coverage", style: AppTextStyles.h3),
+              Row(
+                children: [
+                  const Icon(Icons.account_balance_wallet_outlined, color: AppColors.primary),
+                  const SizedBox(width: 12),
+                  const Text("PhilHealth Coverage", style: AppTextStyles.h3),
+                ],
+              ),
+              if (_confidence != null)
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: AppColors.primary.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Text(
+                    "$_confidence% Match",
+                    style: TextStyle(color: AppColors.primary, fontSize: 10, fontWeight: FontWeight.bold),
+                  ),
+                ),
             ],
           ),
           const SizedBox(height: 16),
@@ -203,10 +232,19 @@ class _TriageResultScreenState extends State<TriageResultScreen> {
           Icons.pending_actions_rounded
         ),
         const SizedBox(height: AppSizes.p16),
-        _buildDetailTile(
-          "Facility Level", 
-          widget.result.requiredCapability.replaceAll('_', ' ').toLowerCase(),
-          Icons.account_balance_outlined
+        FutureBuilder<Facility?>(
+          future: getIt<FacilityRepository>().findRecommendedFacility(widget.result.requiredCapability),
+          builder: (context, snapshot) {
+            String label = widget.result.requiredCapability.replaceAll('_', ' ').toLowerCase();
+            if (snapshot.hasData && snapshot.data != null) {
+              label = "${snapshot.data!.name} (${snapshot.data!.barangay ?? ''})";
+            }
+            return _buildDetailTile(
+              "Recommended Facility", 
+              label,
+              Icons.account_balance_outlined
+            );
+          }
         ),
         const SizedBox(height: AppSizes.p16),
         _buildDetailTile("Likely Specialty", widget.result.specialty, Icons.medical_services_outlined),
@@ -242,6 +280,7 @@ class _TriageResultScreenState extends State<TriageResultScreen> {
   }
 
   Widget _buildSoapField(String label, String content) {
+    if (content.isEmpty) return const SizedBox.shrink();
     return Padding(
       padding: const EdgeInsets.only(bottom: 12),
       child: Column(

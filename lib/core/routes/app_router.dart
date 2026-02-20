@@ -24,6 +24,7 @@ import '../../features/profile/presentation/screens/language_screen.dart';
 import '../../features/profile/presentation/screens/settings/change_password_screen.dart';
 import '../../features/profile/presentation/screens/settings/notifications_settings_screen.dart';
 import '../../features/profile/presentation/screens/settings_screen.dart';
+import '../../features/profile/presentation/screens/medical_id_screen.dart';
 import '../../features/splash/presentation/splash_screen.dart';
 import '../../features/telemedicine/logic/prescription_cubit.dart';
 import '../../features/telemedicine/presentation/screens/general_consult_screen.dart';
@@ -41,6 +42,7 @@ import '../../features/vaccination/presentation/screens/vaccination_screen.dart'
 import '../../features/health_alerts/presentation/screens/health_alerts_screen.dart';
 import '../../features/medical_records/data/repositories/referral_repository.dart';
 import '../../features/medical_records/data/repositories/prescription_repository.dart';
+import '../../../features/auth/data/models/user_model.dart';
 import '../constants/app_routes.dart';
 import '../../injector.dart';
 
@@ -172,6 +174,10 @@ class AppRouter {
 
       case AppRoutes.medicalHistory:
         return MaterialPageRoute(builder: (_) => const MedicalHistoryScreen());
+
+      case AppRoutes.medicalId:
+        final user = settings.arguments as UserModel;
+        return MaterialPageRoute(builder: (_) => MedicalIdScreen(user: user));
 
       case AppRoutes.referrals:
         return MaterialPageRoute(builder: (_) => const ReferralsScreen());

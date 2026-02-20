@@ -8,6 +8,11 @@ class LocalStorageService {
   static const String _idMapBox = 'id_map';
   static const String _hiveKeyStorage = 'hive_encryption_key';
   static const String _historyBox = 'emergency_history';
+  
+  // Boxes for Offline functionality
+  static const String _facilityCacheBox = 'facility_cache';
+  static const String _prescriptionCacheBox = 'prescription_cache';
+  static const String _profileCacheBox = 'profile_cache';
 
   final FlutterSecureStorage _secureStorage = const FlutterSecureStorage();
   
@@ -28,33 +33,67 @@ class LocalStorageService {
     await Hive.openBox<String>(_pendingBox, encryptionCipher: cipher);
     await Hive.openBox<String>(_idMapBox, encryptionCipher: cipher);
     await Hive.openBox<String>(_historyBox, encryptionCipher: cipher);
+    await Hive.openBox<String>(_facilityCacheBox, encryptionCipher: cipher);
+    await Hive.openBox<String>(_prescriptionCacheBox, encryptionCipher: cipher);
+    await Hive.openBox<String>(_profileCacheBox, encryptionCipher: cipher);
   }
 
+  // --- FACILITY OFFLINE CACHE ---
+  Future<void> cacheFacilities(List<Map<String, dynamic>> facilities) async {
+    final box = Hive.box<String>(_facilityCacheBox);
+    await box.clear();
+    for (var f in facilities) {
+      await box.put(f['id'].toString(), jsonEncode(f));
+    }
+  }
+
+  List<Map<String, dynamic>> getCachedFacilities() {
+    final box = Hive.box<String>(_facilityCacheBox);
+    return box.values.map((s) => jsonDecode(s) as Map<String, dynamic>).toList();
+  }
+
+  // --- PRESCRIPTION OFFLINE CACHE ---
+  Future<void> cachePrescriptions(List<Map<String, dynamic>> prescriptions) async {
+    final box = Hive.box<String>(_prescriptionCacheBox);
+    await box.clear();
+    for (var p in prescriptions) {
+      await box.put(p['id'].toString(), jsonEncode(p));
+    }
+  }
+
+  List<Map<String, dynamic>> getCachedPrescriptions() {
+    final box = Hive.box<String>(_prescriptionCacheBox);
+    return box.values.map((s) => jsonDecode(s) as Map<String, dynamic>).toList();
+  }
+
+  // --- PROFILE OFFLINE CACHE ---
+  Future<void> cacheUserProfile(Map<String, dynamic> profile) async {
+    final box = Hive.box<String>(_profileCacheBox);
+    await box.put('current_user', jsonEncode(profile));
+  }
+
+  Map<String, dynamic>? getCachedUserProfile() {
+    final box = Hive.box<String>(_profileCacheBox);
+    final data = box.get('current_user');
+    return data != null ? jsonDecode(data) : null;
+  }
+
+  // --- EMERGENCY LOGIC ---
   Future<String> savePendingEmergency(Map<String, dynamic> data) async {
     final box = Hive.box<String>(_pendingBox);
     final id = (data['id'] != null && data['id'].isNotEmpty ? data['id'] : 'local-${DateTime.now().millisecondsSinceEpoch}').toString();
     final payload = jsonEncode({...data, 'id': id});
     await box.put(id, payload);
-    if (kDebugMode) debugPrint('Saved pending emergency: $id');
     return id;
   }
 
   List<Map<String, dynamic>> getPendingEmergencies() {
     final box = Hive.box<String>(_pendingBox);
-    if (box.isEmpty) return [];
-    try {
-      return box.values.map((s) => jsonDecode(s) as Map<String, dynamic>).toList();
-    } catch(e) {
-      if (kDebugMode) debugPrint('Error decoding pending emergencies: $e. Clearing corrupted data.');
-      box.clear();
-      return [];
-    }
+    return box.values.map((s) => jsonDecode(s) as Map<String, dynamic>).toList();
   }
 
   Future<void> removePendingEmergency(String id) async {
-    final box = Hive.box<String>(_pendingBox);
-    await box.delete(id);
-    if (kDebugMode) debugPrint('Removed pending emergency: $id');
+    await Hive.box<String>(_pendingBox).delete(id);
   }
 
   Future<void> mapLocalToRemote(String localId, String remoteId) async {
@@ -77,19 +116,15 @@ class LocalStorageService {
 
   List<Map<String, dynamic>> getEmergencyHistory() {
     final box = Hive.box<String>(_historyBox);
-    if (box.isEmpty) return [];
-    try {
-      return box.values.map((s) => jsonDecode(s) as Map<String, dynamic>).toList();
-    } catch(e) {
-      if (kDebugMode) debugPrint('Error decoding emergency history: $e. Clearing corrupted data.');
-      box.clear();
-      return [];
-    }
+    return box.values.map((s) => jsonDecode(s) as Map<String, dynamic>).toList();
   }
-  
+
   Future<void> clearAllData() async {
     await Hive.box<String>(_pendingBox).clear();
     await Hive.box<String>(_idMapBox).clear();
     await Hive.box<String>(_historyBox).clear();
+    await Hive.box<String>(_facilityCacheBox).clear();
+    await Hive.box<String>(_prescriptionCacheBox).clear();
+    await Hive.box<String>(_profileCacheBox).clear();
   }
 }

@@ -10,16 +10,17 @@ class SmartTriageCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      margin: const EdgeInsets.symmetric(horizontal: AppSizes.p24),
-      padding: const EdgeInsets.all(AppSizes.p24),
+      // Reduced margin to make the card wider
+      margin: const EdgeInsets.symmetric(horizontal: AppSizes.p12), 
+      padding: const EdgeInsets.all(AppSizes.p20),
       decoration: BoxDecoration(
         color: AppColors.surface,
         borderRadius: BorderRadius.circular(AppSizes.radiusLarge),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.08),
-            blurRadius: 20,
-            offset: const Offset(0, 10),
+            color: Colors.black.withOpacity(0.06),
+            blurRadius: 15,
+            offset: const Offset(0, 8),
           ),
         ],
       ),

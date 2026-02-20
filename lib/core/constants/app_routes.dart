@@ -28,6 +28,7 @@ class AppRoutes {
   static const String generalConsult = '/general-consult';
   static const String familyMembers = '/family-members';
   static const String medicalHistory = '/medical-history';
+  static const String medicalId = '/medical-id';
   static const String referrals = '/referrals';
   static const String settings = '/settings';
   static const String changePassword = '/change-password';

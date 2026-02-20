@@ -344,6 +344,7 @@ class _BookingDetailsScreenState extends State<BookingDetailsScreen> {
                       const SizedBox(height: 12),
                       BookingTimeSelector(
                         selectedTime: _selectedTime,
+                        selectedDate: _selectedDate,
                         onTimeSelected: (time) => setState(() => _selectedTime = time),
                         occupiedSlots: _occupiedSlots,
                       ),
@@ -368,19 +369,20 @@ class _BookingDetailsScreenState extends State<BookingDetailsScreen> {
   }
 
   Widget _buildNatureOfVisitSelector() {
-    final options = ["New Consultation/Case", "New Admission", "Follow-up visit"];
+    final List<String> options = ["New Consultation/Case", "Follow-up Visit"];
     return Wrap(
-      spacing: 8,
+      spacing: 12,
       children: options.map((option) {
         final isSelected = _natureOfVisit == option;
         return ChoiceChip(
           label: Text(option),
           selected: isSelected,
-          onSelected: (selected) {
-            if (selected) setState(() => _natureOfVisit = option);
-          },
-          selectedColor: AppColors.primary,
-          labelStyle: TextStyle(color: isSelected ? Colors.white : Colors.black),
+          onSelected: (val) => setState(() => _natureOfVisit = option),
+          selectedColor: AppColors.primary.withOpacity(0.2),
+          labelStyle: TextStyle(
+            color: isSelected ? AppColors.primary : AppColors.textSecondary,
+            fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+          ),
         );
       }).toList(),
     );
@@ -392,32 +394,35 @@ class _BookingDetailsScreenState extends State<BookingDetailsScreen> {
       padding: const EdgeInsets.all(AppSizes.p16),
       decoration: BoxDecoration(
         color: result.urgencyColor.withOpacity(0.05),
-        borderRadius: BorderRadius.circular(AppSizes.radiusMedium),
+        borderRadius: BorderRadius.circular(16),
         border: Border.all(color: result.urgencyColor.withOpacity(0.2)),
       ),
-      child: Row(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Icon(Icons.auto_awesome, color: result.urgencyColor, size: 24),
-          const SizedBox(width: 16),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  "Triage Reference Included",
-                  style: AppTextStyles.bodySmall.copyWith(
-                    fontWeight: FontWeight.bold,
-                    color: result.urgencyColor,
-                  ),
+          Row(
+            children: [
+              Icon(Icons.auto_awesome, color: result.urgencyColor, size: 18),
+              const SizedBox(width: 8),
+              const Text("AI Triage Summary", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+              const Spacer(),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                decoration: BoxDecoration(
+                  color: result.urgencyColor.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(12),
                 ),
-                Text(
-                  result.summaryForProvider ?? "Priority: ${result.urgency.name}",
-                  style: AppTextStyles.bodyMedium,
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
+                child: Text(
+                  result.urgency.name.toUpperCase(),
+                  style: TextStyle(color: result.urgencyColor, fontSize: 10, fontWeight: FontWeight.bold),
                 ),
-              ],
-            ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Text(
+            result.reason ?? "No specific reason provided",
+            style: AppTextStyles.bodySmall.copyWith(fontStyle: FontStyle.italic),
           ),
         ],
       ),

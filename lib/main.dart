@@ -48,6 +48,7 @@ import 'features/profile/presentation/screens/language_screen.dart';
 import 'features/profile/presentation/screens/settings/change_password_screen.dart';
 import 'features/profile/presentation/screens/settings/notifications_settings_screen.dart';
 import 'features/profile/presentation/screens/settings_screen.dart';
+import 'features/profile/presentation/screens/medical_id_screen.dart';
 import 'features/splash/presentation/splash_screen.dart';
 import 'features/telemedicine/domain/repositories/i_telemedicine_repository.dart';
 import 'features/telemedicine/logic/prescription_cubit.dart';
@@ -191,6 +192,11 @@ class AtamanApp extends StatelessWidget {
           builder: (context) =>
               VaccinationConfirmationScreen(bookingData: args),
         );
+      case AppRoutes.medicalId:
+        final user = settings.arguments as UserModel;
+        return MaterialPageRoute(
+          builder: (context) => MedicalIdScreen(user: user),
+        );
       default:
         return null;
     }
@@ -225,6 +231,7 @@ class AtamanApp extends StatelessWidget {
         AppRoutes.generalConsult: (context) => const GeneralConsultScreen(),
         AppRoutes.familyMembers: (context) => const FamilyMembersScreen(),
         AppRoutes.medicalHistory: (context) => const MedicalHistoryScreen(),
+        AppRoutes.medicalId: (context) => MedicalIdScreen(user: ModalRoute.of(context)!.settings.arguments as UserModel),
         AppRoutes.referrals: (context) => const ReferralsScreen(),
         AppRoutes.settings: (context) => const SettingsScreen(),
         AppRoutes.changePassword: (context) => const ChangePasswordScreen(),

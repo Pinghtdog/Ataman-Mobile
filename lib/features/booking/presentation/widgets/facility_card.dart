@@ -15,16 +15,31 @@ class FacilityCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final bool isClosed = facility.status == FacilityStatus.closed;
+    final bool isStale = facility.isStale;
+    final bool isDiversion = facility.isDiversionActive;
 
     Color statusColor = AppColors.success;
     Color statusBg = AppColors.success.withOpacity(0.1);
+    String statusText = facility.availabilityStatus;
+    IconData statusIcon = Icons.calendar_today_rounded;
     
     if (isClosed) {
       statusColor = AppColors.textSecondary;
       statusBg = AppColors.textSecondary.withOpacity(0.1);
-    } else if (facility.isDiversionActive || facility.status == FacilityStatus.congested) {
+      statusIcon = Icons.block;
+    } else if (isDiversion) {
       statusColor = AppColors.danger;
       statusBg = AppColors.danger.withOpacity(0.1);
+      statusText = "DIVERSION ACTIVE (Seek Alternatives)";
+      statusIcon = Icons.alt_route_rounded;
+    } else if (facility.status == FacilityStatus.congested) {
+      statusColor = AppColors.warning;
+      statusBg = AppColors.warning.withOpacity(0.1);
+      statusIcon = Icons.groups_rounded;
+    } else if (isStale) {
+      statusColor = AppColors.warning;
+      statusBg = AppColors.warning.withOpacity(0.1);
+      statusIcon = Icons.timer_off_outlined;
     }
 
     return Container(
@@ -120,14 +135,10 @@ class FacilityCard extends StatelessWidget {
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      Icon(
-                        isClosed ? Icons.block : Icons.calendar_today_rounded, 
-                        size: 14, 
-                        color: statusColor
-                      ),
+                      Icon(statusIcon, size: 14, color: statusColor),
                       const SizedBox(width: AppSizes.p8),
                       Text(
-                        facility.availabilityStatus,
+                        statusText,
                         style: AppTextStyles.caption.copyWith(
                           color: statusColor,
                           fontWeight: FontWeight.bold,

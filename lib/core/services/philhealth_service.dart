@@ -1,7 +1,7 @@
 import '../../features/auth/data/models/user_model.dart';
 import '../../features/triage/data/models/triage_model.dart';
 
-enum PhilHealthBenefitType { inpatient, outpatient, zBenefit, sdgRelated, maternity }
+enum PhilHealthBenefitType { inpatient, outpatient, zBenefit, sdgRelated, maternity, primaryCare }
 
 class PhilHealthBenefit {
   final String name;
@@ -10,7 +10,8 @@ class PhilHealthBenefit {
   final PhilHealthBenefitType type;
   final List<String> keywords; 
   final List<String> recommendedFacilityIds;
-  final List<String>? treatmentSteps; // Step-by-step guide for Z-Benefits
+  final List<String>? treatmentSteps;
+  final double minimumConfidence; // Threshold for matching
 
   PhilHealthBenefit({
     required this.name,
@@ -20,18 +21,29 @@ class PhilHealthBenefit {
     required this.keywords,
     required this.recommendedFacilityIds,
     this.treatmentSteps,
+    this.minimumConfidence = 0.3,
   });
 }
 
 class PhilHealthService {
   final List<PhilHealthBenefit> _benefits = [
+    // --- PRIMARY CARE (KONSULTA) ---
+    PhilHealthBenefit(
+      name: "PhilHealth Konsulta (Yakap Naga)",
+      amount: "100% Coverage (OPD)",
+      requirements: "Registered at Naga CHO I/II",
+      type: PhilHealthBenefitType.primaryCare,
+      keywords: ['sipon', 'ubo', 'lagnat', 'checkup', 'konsulta', 'mild', 'routine', 'headache', 'sore throat'],
+      recommendedFacilityIds: ['CHO1', 'CHO2'],
+    ),
+
     // --- INPATIENT COMMON ---
     PhilHealthBenefit(
       name: "Dengue Fever (Level 1)",
       amount: "₱10,000",
       requirements: "Confinement in accredited facility",
       type: PhilHealthBenefitType.inpatient,
-      keywords: ['dengue', 'mosquito', 'high fever', 'platelet'],
+      keywords: ['dengue', 'mosquito', 'high fever', 'platelet', 'severe fever'],
       recommendedFacilityIds: ['2255', '2277'],
     ),
     PhilHealthBenefit(
@@ -39,7 +51,7 @@ class PhilHealthService {
       amount: "₱15,000",
       requirements: "X-ray and Confinement",
       type: PhilHealthBenefitType.inpatient,
-      keywords: ['pneumonia', 'lung', 'breathing', 'cough'],
+      keywords: ['pneumonia', 'difficulty breathing', 'chest pain', 'severe cough'],
       recommendedFacilityIds: ['2255', '2277'],
     ),
 
@@ -72,20 +84,6 @@ class PhilHealthService {
         "Obtain Pre-authorization for standard risk package."
       ],
     ),
-    PhilHealthBenefit(
-      name: "Kidney Transplant (Low Risk)",
-      amount: "₱600,000",
-      requirements: "For End-Stage Renal Disease",
-      type: PhilHealthBenefitType.zBenefit,
-      keywords: ['kidney', 'renal', 'transplant', 'dialysis'],
-      recommendedFacilityIds: ['2255'],
-      treatmentSteps: [
-        "Undergo evaluation by the Nephrology Team at BMC.",
-        "Identify and screen a compatible kidney donor.",
-        "Obtain Social Service certification for anti-rejection meds.",
-        "File for Z-Benefit Pre-authorization."
-      ],
-    ),
 
     // --- SDG / PUBLIC HEALTH (Naga CHO Specialties) ---
     PhilHealthBenefit(
@@ -93,7 +91,7 @@ class PhilHealthService {
       amount: "₱3,900",
       requirements: "Category III Rabies Exposure",
       type: PhilHealthBenefitType.sdgRelated,
-      keywords: ['dog bite', 'cat bite', 'rabies', 'animal scratch', 'bite'],
+      keywords: ['dog bite', 'cat bite', 'rabies', 'animal scratch', 'bite', 'kagat'],
       recommendedFacilityIds: ['CHO1', 'CHO2', '2255'],
     ),
     PhilHealthBenefit(
@@ -104,14 +102,6 @@ class PhilHealthService {
       keywords: ['tuberculosis', 'tb', 'coughing blood', 'dots'],
       recommendedFacilityIds: ['CHO1'],
     ),
-    PhilHealthBenefit(
-      name: "Outpatient Malaria Package",
-      amount: "₱780.00",
-      requirements: "Positive Smear/RDT",
-      type: PhilHealthBenefitType.sdgRelated,
-      keywords: ['malaria', 'chills', 'mosquito'],
-      recommendedFacilityIds: ['CHO1'],
-    ),
 
     // --- MATERNITY ---
     PhilHealthBenefit(
@@ -119,15 +109,7 @@ class PhilHealthService {
       amount: "₱6,500 - ₱8,000",
       requirements: "Prenatal checkups required",
       type: PhilHealthBenefitType.maternity,
-      keywords: ['pregnant', 'delivery', 'birth', 'baby', 'labor'],
-      recommendedFacilityIds: ['2277', 'CHO2'],
-    ),
-    PhilHealthBenefit(
-      name: "Newborn Care Package",
-      amount: "₱2,950",
-      requirements: "Newborn Screening & Hearing Test",
-      type: PhilHealthBenefitType.maternity,
-      keywords: ['newborn', 'baby', 'infant'],
+      keywords: ['pregnant', 'delivery', 'birth', 'baby', 'labor', 'pagbubuntis'],
       recommendedFacilityIds: ['2277', 'CHO2'],
     ),
   ];
@@ -160,15 +142,57 @@ class PhilHealthService {
   ];
 
   /// Intelligent matching of symptoms/diagnosis to benefits
-  Map<String, dynamic>? matchBenefitToCondition(String diagnosisOrSymptoms) {
-    String input = diagnosisOrSymptoms.toLowerCase();
-    try {
-      final benefit = _benefits.firstWhere((b) => b.keywords.any((k) => input.contains(k)));
-      final facilities = _nagaFacilities.where((f) => benefit.recommendedFacilityIds.contains(f['id'])).toList();
-      return {'found': true, 'benefit': benefit, 'facilities': facilities};
-    } catch (e) {
-      return null;
+  Map<String, dynamic>? matchBenefitToTriage(TriageResult result) {
+    final String input = (result.summaryForProvider ?? result.rawSymptoms).toLowerCase();
+    
+    PhilHealthBenefit? bestMatch;
+    double highestScore = 0;
+
+    for (var benefit in _benefits) {
+      double score = 0;
+      int matchCount = 0;
+
+      for (var keyword in benefit.keywords) {
+        if (input.contains(keyword)) {
+          matchCount++;
+        }
+      }
+
+      if (matchCount > 0) {
+        // Calculate basic score
+        score = matchCount / benefit.keywords.length;
+
+        // Contextual Adjustments
+        // 1. Urgency Match
+        if (result.urgency == TriageUrgency.routine && benefit.type == PhilHealthBenefitType.primaryCare) {
+          score += 0.5;
+        } else if (result.urgency != TriageUrgency.routine && benefit.type == PhilHealthBenefitType.inpatient) {
+          score += 0.3;
+        }
+
+        // 2. Specialty Match
+        if (input.contains(benefit.name.toLowerCase())) {
+          score += 1.0; // Exact condition mentioned
+        }
+
+        if (score > highestScore && score >= benefit.minimumConfidence) {
+          highestScore = score;
+          bestMatch = benefit;
+        }
+      }
     }
+
+    if (bestMatch != null) {
+      final facilities = _nagaFacilities.where((f) => bestMatch!.recommendedFacilityIds.contains(f['id'])).toList();
+      return {
+        'found': true, 
+        'benefit': bestMatch, 
+        'facilities': facilities,
+        'confidence': (highestScore.clamp(0.0, 1.0) * 100).toInt(),
+      };
+    }
+
+    return null;
   }
 
   /// Returns the User's Eligibility Status string

@@ -1,13 +1,10 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
-import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 import '../../../../core/constants/constants.dart';
 import '../../../../core/widgets/widgets.dart';
 import '../../../../core/services/pdf_service.dart';
 import '../../../auth/data/models/user_model.dart';
-import '../../../triage/data/models/triage_model.dart';
-import '../../../triage/logic/triage_cubit.dart';
 import '../../../../injector.dart';
 import '../../../triage/domain/repositories/i_triage_repository.dart';
 
@@ -17,7 +14,6 @@ class MedicalIdScreen extends StatelessWidget {
   const MedicalIdScreen({super.key, required this.user});
 
   Future<void> _generatePdf(BuildContext context) async {
-    // Show loading
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(content: Text("Fetching latest medical data...")),
     );
@@ -45,11 +41,11 @@ class MedicalIdScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // Standardized QR Data for Web Portal Sync
+    // UNIFIED JSON QR: Matches home_screen.dart implementation
+    final String medicalId = user.medicalId ?? "ATAMAN-ID-PENDING";
     final String qrData = jsonEncode({
-      "type": "PATIENT_ID",
-      "data": user.id,
-      "generated_at": DateTime.now().toIso8601String(),
+      "type": "MEDICAL_ID",
+      "id": medicalId,
     });
 
     return Scaffold(
@@ -72,7 +68,6 @@ class MedicalIdScreen extends StatelessWidget {
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              // The "Medical Card"
               Container(
                 width: double.infinity,
                 decoration: BoxDecoration(
@@ -97,12 +92,11 @@ class MedicalIdScreen extends StatelessWidget {
                       textAlign: TextAlign.center,
                     ),
                     Text(
-                      "Naga City Health ID: ${user.id.substring(0, 8).toUpperCase()}",
-                      style: AppTextStyles.caption,
+                      "Naga City Health ID: $medicalId",
+                      style: AppTextStyles.caption.copyWith(fontWeight: FontWeight.bold, letterSpacing: 1.1),
                     ),
                     const SizedBox(height: AppSizes.p24),
                     
-                    // The QR Code (Synced with PDF)
                     Container(
                       padding: const EdgeInsets.all(AppSizes.p16),
                       decoration: BoxDecoration(
@@ -111,7 +105,7 @@ class MedicalIdScreen extends StatelessWidget {
                         border: Border.all(color: Colors.grey[200]!),
                       ),
                       child: QrImageView(
-                        data: qrData, // Synced Standardized Data
+                        data: qrData,
                         version: QrVersions.auto,
                         size: 200.0,
                         eyeStyle: const QrEyeStyle(
@@ -120,14 +114,13 @@ class MedicalIdScreen extends StatelessWidget {
                         ),
                         dataModuleStyle: const QrDataModuleStyle(
                           dataModuleShape: QrDataModuleShape.square,
-                          color: AppColors.primary,
+                          color: AppColors.textPrimary,
                         ),
                       ),
                     ),
                     
                     const SizedBox(height: 24),
                     
-                    // Quick-Scan Medical Info
                     Padding(
                       padding: const EdgeInsets.symmetric(horizontal: AppSizes.p24),
                       child: Row(
@@ -144,10 +137,9 @@ class MedicalIdScreen extends StatelessWidget {
                     
                     const SizedBox(height: AppSizes.p32),
                     
-                    // Emergency Banner
                     Container(
                       width: double.infinity,
-                      padding: const EdgeInsets.all(AppSizes.p16),
+                      padding: const EdgeInsets.all(16),
                       decoration: const BoxDecoration(
                         color: AppColors.danger,
                         borderRadius: BorderRadius.only(
@@ -183,7 +175,6 @@ class MedicalIdScreen extends StatelessWidget {
               ),
               const SizedBox(height: AppSizes.p32),
               
-              // Custom Medical ID Action
               AtamanButton(
                 text: "Generate Medical Record",
                 isOutlined: true,
