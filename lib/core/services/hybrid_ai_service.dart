@@ -2,12 +2,12 @@ import 'dart:developer' as developer;
 import 'ai_service.dart';
 import 'openai_service.dart';
 import 'gemini_service.dart';
-import 'grok_service.dart';
+import 'groq_service.dart';
 
 class HybridAiService implements AiService {
   final OpenAiService _openAi = OpenAiService();
   final GeminiService _gemini = GeminiService();
-  final GrokService _grok = GrokService();
+  final GroqService _groq = GroqService();
 
   @override
   Future<Map<String, dynamic>> getTriageResponse(String userPrompt) async {
@@ -18,10 +18,10 @@ class HybridAiService implements AiService {
       try {
         return await _gemini.getTriageResponse(userPrompt);
       } catch (ge) {
-        developer.log('HybridAI: Gemini failed, trying Grok...', name: 'AiService');
+        developer.log('HybridAI: Gemini failed, trying Groq...', name: 'AiService');
         try {
-          return await _grok.getTriageResponse(userPrompt);
-        } catch (groke) {
+          return await _groq.getTriageResponse(userPrompt);
+        } catch (groqe) {
           developer.log('HybridAI: All AIs failed, entering Interactive Mock Mode.', name: 'AiService');
           return _handleMockTriage(userPrompt);
         }
@@ -159,7 +159,11 @@ class HybridAiService implements AiService {
       try {
         return await _gemini.getFollowUpRecommendation(notes);
       } catch (ge) {
-        return {"days_until_follow_up": 7, "reason": "Routine checkup (Demo)"};
+        try {
+          return await _groq.getFollowUpRecommendation(notes);
+        } catch (groqe) {
+          return {"days_until_follow_up": 7, "reason": "Routine checkup (Demo)"};
+        }
       }
     }
   }
@@ -181,12 +185,19 @@ class HybridAiService implements AiService {
           patientProfile: patientProfile,
         );
       } catch (ge) {
-        return {
-          "subjective": transcriptOrNotes,
-          "objective": "Recorded via Demo mode.",
-          "assessment": "Consultation completed.",
-          "plan": "Follow local health guidelines."
-        };
+        try {
+          return await _groq.summarizeConsultation(
+            transcriptOrNotes: transcriptOrNotes,
+            patientProfile: patientProfile,
+          );
+        } catch (groqe) {
+          return {
+            "subjective": transcriptOrNotes,
+            "objective": "Recorded via Demo mode.",
+            "assessment": "Consultation completed.",
+            "plan": "Follow local health guidelines."
+          };
+        }
       }
     }
   }

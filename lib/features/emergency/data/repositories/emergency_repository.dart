@@ -11,6 +11,25 @@ class EmergencyRepository {
 
   EmergencyRepository({GeminiService? geminiService}) : _geminiService = geminiService;
 
+  /// Maps EmergencyType to a priority score (Higher = More Urgent)
+  int _getPriorityScore(EmergencyType type) {
+    switch (type) {
+      case EmergencyType.cardiac:
+        return 100;
+      case EmergencyType.sos:
+        return 90;
+      case EmergencyType.accident:
+        return 80;
+      case EmergencyType.maternal:
+        return 70;
+      case EmergencyType.ambulance:
+        return 50;
+      case EmergencyType.other:
+      default:
+        return 10;
+    }
+  }
+
   Future<EmergencyRequest> createEmergencyRequest(EmergencyRequest request) async {
     try {
       return await createEmergencyRequestFromMap(request.toJson());
@@ -19,7 +38,6 @@ class EmergencyRepository {
     }
   }
 
-  /// Create from raw map - used by sync service
   Future<EmergencyRequest> createEmergencyRequestFromMap(Map<String, dynamic> data) async {
     try {
       final response = await _supabase
@@ -34,66 +52,93 @@ class EmergencyRepository {
     }
   }
 
-  /// Finds and assigns the best ambulance using location-based logic with AI fallback
+  /// Advanced Assignment: Handles Proximity, Priority, and Pre-emption (Re-routing)
   Future<Map<String, dynamic>> assignBestAmbulance({
     required String requestId,
     required double userLat,
     required double userLong,
-    String? emergencyType,
+    EmergencyType? emergencyType,
   }) async {
     try {
-      // 1. Fetch available ambulances
-      final response = await _supabase
-          .from('ambulances')
-          .select()
-          .eq('is_available', true);
+      final int currentPriority = _getPriorityScore(emergencyType ?? EmergencyType.other);
 
-      final ambulances = (response as List).map((json) => Ambulance.fromJson(json)).toList();
+      // 1. Fetch ALL ambulances (available or already dispatched)
+      final response = await _supabase.from('ambulances').select();
+      final allAmbulances = (response as List).map((json) => Ambulance.fromJson(json)).toList();
 
-      if (ambulances.isEmpty) {
-        throw Exception('No ambulances available at the moment.');
+      if (allAmbulances.isEmpty) {
+        throw Exception('No ambulances registered in the system.');
       }
 
-      // 2. Calculate the nearest ambulance using Haversine formula
-      Ambulance? nearestAmbulance;
-      double minDistance = double.infinity;
+      // 2. Separate into Available and Busy
+      final availableAmbulances = allAmbulances.where((a) => a.isAvailable).toList();
 
-      for (var ambulance in ambulances) {
-        final distance = _calculateDistance(userLat, userLong, ambulance.latitude, ambulance.longitude);
-        if (distance < minDistance) {
-          minDistance = distance;
-          nearestAmbulance = ambulance;
+      Ambulance? selectedAmbulance;
+      double minDistance = double.infinity;
+      bool isPreemption = false;
+
+      if (availableAmbulances.isNotEmpty) {
+        // --- NORMAL LOGIC: Pick nearest available ---
+        for (var ambulance in availableAmbulances) {
+          final distance = _calculateDistance(userLat, userLong, ambulance.latitude, ambulance.longitude);
+          if (distance < minDistance) {
+            minDistance = distance;
+            selectedAmbulance = ambulance;
+          }
+        }
+      } else if (currentPriority >= 80) {
+        // --- PRE-EMPTION LOGIC: Check for re-routing if current case is High Priority (80+) ---
+        // Find ambulances currently handling LOW priority cases (priority < 50)
+        final activeRequestsResponse = await _supabase
+            .from('emergency_requests')
+            .select('id, type, assigned_ambulance_id')
+            .eq('status', 'dispatched');
+
+        final busyAmbulancesMap = {
+          for (var r in (activeRequestsResponse as List)) 
+            r['assigned_ambulance_id'].toString(): r
+        };
+
+        for (var ambulance in allAmbulances) {
+          final currentTask = busyAmbulancesMap[ambulance.id];
+          if (currentTask != null) {
+            final taskPriority = _getPriorityScore(EmergencyType.values.firstWhere(
+              (e) => e.name == currentTask['type'], 
+              orElse: () => EmergencyType.other
+            ));
+
+            // If current task is significantly less urgent
+            if (taskPriority < 50) {
+              final distance = _calculateDistance(userLat, userLong, ambulance.latitude, ambulance.longitude);
+              if (distance < minDistance) {
+                minDistance = distance;
+                selectedAmbulance = ambulance;
+                isPreemption = true;
+              }
+            }
+          }
         }
       }
 
-      if (nearestAmbulance == null) {
-        throw Exception('Could not determine nearest ambulance.');
+      if (selectedAmbulance == null) {
+        throw Exception('All ambulances are busy with high-priority cases. Please wait for the next available unit.');
       }
 
-      final recommendedId = nearestAmbulance.id;
-      final reasoning = 'Nearest available ambulance found at approximately ${minDistance.toStringAsFixed(2)} km away.';
+      // 3. DATABASE UPDATES
+      return await _supabase.rpc('handle_ambulance_assignment', params: {
+        'p_request_id': requestId,
+        'p_ambulance_id': selectedAmbulance.id,
+        'p_is_preemption': isPreemption,
+        'p_priority': currentPriority,
+      }).then((_) => {
+        'recommended_ambulance_id': selectedAmbulance!.id,
+        'reasoning': isPreemption 
+            ? 'High-priority re-routing: Ambulance diverted from a lower-urgency task.' 
+            : 'Nearest available ambulance assigned.',
+        'distance_km': minDistance,
+        'is_preemption': isPreemption
+      });
 
-      // 3. Update Database
-      // Note: In the mobile repo, column is 'assigned_ambulance_id' based on model
-      await _supabase
-          .from('emergency_requests')
-          .update({
-            'assigned_ambulance_id': recommendedId,
-            'status': 'dispatched',
-          })
-          .eq('id', requestId);
-
-      // 4. Mark Ambulance as Unavailable
-      await _supabase
-          .from('ambulances')
-          .update({'is_available': false})
-          .eq('id', recommendedId);
-
-      return {
-        'recommended_ambulance_id': recommendedId,
-        'reasoning': reasoning,
-        'distance_km': minDistance
-      };
     } catch (e) {
       throw Exception('Failed to assign ambulance: $e');
     }
@@ -108,8 +153,7 @@ class EmergencyRepository {
     return 12742 * asin(sqrt(a));
   }
 
-  /// Attempt to find an existing request that matches the given parameters.
-  /// This helps resolve duplicates created offline.
+  // ... rest of the existing methods (findMatchingRequest, cancel, watch, etc.)
   Future<EmergencyRequest?> findMatchingRequest({required String? userId, required double latitude, required double longitude, int withinSeconds = 120}) async {
     try {
       if (userId == null) return null;
@@ -122,7 +166,6 @@ class EmergencyRepository {
           .limit(10);
 
       final list = (response as List).map((json) => EmergencyRequest.fromJson(json)).toList();
-      // Find nearest by simple distance threshold (50 meters)
       for (final r in list) {
         final d = ((r.latitude - latitude) * (r.latitude - latitude) + (r.longitude - longitude) * (r.longitude - longitude));
         if (d < 0.0005) {
