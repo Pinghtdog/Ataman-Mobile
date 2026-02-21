@@ -33,8 +33,21 @@ import 'features/medicine_access/data/repositories/medicine_repository.dart';
 import 'core/services/local_storage_service.dart';
 import 'core/services/sync_service.dart';
 
+/// Global instance of [GetIt] used for dependency injection throughout the app.
 final getIt = GetIt.instance;
 
+/// [initInjector] initializes and registers all application dependencies.
+///
+/// This function is called during the app startup sequence (usually in `main.dart` 
+/// via `ServiceInitializer`) to set up:
+/// 1. **Core Infrastructure**: Supabase client, local storage, and sync services.
+/// 2. **AI Engine**: Gemini and Hybrid AI services for triage and medical summaries.
+/// 3. **Application Services**: Authentication, notifications, PhilHealth, and MyNaga integration.
+/// 4. **Repositories**: Data access layers for features like booking, emergency, 
+///    telemedicine, and medical records.
+///
+/// Dependencies are registered primarily as Lazy Singletons to optimize memory 
+/// and ensure only one instance of each service/repository exists.
 Future<void> initInjector() async {
   // Supabase
   final supabase = Supabase.instance.client;

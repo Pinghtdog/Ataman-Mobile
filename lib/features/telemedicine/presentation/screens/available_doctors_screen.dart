@@ -7,6 +7,16 @@ import '../../data/models/doctor_model.dart';
 import '../../logic/telemedicine_cubit.dart';
 import '../widgets/telemed_booking_sheet.dart';
 
+/// [AvailableDoctorsScreen] provides a searchable directory of medical specialists.
+///
+/// This screen allows users to:
+/// 1. **Search**: Filter doctors by name or medical specialty (e.g., Neurosurgeon, Pediatrician).
+/// 2. **Monitor Availability**: View real-time online/offline status indicators for each doctor.
+/// 3. **Book Consultations**: Launch the [TelemedBookingSheet] to schedule a session 
+///    with a selected professional.
+///
+/// It integrates with [TelemedicineCubit] to consume the live stream of doctors 
+/// synchronized from the backend.
 class AvailableDoctorsScreen extends StatefulWidget {
   const AvailableDoctorsScreen({super.key});
 
@@ -16,8 +26,13 @@ class AvailableDoctorsScreen extends StatefulWidget {
 
 class _AvailableDoctorsScreenState extends State<AvailableDoctorsScreen> {
   final TextEditingController _searchController = TextEditingController();
+  
+  /// The current search filter applied to the doctor list.
   String _searchQuery = "";
 
+  /// Displays the booking interface for the selected [doctor].
+  /// 
+  /// Requires an [Authenticated] session to pass the user's ID to the booking flow.
   void _showBookingSheet(BuildContext context, DoctorModel doctor) {
     final authState = context.read<AuthCubit>().state;
     if (authState is Authenticated) {
@@ -126,6 +141,10 @@ class _AvailableDoctorsScreenState extends State<AvailableDoctorsScreen> {
     );
   }
 
+  /// Builds a list item representing a single doctor.
+  /// 
+  /// Displays the doctor's profile, specialty, online status, and rating, 
+  /// with a primary CTA button to initiate the booking flow.
   Widget _buildDoctorListItem(BuildContext context, DoctorModel doctor) {
     return Container(
       margin: const EdgeInsets.only(bottom: 16),
