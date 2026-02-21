@@ -86,7 +86,7 @@ class _PhilHealthVerificationScreenState extends State<PhilHealthVerificationScr
     _pageCheckTimer?.cancel();
     _pageCheckTimer = Timer.periodic(const Duration(seconds: 2), (timer) async {
       if (!mounted) return;
-      // Look for PIN or PhilHealth Identification Number
+      // Look for PIN or PhilHealth Identification Numbera
       final String checkJs = "(function() { return document.body.innerText.includes('PIN') || document.body.innerText.includes('PhilHealth'); })();";
       try {
         final dynamic hasResults = await _controller.runJavaScriptReturningResult(checkJs);
@@ -279,6 +279,7 @@ class _PhilHealthVerificationScreenState extends State<PhilHealthVerificationScr
 
     showDialog(
       context: context,
+      barrierDismissible: false,
       builder: (context) => AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         title: Row(
@@ -304,10 +305,15 @@ class _PhilHealthVerificationScreenState extends State<PhilHealthVerificationScr
             text: "Sync Profile",
             width: 140,
             onPressed: () async {
-              await getIt<PhilHealthService>().syncVerifiedData(widget.user.id, portalData);
-              if (mounted) {
-                Navigator.pop(context);
-                Navigator.pop(context, true);
+              try {
+                await getIt<PhilHealthService>().syncVerifiedData(widget.user.id, portalData);
+                if (mounted) {
+                  // Pop the dialog and then pop the screen with data
+                  Navigator.of(context).pop();
+                  Navigator.of(context).pop(portalData);
+                }
+              } catch (e) {
+                if (mounted) Navigator.of(context).pop();
               }
             },
           ),
@@ -334,6 +340,7 @@ class _PhilHealthVerificationScreenState extends State<PhilHealthVerificationScr
   void _showManualConfirmation() {
      showDialog(
       context: context,
+      barrierDismissible: false,
       builder: (context) => AlertDialog(
         title: const Text("Capture Failed"),
         content: const Text("Could not read results automatically. Verify manually if your status is 'ACTIVE'."),

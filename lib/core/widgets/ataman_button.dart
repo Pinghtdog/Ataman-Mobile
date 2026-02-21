@@ -10,6 +10,7 @@ class AtamanButton extends StatelessWidget {
   final Color? textColor;
   final double? width;
   final IconData? icon;
+  final double? fontSize;
 
   const AtamanButton({
     super.key,
@@ -21,6 +22,7 @@ class AtamanButton extends StatelessWidget {
     this.textColor,
     this.width,
     this.icon,
+    this.fontSize,
   });
 
   @override
@@ -50,7 +52,7 @@ class AtamanButton extends StatelessWidget {
               text,
               style: TextStyle(
                 color: contentColor,
-                fontSize: 16,
+                fontSize: fontSize ?? 16,
                 fontWeight: isOutlined ? FontWeight.normal : FontWeight.bold,
               ),
             ),
@@ -62,7 +64,7 @@ class AtamanButton extends StatelessWidget {
         text,
         style: TextStyle(
           color: contentColor,
-          fontSize: 16,
+          fontSize: fontSize ?? 16,
           fontWeight: isOutlined ? FontWeight.normal : FontWeight.bold,
         ),
       );
