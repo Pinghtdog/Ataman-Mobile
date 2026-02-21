@@ -34,7 +34,7 @@ class GroqService implements AiService {
     FACILITY CAPABILITIES (Based on Naga Health Infrastructure):
     - BARANGAY_HEALTH_STATION (BHC): Primary care, PhilHealth Konsulta, vaccinations. (CHO I, CHO II).
     - INFIRMARY: Basic emergency and inpatient services.
-    - HOSPITAL_LEVEL_1: Surgery, maternity, standard ER (e.g., NCGH).
+    - HOSPITAL_LEVEL_1: Surgery, maternity, standard ER, preventive, rehabilitative, curative (e.g., NCGH).
     - HOSPITAL_LEVEL_2 / HOSPITAL_LEVEL_3: Specialized surgery, ICU, trauma (e.g., BMC).
 
     ROUTING LOGIC:
