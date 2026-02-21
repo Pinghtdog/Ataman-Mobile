@@ -63,8 +63,8 @@ class _HomeScreenState extends State<HomeScreen> {
             child: Column(
               children: [
                 AtamanHeader(
-                  height: 280, // Tighter header
-                  padding: const EdgeInsets.fromLTRB(24, 40, 24, 20), // Removed extra top space
+                  height: 280,
+                  padding: const EdgeInsets.fromLTRB(24, 40, 24, 20),
                   child: SafeArea(
                     bottom: false,
                     child: Column(

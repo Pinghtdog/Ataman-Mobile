@@ -9,6 +9,16 @@ import '../../data/models/referral_model.dart';
 import '../../data/repositories/referral_repository.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
+/// [ReferralsScreen] manages and displays the list of hospital referrals for the authenticated user.
+///
+/// This screen provides real-time updates on referral statuses (Pending, Accepted, Rejected)
+/// and allows users to:
+/// 1. **Track Referrals**: View origin and destination facilities for each transfer.
+/// 2. **Review Details**: See chief complaints and initial diagnostic impressions.
+/// 3. **Export Documentation**: Generate and download a PDF referral slip using [PdfService].
+///
+/// It utilizes a [StreamBuilder] to listen for real-time changes in the referral database
+/// via the [ReferralRepository].
 class ReferralsScreen extends StatefulWidget {
   const ReferralsScreen({super.key});
 
@@ -17,6 +27,7 @@ class ReferralsScreen extends StatefulWidget {
 }
 
 class _ReferralsScreenState extends State<ReferralsScreen> {
+  /// A real-time stream of referrals associated with the current user.
   late Stream<List<Referral>> _referralStream;
 
   @override
@@ -24,6 +35,7 @@ class _ReferralsScreenState extends State<ReferralsScreen> {
     super.initState();
     final user = context.read<AuthCubit>().state;
     if (user is Authenticated) {
+      // Initializes the stream by watching the user's specific referrals.
       _referralStream = getIt<ReferralRepository>().watchMyReferrals(user.user.id);
     }
   }
@@ -62,6 +74,10 @@ class _ReferralsScreenState extends State<ReferralsScreen> {
                   return const Center(child: CircularProgressIndicator());
                 }
                 
+                if (snapshot.hasError) {
+                  return Center(child: Text("Error: ${snapshot.error}"));
+                }
+
                 final referrals = snapshot.data ?? [];
                 if (referrals.isEmpty) {
                   return const AtamanEmptyState(
@@ -85,6 +101,10 @@ class _ReferralsScreenState extends State<ReferralsScreen> {
     );
   }
 
+  /// Builds a card representing an individual referral.
+  /// 
+  /// Displays the reference number, status, route information, and provides 
+  /// an action to download the referral as a PDF.
   Widget _buildReferralCard(Referral referral) {
     final authState = context.read<AuthCubit>().state;
     final user = authState is Authenticated ? authState.profile : null;
@@ -143,6 +163,8 @@ class _ReferralsScreenState extends State<ReferralsScreen> {
     );
   }
 
+  /// Renders a vertical timeline view showing the transfer from the origin
+  /// facility to the destination facility.
   Widget _buildRouteInfo(Referral referral) {
     return Row(
       children: [
@@ -168,6 +190,12 @@ class _ReferralsScreenState extends State<ReferralsScreen> {
     );
   }
 
+  /// Returns a styled status badge based on the [ReferralStatus].
+  /// 
+  /// Colors:
+  /// - Accepted: Green
+  /// - Rejected: Red
+  /// - Pending/Other: Orange
   Widget _buildStatusBadge(ReferralStatus status) {
     Color color = Colors.orange;
     if (status == ReferralStatus.ACCEPTED) color = Colors.green;

@@ -15,7 +15,23 @@ import '../../data/models/triage_model.dart';
 import '../../logic/triage_cubit.dart';
 import '../../../home/presentation/screens/ataman_base_screen.dart';
 
+/// [TriageResultScreen] displays the AI-generated medical assessment and 
+/// recommended care path for the user.
+///
+/// **Key Components:**
+/// 1. **Urgency Indicator**: A color-coded header (Critical, Urgent, etc.) 
+///    providing immediate visual feedback on the severity.
+/// 2. **PhilHealth Integration**: Dynamically matches the assessment results 
+///    with potential PhilHealth benefits and local accredited facilities.
+/// 3. **Clinical Summary (SOAP)**: Displays Subjective, Assessment, and Plan 
+///    notes for the user and healthcare providers.
+/// 4. **Smart Action Routing**: Provides context-aware buttons (e.g., "Call 911", 
+///    "Book BHC", "Start Telemedicine") based on the AI's recommendation.
+///
+/// This screen also triggers a local notification to confirm the assessment is ready 
+/// and validates the user's PhilHealth eligibility status in real-time.
 class TriageResultScreen extends StatefulWidget {
+  /// The finalized triage data to be displayed.
   final TriageResult result;
 
   const TriageResultScreen({super.key, required this.result});
@@ -43,6 +59,7 @@ class _TriageResultScreenState extends State<TriageResultScreen> {
     });
   }
 
+  /// Evaluates the triage result against PhilHealth benefits and checks user eligibility.
   void _runPhilHealthCheck() async {
     final authState = context.read<AuthCubit>().state;
     if (authState is Authenticated) {
@@ -53,13 +70,9 @@ class _TriageResultScreenState extends State<TriageResultScreen> {
       
       final eligibilityStatus = philHealthService.checkEligibilityStatus(authState.profile!);
       
-      // Update facility level if we found a specific recommended facility
-      String? facilityName;
+      // Attempt to identify a specific local facility for the required capability.
       try {
-        final facility = await getIt<FacilityRepository>().findRecommendedFacility(widget.result.requiredCapability);
-        if (facility != null) {
-          facilityName = "${facility.name} (${facility.barangay ?? ''})";
-        }
+        await getIt<FacilityRepository>().findRecommendedFacility(widget.result.requiredCapability);
       } catch (e) {}
 
       if (mounted) {
@@ -124,6 +137,7 @@ class _TriageResultScreenState extends State<TriageResultScreen> {
     );
   }
 
+  /// Builds a specialized card showing potential PhilHealth coverage for this specific case.
   Widget _buildPhilHealthCard() {
     if (_matchedBenefit == null || _eligibility == null) return const SizedBox.shrink();
 
@@ -196,6 +210,7 @@ class _TriageResultScreenState extends State<TriageResultScreen> {
     );
   }
 
+  /// Builds the urgency header with large icons and summary text.
   Widget _buildUrgencyHeader() {
     return Container(
       padding: const EdgeInsets.all(AppSizes.p24),
@@ -223,6 +238,7 @@ class _TriageResultScreenState extends State<TriageResultScreen> {
     );
   }
 
+  /// Lists the granular details of the triage recommendations.
   Widget _buildDetails() {
     return Column(
       children: [
@@ -252,6 +268,7 @@ class _TriageResultScreenState extends State<TriageResultScreen> {
     );
   }
 
+  /// Displays the SOAP note components (Subjective, Assessment, Plan).
   Widget _buildSoapNote() {
     return Container(
       padding: const EdgeInsets.all(AppSizes.p20),
@@ -279,6 +296,7 @@ class _TriageResultScreenState extends State<TriageResultScreen> {
     );
   }
 
+  /// Helper for building individual SOAP fields.
   Widget _buildSoapField(String label, String content) {
     if (content.isEmpty) return const SizedBox.shrink();
     return Padding(
@@ -293,6 +311,7 @@ class _TriageResultScreenState extends State<TriageResultScreen> {
     );
   }
 
+  /// Helper for building generic info tiles.
   Widget _buildDetailTile(String label, String value, IconData icon) {
     return Container(
       padding: const EdgeInsets.all(AppSizes.p16),
@@ -318,6 +337,7 @@ class _TriageResultScreenState extends State<TriageResultScreen> {
     );
   }
 
+  /// Determines the primary action button text and logic based on care level.
   Widget _buildActionButton(BuildContext context) {
     String buttonText = "Find Facility";
     
@@ -343,6 +363,7 @@ class _TriageResultScreenState extends State<TriageResultScreen> {
     );
   }
 
+  /// Executes the logic for the primary action button.
   Future<void> _handleProceed(BuildContext context) async {
     if (widget.result.recommendedAction == 'AMBULANCE_DISPATCH') {
       final Uri url = Uri.parse("tel:911");
@@ -358,47 +379,41 @@ class _TriageResultScreenState extends State<TriageResultScreen> {
       return;
     }
 
-    setState(() => _isProcessing = true);
-    try {
-      Facility? recommendedFacility = await getIt<FacilityRepository>().findRecommendedFacility(widget.result.requiredCapability);
-      
-      if (!mounted) return;
-
-      if (recommendedFacility != null) {
-        Navigator.of(context).push(
-          MaterialPageRoute(
-            builder: (context) => BookingDetailsScreen(
-              facility: recommendedFacility!,
-              triageResult: widget.result,
-            ),
-          ),
+    // Default: Navigate to the Booking flow with pre-filled triage data.
+    final facility = await getIt<FacilityRepository>().findRecommendedFacility(widget.result.requiredCapability);
+    if (mounted) {
+      if (facility != null) {
+        Navigator.push(
+          context, 
+          MaterialPageRoute(builder: (_) => BookingDetailsScreen(facility: facility, triageResult: widget.result))
         );
       } else {
-        Navigator.of(context).push(
-          MaterialPageRoute(
-            builder: (context) => AtamanBaseScreen(initialIndex: 1, triageResult: widget.result),
-          ),
+         Navigator.of(context).pushAndRemoveUntil(
+          MaterialPageRoute(builder: (context) => AtamanBaseScreen(initialIndex: 1, triageResult: widget.result)),
+          (route) => false,
         );
       }
-    } catch (e) {
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Error: $e")));
-    } finally {
-      if (mounted) setState(() => _isProcessing = false);
     }
   }
 
+  /// Resets the triage state and exits to the Home screen.
   void _exitTriage(BuildContext context) {
+    context.read<TriageCubit>().reset();
     Navigator.of(context).pushAndRemoveUntil(
       MaterialPageRoute(builder: (context) => const AtamanBaseScreen()),
       (route) => false,
     );
   }
 
+  /// Returns an appropriate icon based on the urgency level.
   IconData _getUrgencyIcon() {
     switch (widget.result.urgency) {
-      case TriageUrgency.emergency: return Icons.report_problem_rounded;
-      case TriageUrgency.urgent: return Icons.error_outline_rounded;
-      case TriageUrgency.routine: return Icons.check_circle_outline_rounded;
+      case TriageUrgency.emergency:
+        return Icons.emergency_rounded;
+      case TriageUrgency.urgent:
+        return Icons.warning_rounded;
+      case TriageUrgency.routine:
+        return Icons.check_circle_rounded;
     }
   }
 }

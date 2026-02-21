@@ -102,32 +102,46 @@ class _PhilHealthVerificationScreenState extends State<PhilHealthVerificationScr
     if (_isAutoFilling) return;
     _isAutoFilling = true;
 
-    String formattedBirthDate = widget.user.birthDate ?? "";
-    if (formattedBirthDate.contains('-')) {
-      try {
-        final parts = formattedBirthDate.split('-');
-        if (parts.length == 3 && parts[0].length == 4) {
-          formattedBirthDate = "${parts[2]}/${parts[1]}/${parts[0]}";
+    // Ensure format is YYYY-MM-DD for the HTML5 date input
+    String rawBirthDate = widget.user.birthDate ?? "";
+    if (rawBirthDate.contains('/')) {
+      final parts = rawBirthDate.split('/');
+      if (parts.length == 3) {
+        if (parts[0].length == 4) { // YYYY/MM/DD
+          rawBirthDate = "${parts[0]}-${parts[1].padLeft(2, '0')}-${parts[2].padLeft(2, '0')}";
+        } else { // MM/DD/YYYY
+          rawBirthDate = "${parts[2]}-${parts[0].padLeft(2, '0')}-${parts[1].padLeft(2, '0')}";
         }
-      } catch (_) {}
+      }
     }
 
     final String js = """
       (function() {
-        function fillField(id, val) {
+        function fill(id, val) {
           if (!val) return;
-          const el = document.getElementById(id);
+          const el = document.getElementById(id) || document.getElementsByName(id)[0];
           if (el) {
+            // Force focus to trigger any internal site logic
+            el.focus();
+            
+            // Handle DOB specifically for date inputs (matching inputDoB from screenshot)
+            if (id.toLowerCase().includes('dob')) {
+              el.type = 'date';
+            }
+            
             el.value = val;
             el.dispatchEvent(new Event('input', { bubbles: true }));
             el.dispatchEvent(new Event('change', { bubbles: true }));
+            el.blur();
           }
         }
 
         setTimeout(function() {
-          fillField('inputLastName', '${widget.user.lastName}');
-          fillField('inputFirstName', '${widget.user.firstName}');
-          fillField('inputDOB', '$formattedBirthDate');
+          fill('inputLastName', '${widget.user.lastName}');
+          fill('inputFirstName', '${widget.user.firstName}');
+          
+          // Use exact ID from inspector screenshot
+          fill('inputDoB', '$rawBirthDate');
           
           const middleName = '${widget.user.middleName ?? ""}';
           const checkbox = document.getElementById('nomiddlenamecb');
@@ -135,7 +149,7 @@ class _PhilHealthVerificationScreenState extends State<PhilHealthVerificationScr
           if (checkbox) {
               if (middleName && middleName.trim() !== '') {
                   if(checkbox.checked) checkbox.click();
-                  fillField('inputMiddleName', middleName);
+                  fill('inputMiddleName', middleName);
               } else {
                   if(!checkbox.checked) checkbox.click();
               }

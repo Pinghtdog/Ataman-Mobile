@@ -11,6 +11,20 @@ import '../../logic/booking_state.dart';
 import '../widgets/ataman_booking_ticket.dart';
 import '../widgets/booking_qr_dialog.dart';
 
+/// [MyAppointmentsScreen] displays a categorized view of the user's medical appointments.
+///
+/// It handles two main types of appointments:
+/// 1. **Physical Facility Visits**: Managed via [BookingCubit].
+/// 2. **Tele-Consultations**: Managed via [TelemedicineCubit].
+///
+/// The screen uses a [TabController] to toggle between:
+/// - **Active**: Shows upcoming physical visits and ongoing/scheduled virtual sessions.
+/// - **History**: Shows past, completed, cancelled, or missed appointments.
+///
+/// **Instant Fix Logic**:
+/// To improve UX, this screen locally filters "pending" physical appointments into
+/// the "History" tab if their scheduled time has already passed, providing immediate
+/// feedback even before the backend cron job updates the status to 'missed'.
 class MyAppointmentsScreen extends StatefulWidget {
   const MyAppointmentsScreen({super.key});
 
@@ -28,6 +42,8 @@ class _MyAppointmentsScreenState extends State<MyAppointmentsScreen> with Single
     _loadBookings();
   }
 
+  /// Initializes data fetching for both physical and telemedicine bookings.
+  /// Listens to the [AuthCubit] to ensure the user is authenticated.
   void _loadBookings() {
     final authState = context.read<AuthCubit>().state;
     if (authState is Authenticated) {
@@ -104,16 +120,23 @@ class _MyAppointmentsScreenState extends State<MyAppointmentsScreen> with Single
                       return const Center(child: CircularProgressIndicator(color: AppColors.primary));
                     }
 
-                    // 1. Process Physical Bookings
+                    final now = DateTime.now();
+
+                    // 1. Process Physical Bookings with Instant Fix Logic
                     List<Booking> activePhysical = [];
                     List<Booking> historyPhysical = [];
                     if (bookingState is BookingLoaded) {
-                      activePhysical = bookingState.bookings
-                          .where((b) => b.status == BookingStatus.pending || b.status == BookingStatus.confirmed)
-                          .toList();
-                      historyPhysical = bookingState.bookings
-                          .where((b) => b.status != BookingStatus.pending && b.status != BookingStatus.confirmed)
-                          .toList();
+                      activePhysical = bookingState.bookings.where((b) {
+                        final isPending = b.status == BookingStatus.pending || b.status == BookingStatus.confirmed;
+                        // ONLY show as active if it's pending AND the time hasn't passed yet
+                        return isPending && b.appointmentTime.isAfter(now);
+                      }).toList();
+
+                      historyPhysical = bookingState.bookings.where((b) {
+                        final isNotPending = b.status != BookingStatus.pending && b.status != BookingStatus.confirmed;
+                        // Show in history if status is finished OR if the time has already passed
+                        return isNotPending || b.appointmentTime.isBefore(now);
+                      }).toList();
                     }
 
                     // 2. Process Telemed Sessions
@@ -123,7 +146,6 @@ class _MyAppointmentsScreenState extends State<MyAppointmentsScreen> with Single
                       activeTelemed = telemedState.activeSessions
                           .where((s) => s['status'] == 'scheduled' || s['status'] == 'active')
                           .toList();
-                      // (Assuming past sessions are not in the 'activeSessions' list based on the Cubit logic)
                     }
 
                     return TabBarView(
@@ -151,6 +173,8 @@ class _MyAppointmentsScreenState extends State<MyAppointmentsScreen> with Single
     );
   }
 
+  /// Builds a scrollable list combining both Telemedicine and Physical bookings.
+  /// Displays an empty state message if no appointments are found for the current tab.
   Widget _buildCombinedList({
     required List<Booking> physical,
     required List<Map<String, dynamic>> telemed,
@@ -203,6 +227,7 @@ class _MyAppointmentsScreenState extends State<MyAppointmentsScreen> with Single
     );
   }
 
+  /// Builds a small uppercase header for different appointment categories.
   Widget _buildSectionHeader(String title) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 12, left: 4),
@@ -217,6 +242,7 @@ class _MyAppointmentsScreenState extends State<MyAppointmentsScreen> with Single
     );
   }
 
+  /// Renders a specialized card for Telemedicine sessions.
   Widget _buildTelemedCard(Map<String, dynamic> session, bool isActive) {
     final scheduledTimeStr = session['scheduled_time'];
     final scheduledTime = scheduledTimeStr != null ? DateTime.parse(scheduledTimeStr) : null;
@@ -281,7 +307,6 @@ class _MyAppointmentsScreenState extends State<MyAppointmentsScreen> with Single
             IconButton(
               icon: const Icon(Icons.arrow_forward_ios, size: 16, color: Colors.grey),
               onPressed: () {
-                // Navigate to telemed detail or call screen
                 Navigator.pushNamed(context, AppRoutes.telemedicine);
               },
             ),
@@ -290,6 +315,7 @@ class _MyAppointmentsScreenState extends State<MyAppointmentsScreen> with Single
     );
   }
 
+  /// Shows a confirmation dialog before cancelling a physical booking.
   void _confirmCancel(Booking booking) {
     showDialog(
       context: context,

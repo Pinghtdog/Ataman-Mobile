@@ -14,6 +14,16 @@ import '../widgets/ataman_konsulta_card.dart';
 import 'video_call_screen.dart';
 import '../../data/models/doctor_model.dart';
 
+/// [TelemedicineScreen] (Tele-Ataman) serves as the central hub for virtual medical consultations.
+///
+/// This screen provides users with access to:
+/// 1. **Live & Upcoming Sessions**: Real-time status of scheduled video consultations.
+/// 2. **Doctor Discovery**: A list of available medical specialists for booking or immediate consult.
+/// 3. **Service Specialized Care**: Direct access to General and Reproductive health consultations.
+/// 4. **Digital Prescriptions**: A history of prescriptions issued during telemedicine sessions.
+///
+/// It utilizes [TelemedicineCubit] for session and doctor management, and [PrescriptionCubit] 
+/// for real-time tracking of medical prescriptions.
 class TelemedicineScreen extends StatefulWidget {
   const TelemedicineScreen({super.key});
 
@@ -25,6 +35,7 @@ class _TelemedicineScreenState extends State<TelemedicineScreen> {
   @override
   void initState() {
     super.initState();
+    // Initialize real-time listeners for prescriptions, doctors, and active sessions.
     final authState = context.read<AuthCubit>().state;
     if (authState is Authenticated) {
       context.read<PrescriptionCubit>().startWatchingPrescriptions(authState.user.id);
@@ -160,6 +171,12 @@ class _TelemedicineScreenState extends State<TelemedicineScreen> {
     );
   }
 
+  /// Builds the section for active or upcoming consultations.
+  /// 
+  /// Logic:
+  /// - Finds the doctor's details associated with the session.
+  /// - Determines if the session is "Live" or "Upcoming" based on its status and time.
+  /// - Enables the "Join" button only if the status is active or within a 10-minute window of start.
   Widget _buildActiveSessionSection(BuildContext context, TelemedicineLoaded state, String userId, String userName) {
     final session = state.activeSessions.first;
     final doctorId = session['doctor_id'];
@@ -220,6 +237,7 @@ class _TelemedicineScreenState extends State<TelemedicineScreen> {
     );
   }
 
+  /// Placeholder widget displayed when there are no active telemedicine sessions.
   Widget _buildNoActiveSessionPlaceholder() {
     return AtamanKonsultaCard(
       title: "Tele-Consult",

@@ -4,11 +4,28 @@ import '../models/referral_model.dart';
 import '../../../triage/data/models/triage_model.dart';
 import '../../../booking/data/models/booking_model.dart';
 
+/// [ReferralRepository] handles the persistence and real-time monitoring of medical referrals.
+///
+/// **Key Responsibilities:**
+/// 1. **Rapid Referral Creation**: Automates the generation of referral records 
+///    from AI triage results or emergency bookings.
+/// 2. **Real-time Synchronization**: Provides a live stream of referrals for a 
+///    specific user to track status changes (Pending -> Accepted).
+/// 3. **Data Retrieval**: Fetches chronological history of a user's medical transfers.
+///
+/// **Note on Real-time Streams:**
+/// Methods like [watchMyReferrals] utilize WebSockets. If a [RealtimeSubscribeStatus.timedOut] 
+/// or "Failed host lookup" error occurs, it usually indicates a network or DNS issue 
+/// on the client device.
 class ReferralRepository extends BaseRepository {
   final SupabaseClient _supabase;
 
   ReferralRepository(this._supabase);
 
+  /// Creates a new "Rapid Referral" record directly from an AI Triage result.
+  /// 
+  /// Automatically sets the priority score and transport type (Ambulance vs Self) 
+  /// based on the [triageResult]'s urgency.
   Future<String> createRapidReferral({
     required String userId,
     required TriageResult triageResult,
@@ -30,6 +47,10 @@ class ReferralRepository extends BaseRepository {
     return response['reference_number'];
   }
 
+  /// Automatically generates a referral when an emergency booking is created.
+  /// 
+  /// Links the booking data (complaint, priority) to the referral system 
+  /// to alert receiving facilities of an incoming patient.
   Future<void> createRapidReferralFromBooking({
     required String userId,
     required Booking booking,
@@ -45,6 +66,9 @@ class ReferralRepository extends BaseRepository {
     });
   }
 
+  /// Fetches a one-time list of all referrals for a specific [userId].
+  /// 
+  /// Includes joined data for both origin and destination facility names.
   Future<List<Referral>> getUserReferrals(String userId) async {
     final response = await _supabase
         .from('referrals')
@@ -55,6 +79,10 @@ class ReferralRepository extends BaseRepository {
     return (response as List).map((json) => Referral.fromJson(json)).toList();
   }
 
+  /// Provides a real-time [Stream] of [Referral] records for a given [userId].
+  /// 
+  /// Ideal for use in UI [StreamBuilder]s to show immediate status updates 
+  /// when a hospital accepts or modifies a referral.
   Stream<List<Referral>> watchMyReferrals(String userId) {
     return _supabase
         .from('referrals')

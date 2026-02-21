@@ -3,16 +3,33 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../../../core/services/ai_service.dart';
 import '../models/triage_model.dart';
 
+/// [TriageService] orchestrates the AI-driven medical triage process and its data persistence.
+///
+/// It acts as the primary coordinator between the [AiService] (which provides the
+/// diagnostic logic) and Supabase (which handles the storage of results and history).
+///
+/// **Responsibilities:**
+/// 1.  **Conversational Logic**: Managing multi-turn sessions where the AI asks follow-up questions.
+/// 2.  **Data Persistence**: Saving finalized assessments into the `triage_results` table.
+/// 3.  **Automated Referrals**: Creating pending referral records for non-routine cases.
+/// 4.  **Medical Timeline Integration**: Updating the user's `medical_history` with triage outcomes.
 class TriageService {
   final SupabaseClient _supabase = Supabase.instance.client;
   final AiService _aiService;
 
   TriageService(this._aiService);
 
+  /// Initializes a triage session. Currently acts as a placeholder for future
+  /// session-specific backend setup or logging.
   Future<void> initializeSession() async {
     print('DEBUG: TriageService initializing session...');
   }
 
+  /// Fetches the next interaction step from the AI based on the current [history].
+  ///
+  /// Takes a list of [history] maps containing previous questions and answers.
+  /// If the AI determines the assessment is complete, it triggers [_saveAndReturnResult].
+  /// Otherwise, it returns a [TriageStep] with the next question and options.
   Future<TriageStep> getNextStep(List<Map<String, String>> history) async {
     try {
       String prompt;
@@ -38,6 +55,10 @@ class TriageService {
     }
   }
 
+  /// Performs a one-shot triage assessment based on provided [symptoms].
+  ///
+  /// Useful for quick analysis or starting a triage process from a single text block.
+  /// Automatically saves the result upon completion.
   Future<TriageResult> performTriage(String symptoms) async {
     try {
       final prompt = "SYMPTOMS: $symptoms";
@@ -52,6 +73,9 @@ class TriageService {
     }
   }
 
+  /// Retrieves the authenticated user's historical triage records.
+  ///
+  /// Returns a list of [TriageResult] objects ordered by creation date (newest first).
   Future<List<TriageResult>> getTriageHistory() async {
     final user = _supabase.auth.currentUser;
     if (user == null) return [];
@@ -59,6 +83,13 @@ class TriageService {
     return (response as List).map((json) => TriageResult.fromJson(json)).toList();
   }
 
+  /// Persists the final AI assessment into the database and triggers secondary workflows.
+  ///
+  /// **Workflow:**
+  /// 1.  Saves the full assessment to `triage_results`.
+  /// 2.  Extracts and formats SOAP (Subjective, Objective, Assessment, Plan) data.
+  /// 3.  If urgency is not 'ROUTINE', creates a record in the `referrals` table.
+  /// 4.  Creates a summary entry in the `medical_history` table.
   Future<TriageStep> _saveAndReturnResult(Map<String, dynamic> resultData, List<Map<String, String>> history) async {
     final user = _supabase.auth.currentUser;
     try {

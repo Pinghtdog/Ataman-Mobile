@@ -2,16 +2,39 @@ import '../../features/auth/data/models/user_model.dart';
 import '../../features/triage/data/models/triage_model.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
-enum PhilHealthBenefitType { inpatient, outpatient, zBenefit, sdgRelated, maternity, primaryCare }
+/// Categories of PhilHealth benefits available in the application.
+enum PhilHealthBenefitType { 
+  /// Standard hospital confinement.
+  inpatient, 
+  /// Consultations and laboratory tests.
+  outpatient, 
+  /// High-value medical cases like cancer or transplants.
+  zBenefit, 
+  /// Specific programs like Animal Bite or TB-DOTS.
+  sdgRelated, 
+  /// Childbirth and prenatal services.
+  maternity, 
+  /// Primary care services under the Konsulta program.
+  primaryCare 
+}
 
+/// Represents a specific PhilHealth benefit package with its matching criteria.
 class PhilHealthBenefit {
+  /// The official name of the benefit package.
   final String name;
+  /// The maximum coverage amount or a description of the coverage (e.g., "₱10,000").
   final String amount;
+  /// The required documents or conditions to claim the benefit.
   final String requirements;
+  /// The category of the benefit.
   final PhilHealthBenefitType type;
+  /// List of symptoms or keywords used for matching triage results.
   final List<String> keywords; 
+  /// IDs of Naga City facilities that are accredited for this specific benefit.
   final List<String> recommendedFacilityIds;
+  /// Optional list of clinical steps for Z-Benefit packages.
   final List<String>? treatmentSteps;
+  /// The threshold for matching confidence before this benefit is suggested.
   final double minimumConfidence; 
 
    PhilHealthBenefit({
@@ -26,9 +49,15 @@ class PhilHealthBenefit {
   });
 }
 
+/// [PhilHealthService] manages the integration between medical triage results 
+/// and government healthcare benefits.
+///
+/// It provides logic for matching symptoms to benefit packages, verifying 
+/// membership eligibility, and synchronizing data with the PhilHealth portal.
 class PhilHealthService {
   final SupabaseClient _supabase = Supabase.instance.client;
 
+  /// Pre-defined list of PhilHealth benefits relevant to Naga City residents.
   final List<PhilHealthBenefit> _benefits = [
     PhilHealthBenefit(
       name: "PhilHealth Konsulta (Yakap Naga)",
@@ -108,6 +137,7 @@ class PhilHealthService {
     ),
   ];
 
+  /// List of major health facilities in Naga City with their PhilHealth provider types.
   final List<Map<String, String>> _nagaFacilities = [
     {
       'id': '2255',
@@ -135,6 +165,13 @@ class PhilHealthService {
     },
   ];
 
+  /// Matches a [TriageResult] to the most likely PhilHealth benefit package.
+  ///
+  /// Analyzes keywords within the triage summary and applies scoring based on 
+  /// urgency and specific case matches. 
+  /// 
+  /// Returns a map containing the matched benefit, accredited facilities, 
+  /// and a confidence percentage, or `null` if no match is found.
   Map<String, dynamic>? matchBenefitToTriage(TriageResult result) {
     final String input = (result.summaryForProvider ?? result.rawSymptoms).toLowerCase();
     
@@ -154,12 +191,14 @@ class PhilHealthService {
       if (matchCount > 0) {
         score = matchCount / benefit.keywords.length;
 
+        // Apply weight based on urgency
         if (result.urgency == TriageUrgency.routine && benefit.type == PhilHealthBenefitType.primaryCare) {
           score += 0.5;
         } else if (result.urgency != TriageUrgency.routine && benefit.type == PhilHealthBenefitType.inpatient) {
           score += 0.3;
         }
 
+        // Exact name match bonus
         if (input.contains(benefit.name.toLowerCase())) {
           score += 1.0; 
         }
@@ -184,6 +223,9 @@ class PhilHealthService {
     return null;
   }
 
+  /// Determines the current membership eligibility status of a [user].
+  ///
+  /// Checks for verification validity, PIN presence, or 4Ps status.
   String checkEligibilityStatus(UserModel user) {
     if (user.isPhilhealthVerificationValid) {
       return "Active Member";
@@ -197,11 +239,16 @@ class PhilHealthService {
     return "Verification Required";
   }
 
+  /// Validates if a [pin] string follows the 12-digit PhilHealth format.
   bool validatePIN(String pin) {
     final cleanPIN = pin.replaceAll(RegExp(r'[^0-9]'), '');
     return cleanPIN.length == 12;
   }
 
+  /// Synchronizes identity data verified via the PhilHealth portal to the local database.
+  ///
+  /// Standardizes date formats and updates core user identity fields (Name, DOB, Gender)
+  /// to match official government records.
   Future<void> syncVerifiedData(String userId, Map<String, dynamic> portalData) async {
     // Standardize DOB format from MM-DD-YYYY to YYYY-MM-DD for Supabase
     String dob = portalData['dob'] ?? '';
@@ -228,6 +275,7 @@ class PhilHealthService {
     }).eq('id', userId);
   }
 
+  /// Manually updates the PhilHealth verification flag and status for a specific [userId].
   Future<void> updateVerificationStatus(String userId, bool status) async {
     await _supabase.from('users').update({
       'is_philhealth_verified': status,

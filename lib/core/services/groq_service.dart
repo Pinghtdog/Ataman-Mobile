@@ -4,13 +4,25 @@ import 'package:http/http.dart' as http;
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'ai_service.dart';
 
+/// [GroqService] provides an implementation of [AiService] using the Groq Cloud API.
+///
+/// It leverages high-performance LLMs (like Llama 3) to power the ATAMAN AI Triage Engine,
+/// specifically tailored for the healthcare infrastructure of Naga City, Philippines.
+///
+/// **Key Capabilities:**
+/// 1. **AI Triage**: Guides users through a symptom-checking flow and recommends the 
+///    appropriate level of care (BHC, Infirmary, or Hospital).
+/// 2. **Medical Summarization**: Generates professional SOAP notes from raw consultation data.
+/// 3. **Follow-up Planning**: Suggests clinical follow-up timeframes based on assessment notes.
 class GroqService implements AiService {
   String? get _apiKey => dotenv.env['GROQ_API_KEY'];
+
   static const String _baseUrl = 'https://api.groq.com/openai/v1/chat/completions';
-  
-  // Updated to the latest stable Llama 3 model on Groq
+
   static const String _model = 'llama-3.3-70b-versatile';
 
+  /// The comprehensive system prompt that defines the AI's behavior, 
+  /// knowledge of Naga City's health facilities, and the expected JSON output schema.
   static const String triageSystemPrompt = '''
     You are the ATAMAN AI Triage Engine for Naga City, Philippines.
     
@@ -80,6 +92,10 @@ class GroqService implements AiService {
     return _generateChatCompletion(system, prompt);
   }
 
+  /// Sends a request to the Groq API and handles the response.
+  /// 
+  /// It enforces strict JSON output and handles common API errors such as 
+  /// missing keys or malformed responses.
   Future<Map<String, dynamic>> _generateChatCompletion(String systemPrompt, String userPrompt) async {
     final apiKey = _apiKey;
     if (apiKey == null || apiKey.isEmpty) {
@@ -127,6 +143,10 @@ class GroqService implements AiService {
     }
   }
 
+  /// Extracts the JSON portion of a string response. 
+  /// 
+  /// This is a safety measure in case the AI includes conversational text 
+  /// outside of the requested JSON block.
   String _extractJson(String text) {
     final RegExp jsonRegex = RegExp(r'(\{[\s\S]*\})');
     final match = jsonRegex.firstMatch(text);

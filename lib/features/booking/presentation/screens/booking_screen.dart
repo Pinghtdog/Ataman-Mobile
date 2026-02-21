@@ -20,9 +20,24 @@ import '../widgets/facility_card.dart';
 import '../widgets/facility_list_view.dart';
 import 'booking_details_screen.dart';
 
-
+/// [BookingScreen] allows users to discover and book appointments at medical facilities.
+///
+/// It supports two viewing modes:
+/// 1. **List View**: A categorized and searchable list of health centers and hospitals.
+/// 2. **Map View**: A real-time interactive map showing facility locations, statuses,
+///    and live ambulance positions.
+///
+/// If a [triageResult] is provided, the screen automatically filters facilities
+/// to show those that match the AI-recommended level of care (e.g., Level 1 Hospital, BHS).
+///
+/// The screen integrates:
+/// - **Real-time Updates**: Monitors facility status and ambulance locations via Supabase.
+/// - **Geolocation**: Calculates distance from the user to each facility.
+/// - **Profile Validation**: Ensures the user has a complete profile before booking.
 class BookingScreen extends StatefulWidget {
+  /// Optional result from a triage session used to filter recommended facilities.
   final TriageResult? triageResult;
+  
   const BookingScreen({super.key, this.triageResult});
 
   @override
@@ -61,6 +76,7 @@ class _BookingScreenState extends State<BookingScreen> with RouteAware {
     super.dispose();
   }
 
+  /// Updates the search query and refreshes map markers when the user types.
   void _onSearchChanged() {
     final query = _searchController.text.toLowerCase();
     final state = context.read<FacilityCubit>().state;
@@ -73,6 +89,7 @@ class _BookingScreenState extends State<BookingScreen> with RouteAware {
     });
   }
 
+  /// Fetches the user's current GPS coordinates for distance calculations.
   Future<void> _initLocation() async {
     final pos = await LocationService.getCurrentLocation();
     if (pos != null && mounted) {
@@ -82,6 +99,7 @@ class _BookingScreenState extends State<BookingScreen> with RouteAware {
     }
   }
 
+  /// Subscribes to real-time ambulance location updates from Supabase.
   void _setupAmbulanceRealtime() {
     _ambulanceSubscription = sb.Supabase.instance.client
         .from('ambulances')
@@ -96,6 +114,8 @@ class _BookingScreenState extends State<BookingScreen> with RouteAware {
         });
   }
 
+  /// Regenerates the set of map markers for both facilities and ambulances.
+  /// Applies filtering based on search query and triage recommendations.
   void _refreshMarkers(FacilityState state) {
     if (state is! FacilityLoaded) return;
     
@@ -152,6 +172,9 @@ class _BookingScreenState extends State<BookingScreen> with RouteAware {
     });
   }
 
+  /// Filters the list of facilities based on:
+  /// 1. **Triage Requirements**: Matches required capability (Hospital vs BHC).
+  /// 2. **Search Query**: Matches name, address, or barangay.
   List<Facility> _filterFacilities(List<Facility> facilities) {
     List<Facility> filtered = facilities;
 
@@ -179,6 +202,7 @@ class _BookingScreenState extends State<BookingScreen> with RouteAware {
     return filtered;
   }
 
+  /// Re-centers the map camera to the user's location or Naga City center.
   void _reCenterCamera() {
     if (_mapController != null) {
       final target = _currentPosition != null 
@@ -193,6 +217,7 @@ class _BookingScreenState extends State<BookingScreen> with RouteAware {
     }
   }
 
+  /// Processes facilities for display by applying filters and calculating relative distances.
   List<Facility> _processFacilities(List<Facility> facilities) {
     final filtered = _filterFacilities(facilities);
     if (_currentPosition == null) return filtered;
@@ -211,6 +236,8 @@ class _BookingScreenState extends State<BookingScreen> with RouteAware {
     }).toList();
   }
 
+  /// Handles facility selection and directs the user to either
+  /// the [BookingDetailsScreen] or [PatientEnrollmentScreen] if data is missing.
   void _onFacilitySelected(Facility facility) {
     final authState = context.read<AuthCubit>().state;
     
@@ -415,6 +442,7 @@ class _BookingScreenState extends State<BookingScreen> with RouteAware {
     );
   }
 
+  /// Displays a shimmer loading effect while facility data is being fetched.
   Widget _buildShimmerList() {
     return ListView.builder(
       padding: const EdgeInsets.all(AppSizes.p20),

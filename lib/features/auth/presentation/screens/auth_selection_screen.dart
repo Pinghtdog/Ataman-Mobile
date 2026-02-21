@@ -5,9 +5,23 @@ import '../../../../core/widgets/widgets.dart';
 import '../../logic/auth_cubit.dart';
 import '../widgets/mynagadialog.dart';
 
+/// [AuthSelectionScreen] is the entry point for user authentication in the Ataman app.
+///
+/// This screen allows users to choose between two primary authentication methods:
+/// 1. **MyNaga Authentication**: The recommended method for Naga City residents,
+///    integrated via the [MyNagaAuthDialog].
+/// 2. **Standard Login**: Allows users to sign in using their email or mobile number.
+///
+/// It listens to the [AuthCubit] state to handle navigation:
+/// - If [Authenticated] or [AuthEmailVerified], the user is redirected to the home screen.
+/// - If [AuthError], a snackbar is shown with the error message.
 class AuthSelectionScreen extends StatelessWidget {
   const AuthSelectionScreen({super.key});
 
+  /// Displays the [MyNagaAuthDialog] for identity-based authentication.
+  ///
+  /// The dialog is non-dismissible to ensure the user completes or explicitly
+  /// cancels the authentication flow.
   void _showMyNagaAuth(BuildContext context) {
     showDialog(
       context: context,
@@ -21,7 +35,7 @@ class AuthSelectionScreen extends StatelessWidget {
     return BlocListener<AuthCubit, AuthState>(
       listener: (context, state) {
         if (state is Authenticated || state is AuthEmailVerified) {
-          // Navigate to Home when successfully authenticated via MyNaga
+          // Navigate to Home when successfully authenticated
           Navigator.pushNamedAndRemoveUntil(
             context,
             AppRoutes.home,
@@ -38,7 +52,7 @@ class AuthSelectionScreen extends StatelessWidget {
         body: SafeArea(
           child: Column(
             children: [
-              // Logo
+              // Logo section
               const Expanded(
                 flex: 4,
                 child: Center(
@@ -49,7 +63,7 @@ class AuthSelectionScreen extends StatelessWidget {
                 ),
               ),
               
-              // Content
+              // Bottom content container with rounded corners
               Container(
                 padding: const EdgeInsets.fromLTRB(AppSizes.p24, AppSizes.p48, AppSizes.p24, AppSizes.p32),
                 decoration: const BoxDecoration(
@@ -83,6 +97,7 @@ class AuthSelectionScreen extends StatelessWidget {
                     ),
                     const SizedBox(height: AppSizes.p48),
                     
+                    // Primary CTA: MyNaga Authentication
                     BlocBuilder<AuthCubit, AuthState>(
                       builder: (context, state) {
                         return AtamanButton(
@@ -104,6 +119,7 @@ class AuthSelectionScreen extends StatelessWidget {
                     
                     const SizedBox(height: AppSizes.p24),
                     
+                    // Separator
                     const Row(
                       children: [
                         Expanded(child: Divider(thickness: 1)),
@@ -117,6 +133,7 @@ class AuthSelectionScreen extends StatelessWidget {
                     
                     const SizedBox(height: AppSizes.p24),
                     
+                    // Secondary CTA: Email/Mobile Login
                     AtamanButton(
                       text: "Use Email/Mobile Number",
                       isOutlined: true,
@@ -127,6 +144,7 @@ class AuthSelectionScreen extends StatelessWidget {
                     
                     const SizedBox(height: AppSizes.p32),
                     
+                    // Footer
                     Text(
                       "By logging in, you agree to our\nTerms & Privacy Policy.",
                       textAlign: TextAlign.center,

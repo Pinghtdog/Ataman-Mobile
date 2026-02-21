@@ -9,14 +9,29 @@ import '../domain/repositories/i_telemedicine_repository.dart';
 
 part 'telemedicine_state.dart';
 
+/// [TelemedicineCubit] manages the state and logic for tele-consultation features.
+///
+/// **Responsibilities:**
+/// 1. **Real-time Monitoring**: Subscribes to live updates for doctor availability and 
+///    active/scheduled sessions using [ITelemedicineRepository].
+/// 2. **Proactive Reminders**: Automatically schedules local notifications 5 minutes 
+///    before a scheduled consultation begins.
+/// 3. **Conflict Management**: Validates booking requests against existing appointments 
+///    to prevent scheduling overlaps.
+/// 4. **Session Initiation**: Orchestrates the process of starting new video calls 
+///    and managing their lifecycle status (e.g., active, completed).
 class TelemedicineCubit extends Cubit<TelemedicineState> {
   final ITelemedicineRepository _repository;
   StreamSubscription? _doctorsSubscription;
   StreamSubscription? _sessionsSubscription;
+  
+  /// In-memory storage for active timers used to trigger pre-session reminders.
   final Map<String, Timer> _sessionReminders = {};
 
   TelemedicineCubit(this._repository) : super(TelemedicineInitial());
 
+  /// Begins a real-time subscription to the doctors list.
+  /// Updates the [TelemedicineLoaded] state whenever a doctor's availability changes.
   void startWatchingDoctors() {
     emit(TelemedicineLoading());
     _doctorsSubscription?.cancel();
@@ -35,6 +50,8 @@ class TelemedicineCubit extends Cubit<TelemedicineState> {
     );
   }
 
+  /// Begins a real-time subscription to the user's active/scheduled consultations.
+  /// Automatically calls [_scheduleNotificationReminder] for any upcoming appointments.
   void startWatchingSessions(String patientId) {
     _sessionsSubscription?.cancel();
     _sessionsSubscription = _repository.watchUserSessions(patientId).listen(
@@ -43,7 +60,6 @@ class TelemedicineCubit extends Cubit<TelemedicineState> {
           final currentState = state as TelemedicineLoaded;
           emit(currentState.copyWith(activeSessions: sessions));
           
-          // Schedule reminders for new scheduled sessions
           for (var session in sessions) {
             if (session['status'] == 'scheduled' && session['scheduled_time'] != null) {
               _scheduleNotificationReminder(session);
@@ -57,6 +73,7 @@ class TelemedicineCubit extends Cubit<TelemedicineState> {
     );
   }
 
+  /// Sets a [Timer] to show a push notification 5 minutes before the session's start time.
   void _scheduleNotificationReminder(Map<String, dynamic> session) {
     final sessionId = session['id'].toString();
     if (_sessionReminders.containsKey(sessionId)) return;
@@ -78,6 +95,7 @@ class TelemedicineCubit extends Cubit<TelemedicineState> {
     }
   }
 
+  /// Fetches specific availability slots for a given [doctorId].
   Future<List<Map<String, dynamic>>> getDoctorAvailability(String doctorId) async {
     try {
       return await _repository.getDoctorAvailability(doctorId);
@@ -87,6 +105,7 @@ class TelemedicineCubit extends Cubit<TelemedicineState> {
     }
   }
 
+  /// Verifies if a user or doctor already has a booking at the specified [date].
   Future<bool> checkBookingConflict(String patientId, String doctorId, DateTime date) async {
     try {
       final startOfDay = DateTime(date.year, date.month, date.day);
@@ -98,6 +117,7 @@ class TelemedicineCubit extends Cubit<TelemedicineState> {
     }
   }
 
+  /// Loads symptoms categorized by a specific medical area (e.g., "General", "Reproductive").
   Future<void> loadSymptoms(String category) async {
     try {
       final symptomsData = await _repository.getSymptomsByCategory(category);
@@ -112,6 +132,7 @@ class TelemedicineCubit extends Cubit<TelemedicineState> {
     }
   }
 
+  /// Creates a new consultation record and returns the call ID for video room initialization.
   Future<String> initiateCall(String patientId, String doctorId, {Map<String, dynamic>? metadata, DateTime? scheduledTime}) async {
     try {
       return await _repository.initiateCall(patientId, doctorId, metadata: metadata, scheduledTime: scheduledTime);
@@ -120,6 +141,7 @@ class TelemedicineCubit extends Cubit<TelemedicineState> {
     }
   }
 
+  /// Updates the state of an existing call (e.g., to 'completed' or 'cancelled').
   Future<void> updateCallStatus(String callId, String status) async {
     try {
       await _repository.updateCallStatus(callId, status);

@@ -63,11 +63,11 @@ import 'features/telemedicine/presentation/screens/video_call_screen.dart';
 import 'features/triage/data/models/triage_model.dart';
 import 'features/triage/domain/repositories/i_triage_repository.dart';
 import 'features/triage/logic/triage_cubit.dart';
+import 'features/triage/presentation/screens/triage_history_screen.dart';
 import 'features/triage/presentation/screens/triage_input_screen.dart';
 import 'features/triage/presentation/screens/triage_result_screen.dart';
 import 'features/vaccination/presentation/screens/vaccination_screen.dart';
 import 'injector.dart';
-import 'package:flutter_gemini/flutter_gemini.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -233,6 +233,7 @@ class AtamanApp extends StatelessWidget {
                   TriageCubit(triageRepository: getIt<ITriageRepository>()),
               child: const TriageInputScreen(),
             ),
+        AppRoutes.triageHistory: (context) => const TriageHistoryScreen(),
         AppRoutes.emergency: (context) => BlocProvider(
               create: (context) => EmergencyCubit(
                   emergencyRepository: getIt<EmergencyRepository>()),

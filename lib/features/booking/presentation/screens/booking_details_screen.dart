@@ -22,8 +22,27 @@ import '../widgets/booking_service_selector.dart';
 import '../widgets/booking_time_selector.dart';
 import '../widgets/booking_success_dialog.dart';
 
+/// [BookingDetailsScreen] provides a comprehensive interface for finalizing a medical appointment.
+///
+/// This screen allows the user to:
+/// 1. **Select the Patient**: Choose between "Self" or a registered family member.
+/// 2. **Specify Visit Details**: Define the nature of the visit (Consultation vs Follow-up)
+///    and provide a chief complaint.
+/// 3. **Select Services**: Optionally pick a specific service offered by the facility.
+/// 4. **Schedule Time**: Choose a date and an available time slot.
+///
+/// **Integration with Triage**:
+/// If accessed after a triage session, the screen pre-fills the chief complaint
+/// and displays an AI summary to help the user correlate their symptoms with the booking.
+///
+/// **Validation**:
+/// It verifies facility status (Diversion) and ensures all required backend data
+/// (family members, services, occupied slots) is synchronized before allowing a confirmation.
 class BookingDetailsScreen extends StatefulWidget {
+  /// The medical facility where the appointment is being booked.
   final Facility facility;
+
+  /// Optional triage data used to pre-fill symptoms and provide context to the provider.
   final TriageResult? triageResult;
 
   const BookingDetailsScreen({
@@ -60,6 +79,10 @@ class _BookingDetailsScreenState extends State<BookingDetailsScreen> {
     }
   }
 
+  /// Synchronizes all necessary data from various repositories:
+  /// - Family members for "Booking For" selection.
+  /// - Available services for the specific facility.
+  /// - Occupied time slots for the currently selected date.
   Future<void> _loadInitialData() async {
     final authState = context.read<AuthCubit>().state;
     if (authState is Authenticated) {
@@ -73,9 +96,6 @@ class _BookingDetailsScreenState extends State<BookingDetailsScreen> {
             _familyMembers = family;
             _services = facilityServices;
             _occupiedSlots = occupied;
-            
-            // We no longer auto-select the first service to allow it to be optional
-            // or "General Consultation" if not specified.
             _isLoadingData = false;
           });
         }
@@ -90,6 +110,7 @@ class _BookingDetailsScreenState extends State<BookingDetailsScreen> {
     }
   }
 
+  /// Refetches occupied slots whenever the user changes the appointment date.
   Future<void> _updateOccupiedSlots(DateTime date) async {
     try {
       final occupied = await getIt<BookingRepository>().getOccupiedSlots(widget.facility.id, date);
@@ -110,6 +131,9 @@ class _BookingDetailsScreenState extends State<BookingDetailsScreen> {
     super.dispose();
   }
 
+  /// Finalizes the booking process.
+  /// Performs a final check for facility diversion and constructs the [Booking] object
+  /// to be processed by the [BookingCubit].
   void _confirmBooking() {
     final authState = context.read<AuthCubit>().state;
     if (authState is! Authenticated) return;
@@ -131,9 +155,6 @@ class _BookingDetailsScreenState extends State<BookingDetailsScreen> {
       );
       return;
     }
-
-    // Service selection is now optional. If null, it defaults to a general consultation 
-    // handled by the facility based on the triage result/chief complaint.
 
     final timeParts = _selectedTime.split(' ');
     final hourMinute = timeParts[0].split(':');
@@ -161,7 +182,7 @@ class _BookingDetailsScreenState extends State<BookingDetailsScreen> {
       appointmentTime: appointmentTime,
       status: BookingStatus.pending,
       createdAt: DateTime.now(),
-      serviceId: _selectedService?.id, // Nullable serviceId
+      serviceId: _selectedService?.id,
       familyMemberId: familyMemberId,
       triageResult: widget.triageResult?.summaryForProvider,
       triagePriority: widget.triageResult?.urgency.name,
@@ -174,8 +195,9 @@ class _BookingDetailsScreenState extends State<BookingDetailsScreen> {
     context.read<BookingCubit>().createBooking(booking);
   }
 
+  /// Displays an error dialog if the booking fails, with a quick action
+  /// to view existing appointments if the failure was due to a conflict.
   void _showErrorDialog(String message) {
-    // Remove technical prefix if exists
     final displayMessage = message.replaceAll("Exception: ", "");
     
     showDialog(
@@ -200,8 +222,8 @@ class _BookingDetailsScreenState extends State<BookingDetailsScreen> {
           ),
           ElevatedButton(
             onPressed: () {
-              Navigator.pop(context); // Close dialog
-              Navigator.pop(context); // Go back to facility list or close review
+              Navigator.pop(context);
+              Navigator.pop(context);
               Navigator.pushNamed(context, AppRoutes.myAppointments);
             },
             style: ElevatedButton.styleFrom(
@@ -370,6 +392,7 @@ class _BookingDetailsScreenState extends State<BookingDetailsScreen> {
     );
   }
 
+  /// Builds a selection row for "Nature of Visit" (DOH Form 2 requirement).
   Widget _buildNatureOfVisitSelector() {
     final List<String> options = ["New Consultation/Case", "Follow-up Visit"];
     return Wrap(
@@ -390,6 +413,7 @@ class _BookingDetailsScreenState extends State<BookingDetailsScreen> {
     );
   }
 
+  /// Displays a brief summary card of the AI Triage results if available.
   Widget _buildTriageSummaryCard() {
     final result = widget.triageResult!;
     return Container(

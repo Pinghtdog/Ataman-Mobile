@@ -16,8 +16,28 @@ import '../../../../core/utils/validator_utils.dart';
 import '../../../../injector.dart';
 import '../widgets/section_header.dart';
 
+/// [EditProfileScreen] provides a secure interface for users to update their personal, 
+/// contact, and medical information.
+///
+/// **Key Features:**
+/// 1. **Identity Protection**: If the user's profile is PhilHealth verified, core 
+///    identity fields (First Name, Last Name, Middle Name, Gender) are locked and 
+///    become read-only to maintain data integrity.
+/// 2. **PhilHealth Verification**: Allows unverified users to initiate identity 
+///    validation via [PhilHealthVerificationScreen].
+/// 3. **Smart Address Selection**: Fetches and provides a searchable list of 
+///    official Naga City barangays via [AddressService].
+/// 4. **Medical Profile**: Captures critical information such as blood type, 
+///    allergies, and pre-existing conditions for better triage and care.
+/// 5. **Emergency Contact**: Ensures emergency response coordination by 
+///    collecting validated contact person details.
+///
+/// This screen synchronizes changes with both the [ProfileCubit] (for database 
+/// persistence) and [AuthCubit] (for local session updates).
 class EditProfileScreen extends StatefulWidget {
+  /// The current user model containing existing profile data.
   final UserModel user;
+  
   const EditProfileScreen({super.key, required this.user});
 
   @override
@@ -48,6 +68,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
   @override
   void initState() {
     super.initState();
+    // Initialize verification status based on the user's PhilHealth record validity.
     _isVerified = widget.user.isPhilhealthVerificationValid;
     _isPhilhealthValid = getIt<PhilHealthService>().validatePIN(widget.user.philhealthId ?? "");
     
@@ -68,6 +89,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     _loadBarangays();
   }
 
+  /// Normalizes gender strings to match the predefined UI options.
   String? _normalizeGender(String? gender) {
     if (gender == null) return null;
     final items = ['Male', 'Female', 'Other', 'Prefer not to say'];
@@ -81,6 +103,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     }
   }
 
+  /// Performs real-time validation of the PhilHealth PIN format.
   void _validatePhilhealth() {
     final isValid = getIt<PhilHealthService>().validatePIN(_philhealthController.text);
     if (isValid != _isPhilhealthValid) {
@@ -88,6 +111,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     }
   }
 
+  /// Fetches the list of official Naga City barangays from the [AddressService].
   Future<void> _loadBarangays() async {
     try {
       final list = await _addressService.getNagaBarangays();
@@ -117,6 +141,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     super.dispose();
   }
 
+  /// Validates the form and dispatches an update request via [ProfileCubit].
   void _saveProfile() {
     if (!_formKey.currentState!.validate()) return;
     
@@ -190,41 +215,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                         
                         const SectionHeader(title: "Identity & Verification"),
                         if (_isVerified)
-                          Padding(
-                            padding: const EdgeInsets.only(top: 8, bottom: 16),
-                            child: Container(
-                              padding: const EdgeInsets.all(12),
-                              decoration: BoxDecoration(
-                                color: Colors.blue.withOpacity(0.1),
-                                borderRadius: BorderRadius.circular(12),
-                                border: Border.all(color: Colors.blue.withOpacity(0.3)),
-                              ),
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Row(
-                                    children: [
-                                      const Icon(Icons.verified_user_rounded, color: Colors.blue, size: 20),
-                                      const SizedBox(width: 12),
-                                      const Expanded(
-                                        child: Text(
-                                          "PHILHEALTH VERIFIED: Core identity fields are secured.",
-                                          style: TextStyle(color: Colors.blue, fontSize: 11, fontWeight: FontWeight.bold),
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                  if (widget.user.philhealthVerifiedAt != null) ...[
-                                    const SizedBox(height: 4),
-                                    Text(
-                                      "Expires on: ${DateFormat('MMM dd, yyyy').format(widget.user.philhealthVerifiedAt!.add(const Duration(days: 3)))}",
-                                      style: TextStyle(color: Colors.blue.withOpacity(0.7), fontSize: 10),
-                                    ),
-                                  ],
-                                ],
-                              ),
-                            ),
-                          ),
+                          _buildVerifiedBanner(),
                         
                         const AtamanLabel(text: "PHILHEALTH ID"),
                         Row(
@@ -245,38 +236,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                             ),
                             if (!_isVerified && _isPhilhealthValid) ...[
                               const SizedBox(width: 12),
-                              Padding(
-                                padding: const EdgeInsets.only(top: 4),
-                                child: AtamanButton(
-                                  text: "VERIFY",
-                                  width: 100,
-                                  onPressed: () async {
-                                    final result = await Navigator.push(
-                                      context,
-                                      MaterialPageRoute(
-                                        builder: (context) => PhilHealthVerificationScreen(user: widget.user),
-                                      ),
-                                    );
-                                    if (result == true) {
-                                      await Future.delayed(const Duration(milliseconds: 500));
-                                      await context.read<AuthCubit>().getProfile();
-                                      final authState = context.read<AuthCubit>().state;
-                                      if (authState is Authenticated && authState.profile != null) {
-                                        setState(() {
-                                          _isVerified = true;
-                                          _firstNameController.text = authState.profile!.firstName;
-                                          _lastNameController.text = authState.profile!.lastName;
-                                          _middleNameController.text = authState.profile!.middleName ?? "";
-                                          _philhealthController.text = authState.profile!.philhealthId ?? "";
-                                          _selectedGender = _normalizeGender(authState.profile!.gender);
-                                        });
-                                      } else {
-                                        setState(() => _isVerified = true);
-                                      }
-                                    }
-                                  },
-                                ),
-                              ),
+                              _buildVerifyButton(),
                             ],
                           ],
                         ),
@@ -430,13 +390,88 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     );
   }
 
+  /// Builds a visual indicator showing that the user's identity is PhilHealth verified.
+  Widget _buildVerifiedBanner() {
+    return Padding(
+      padding: const EdgeInsets.only(top: 8, bottom: 16),
+      child: Container(
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: Colors.blue.withOpacity(0.1),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: Colors.blue.withOpacity(0.3)),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Row(
+              children: [
+                Icon(Icons.verified_user_rounded, color: Colors.blue, size: 20),
+                SizedBox(width: 12),
+                Expanded(
+                  child: Text(
+                    "PHILHEALTH VERIFIED: Core identity fields are secured.",
+                    style: TextStyle(color: Colors.blue, fontSize: 11, fontWeight: FontWeight.bold),
+                  ),
+                ),
+              ],
+            ),
+            if (widget.user.philhealthVerifiedAt != null) ...[
+              const SizedBox(height: 4),
+              Text(
+                "Expires on: ${DateFormat('MMM dd, yyyy').format(widget.user.philhealthVerifiedAt!.add(const Duration(days: 3)))}",
+                style: TextStyle(color: Colors.blue.withOpacity(0.7), fontSize: 10),
+              ),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+
+  /// Builds the "VERIFY" button which launches the PhilHealth verification flow.
+  Widget _buildVerifyButton() {
+    return Padding(
+      padding: const EdgeInsets.only(top: 4),
+      child: AtamanButton(
+        text: "VERIFY",
+        width: 100,
+        onPressed: () async {
+          final result = await Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => PhilHealthVerificationScreen(user: widget.user),
+            ),
+          );
+          if (result == true) {
+            await Future.delayed(const Duration(milliseconds: 500));
+            await context.read<AuthCubit>().getProfile();
+            final authState = context.read<AuthCubit>().state;
+            if (authState is Authenticated && authState.profile != null) {
+              setState(() {
+                _isVerified = true;
+                _firstNameController.text = authState.profile!.firstName;
+                _lastNameController.text = authState.profile!.lastName;
+                _middleNameController.text = authState.profile!.middleName ?? "";
+                _philhealthController.text = authState.profile!.philhealthId ?? "";
+                _selectedGender = _normalizeGender(authState.profile!.gender);
+              });
+            } else {
+              setState(() => _isVerified = true);
+            }
+          }
+        },
+      ),
+    );
+  }
+
+  /// Generic helper widget for building styled dropdown menus.
   Widget _buildDropdown({
     required String label,
     required String? value,
     required List<String> items,
     required void Function(String?)? onChanged,
   }) {
-    // Ensure the value exists in items to avoid the "There should be exactly one item..." crash
     final String? effectiveValue = items.contains(value) ? value : null;
 
     return Column(

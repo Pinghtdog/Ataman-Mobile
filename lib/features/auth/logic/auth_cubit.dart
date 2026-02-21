@@ -10,16 +10,23 @@ import '../data/models/user_model.dart';
 import '../domain/repositories/i_auth_repository.dart';
 import '../domain/repositories/i_user_repository.dart';
 
+/// Base class for all authentication states.
 abstract class AuthState extends Equatable {
   @override
   List<Object?> get props => [];
 }
 
+/// The initial state before any authentication check has occurred.
 class AuthInitial extends AuthState {}
+
+/// State emitted while an authentication operation (login, register, etc.) is in progress.
 class AuthLoading extends AuthState {}
 
+/// State emitted when a user is successfully authenticated and their profile is loaded.
 class Authenticated extends AuthState {
+  /// The underlying Supabase user object.
   final sb.User user;
+  /// The local application user model containing profile details.
   final UserModel? profile;
 
   Authenticated(this.user, {this.profile});
@@ -28,16 +35,21 @@ class Authenticated extends AuthState {
   List<Object?> get props => [user, profile];
 }
 
+/// State emitted when an email verification event is detected but the profile is not yet fully synchronized.
 class AuthEmailVerified extends AuthState {
+  /// The underlying Supabase user object.
   final sb.User user;
   AuthEmailVerified(this.user);
   @override
   List<Object?> get props => [user];
 }
 
+/// State emitted when the user is not logged in.
 class Unauthenticated extends AuthState {}
 
+/// State emitted when an error occurs during an authentication process.
 class AuthError extends AuthState {
+  /// The human-readable error message.
   final String message;
   AuthError(this.message);
 
@@ -45,6 +57,11 @@ class AuthError extends AuthState {
   List<Object?> get props => [message];
 }
 
+/// [AuthCubit] manages the authentication lifecycle and user session state.
+///
+/// It coordinates with [IAuthRepository] for session management and [IUserRepository] 
+/// for profile data persistence. It also handles integration with [MyNagaService] 
+/// for identity-based authentication.
 class AuthCubit extends Cubit<AuthState> {
   final IAuthRepository _authRepository;
   final IUserRepository _userRepository;
@@ -62,17 +79,20 @@ class AuthCubit extends Cubit<AuthState> {
     _init();
   }
 
+  /// Initializes the cubit by checking for an existing session and listening to auth state changes.
   Future<void> _init() async {
     final sb.User? initialUser = _authRepository.currentUser;
     if (initialUser != null) {
       await _handleUserAuthenticated(initialUser);
     } else {
+      // Artificial delay for splash screen consistency.
       await Future.delayed(const Duration(milliseconds: 1500));
       if (state is AuthInitial) {
         emit(Unauthenticated());
       }
     }
 
+    // Listen to Supabase Auth state changes (signed in, signed out, etc.)
     _authStateSubscription = _authRepository.authStateChanges.listen(
       (data) async {
         try {
@@ -97,6 +117,10 @@ class AuthCubit extends Cubit<AuthState> {
     );
   }
 
+  /// Orchestrates the post-authentication workflow.
+  /// 
+  /// Fetches the user's [UserModel] profile and registers the FCM token for 
+  /// push notifications before emitting the [Authenticated] state.
   Future<void> _handleUserAuthenticated(sb.User user) async {
     try {
       final profile = await _userRepository.getUserProfile(user.id);
@@ -105,14 +129,16 @@ class AuthCubit extends Cubit<AuthState> {
         if (fcmToken != null) {
           await _userRepository.updateFCMToken(user.id, fcmToken);
         }
-      } catch (e) {}
+      } catch (e) {
+        // Log FCM update failure but don't block authentication
+      }
       emit(Authenticated(user, profile: profile));
     } catch (e) {
       emit(Authenticated(user));
     }
   }
 
-  /// Refreshes the user profile from the database
+  /// Manually triggers a profile refresh from the database.
   Future<void> getProfile() async {
     final sb.User? user = _authRepository.currentUser;
     if (user != null) {
@@ -120,6 +146,9 @@ class AuthCubit extends Cubit<AuthState> {
     }
   }
 
+  /// Transforms raw exceptions into user-friendly error messages.
+  /// 
+  /// Specifically handles [SocketException] and network-related errors.
   String _handleAuthError(dynamic e) {
     if (e is sb.AuthException) return e.message;
     if (e is SocketException || e.toString().contains('SocketException') || e.toString().contains('host lookup')) {
@@ -131,6 +160,7 @@ class AuthCubit extends Cubit<AuthState> {
     return e.toString();
   }
 
+  /// Authenticates a user using their email or phone number.
   Future<void> login(String identity, String password, {bool isPhoneLogin = false}) async {
     emit(AuthLoading());
     try {
@@ -146,6 +176,9 @@ class AuthCubit extends Cubit<AuthState> {
     }
   }
 
+  /// Registers a new user and creates their initial profile record.
+  /// 
+  /// Automatically formats birth dates and handles initial profile completion flags.
   Future<void> register({
     required String email,
     required String password,
@@ -192,6 +225,10 @@ class AuthCubit extends Cubit<AuthState> {
     }
   }
 
+  /// Performs authentication via the MyNaga citizen platform.
+  /// 
+  /// Fetches citizen data using a secure code and signs in to the Ataman 
+  /// platform using synchronized credentials.
   Future<void> connectMyNaga() async {
     emit(AuthLoading());
     try {
@@ -212,12 +249,14 @@ class AuthCubit extends Cubit<AuthState> {
     }
   }
 
+  /// Locally updates the cached profile object without re-fetching from the database.
   void refreshProfile(UserModel profile) {
     if (state is Authenticated) {
       emit(Authenticated((state as Authenticated).user, profile: profile));
     }
   }
 
+  /// Persists profile updates to the database and refreshes the current session state.
   Future<void> updateProfile(UserModel user) async {
     try {
       await _userRepository.updateProfile(user);
@@ -228,6 +267,7 @@ class AuthCubit extends Cubit<AuthState> {
     }
   }
 
+  /// Terminates the current user session and clears all authentication state.
   Future<void> logout() async {
     try {
       await _authRepository.signOut();

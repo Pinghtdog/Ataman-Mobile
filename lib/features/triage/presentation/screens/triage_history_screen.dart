@@ -7,6 +7,20 @@ import '../../../../injector.dart';
 import '../../data/models/triage_model.dart';
 import '../../domain/repositories/i_triage_repository.dart';
 
+/// [TriageHistoryScreen] displays a historical record of the user's past medical assessments.
+///
+/// This screen provides a centralized view for users to revisit their triage results,
+/// helping them track recurring symptoms or review clinical notes (SOAP notes)
+/// generated during previous sessions.
+///
+/// **Key Features:**
+/// 1. **Chronological History**: Fetches and lists past triage results using the [ITriageRepository].
+/// 2. **Urgency Categorization**: Uses visual badges to highlight the severity of 
+///    past assessments (e.g., Emergency, Urgent, Routine).
+/// 3. **Deep Dive**: Allows users to tap on a history card to view the full 
+///    [TriageResultScreen] for a specific past session.
+/// 4. **SOAP Note Accessibility**: Provides a clear call-to-action to review 
+///    Subjective, Objective, Assessment, and Plan notes for each entry.
 class TriageHistoryScreen extends StatefulWidget {
   const TriageHistoryScreen({super.key});
 
@@ -14,12 +28,16 @@ class TriageHistoryScreen extends StatefulWidget {
   State<TriageHistoryScreen> createState() => _TriageHistoryScreenState();
 }
 
+/// The state for [TriageHistoryScreen]. 
+/// Manages fetching and displaying the list of past triage assessments.
 class _TriageHistoryScreenState extends State<TriageHistoryScreen> {
+  /// A Future that completes with the list of the user's triage history.
   late Future<List<TriageResult>> _historyFuture;
 
   @override
   void initState() {
     super.initState();
+    // Fetch the user's triage history from the repository on initialization.
     _historyFuture = getIt<ITriageRepository>().getHistory();
   }
 
@@ -54,11 +72,17 @@ class _TriageHistoryScreenState extends State<TriageHistoryScreen> {
               future: _historyFuture,
               builder: (context, snapshot) {
                 if (snapshot.connectionState == ConnectionState.waiting) {
-                  return const Center(child: CircularProgressIndicator());
+                  return const Center(child: CircularProgressIndicator(color: AppColors.primary));
                 }
                 
                 if (snapshot.hasError) {
-                  return AtamanErrorState(message: snapshot.error.toString());
+                  return AtamanErrorState(
+                    title: "Load Error",
+                    message: "Unable to retrieve your medical history. Please try again later.",
+                    onAction: () => setState(() {
+                      _historyFuture = getIt<ITriageRepository>().getHistory();
+                    }),
+                  );
                 }
 
                 final history = snapshot.data ?? [];
@@ -85,6 +109,8 @@ class _TriageHistoryScreenState extends State<TriageHistoryScreen> {
     );
   }
 
+  /// Builds a card representing a single triage assessment.
+  /// Displays the date, urgency level, summary, and specialty.
   Widget _buildHistoryCard(TriageResult item) {
     return Container(
       margin: const EdgeInsets.only(bottom: 16),
@@ -148,8 +174,8 @@ class _TriageHistoryScreenState extends State<TriageHistoryScreen> {
     );
   }
 
+  /// Navigates to the [TriageResultScreen] to display the full details of a past assessment.
   void _showResultDetails(TriageResult item) {
-    // or show a summary bottom sheet. For now, we'll use the Result Screen.
     Navigator.push(
       context,
       MaterialPageRoute(builder: (_) => TriageResultScreen(result: item)),

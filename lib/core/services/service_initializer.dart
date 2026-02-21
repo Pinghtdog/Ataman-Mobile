@@ -9,7 +9,23 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../injector.dart';
 import 'notification_service.dart';
 
+/// [ServiceInitializer] is responsible for orchestrating the startup sequence of the application.
+///
+/// It ensures that all critical external services (Supabase, Firebase, Gemini) and local 
+/// infrastructures (Hive, Dependency Injection) are ready before the UI is rendered.
 class ServiceInitializer {
+  /// Initializes all core application services.
+  ///
+  /// This method performs the following sequence:
+  /// 1.  **Environment Setup**: Loads configuration from the `.env` file.
+  /// 2.  **Offline Storage**: Initializes Hive and opens necessary cache boxes.
+  /// 3.  **Backend Integration**: Connects to Supabase with PKCE auth flow.
+  /// 4.  **AI Services**: Configures the Gemini API if a key is provided.
+  /// 5.  **Notifications**: Safely initializes Firebase and the local notification service.
+  /// 6.  **Dependency Injection**: Registers all repositories and cubits via [initInjector].
+  /// 7.  **Device Configuration**: Enforces portrait mode for consistent UI rendering.
+  ///
+  /// Returns `true` if initialization was successful, or `false` if a critical error occurred.
   static Future<bool> initialize() async {
     try {
       await dotenv.load(fileName: ".env");
@@ -67,6 +83,8 @@ class ServiceInitializer {
   }
 }
 
+/// A custom [HttpOverrides] implementation used during development to bypass
+/// SSL certificate validation, facilitating testing with local or self-signed servers.
 class _DevHttpOverrides extends HttpOverrides {
   @override
   HttpClient createHttpClient(SecurityContext? context) {

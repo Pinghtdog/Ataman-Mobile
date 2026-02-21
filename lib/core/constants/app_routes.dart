@@ -8,6 +8,7 @@ class AppRoutes {
   static const String home = '/home';
   static const String triage = '/triage';
   static const String triageResult = '/triage-result';
+  static const String triageHistory = '/triage-history';
   static const String profile = '/profile';
   static const String chat = '/chat';
   static const String history = '/history';

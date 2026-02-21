@@ -16,6 +16,17 @@ import '../widgets/philhealth_status_modal.dart';
 import 'edit_profile_screen.dart';
 import 'medical_id_screen.dart';
 
+/// [ProfileScreen] is the main user dashboard for account and health management.
+///
+/// This screen provides a high-level overview of the user's identity and quick 
+/// access to core features:
+/// 1. **Identity & Verification**: Displays name, location, and PhilHealth status.
+/// 2. **Activity Tracking**: Links to appointments, medical history, and referrals.
+/// 3. **Medical Documentation**: Provides access to digital Medical ID and triage assessments.
+/// 4. **Account Management**: Handles family members, profile editing, and app settings.
+///
+/// It coordinates data from [ProfileCubit] for real-time profile updates and 
+/// [AuthCubit] for session lifecycle management.
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
 
@@ -24,6 +35,7 @@ class ProfileScreen extends StatefulWidget {
 }
 
 class _ProfileScreenState extends State<ProfileScreen> {
+  /// Cached user data used to prevent UI flickering during profile reloads.
   UserModel? _cachedUser;
 
   @override
@@ -32,6 +44,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
     _loadProfile();
   }
 
+  /// Triggers a profile reload from the repository via [ProfileCubit].
   void _loadProfile() {
     final authState = context.read<AuthCubit>().state;
     if (authState is Authenticated) {
@@ -39,6 +52,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
     }
   }
 
+  /// Displays the PhilHealth status modal, allowing users to view or initiate 
+  /// verification updates.
   void _showPhilHealthStatus(UserModel user) {
     showModalBottomSheet(
       context: context,
@@ -61,6 +76,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
 
+  /// Displays a confirmation dialog before logging the user out.
   void _handleLogout() {
     showDialog(
       context: context,
@@ -77,6 +93,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
     return BlocListener<AuthCubit, AuthState>(
       listener: (context, state) {
         if (state is Unauthenticated) {
+          // Redirect to auth selection when session is terminated.
           Navigator.pushNamedAndRemoveUntil(
             context,
             AppRoutes.authSelection,
@@ -104,7 +121,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     ? "${user.barangay}, Naga City" 
                     : "Naga City Resident";
                 
-                // ULTIMATE DEFENSIVE CHECK: Prevents crash from stale cache or hot reload issues.
                 isPhilhealthVerified = user.isPhilhealthVerified;
               } else if (authState is Authenticated) {
                 fullName = authState.profile?.fullName ?? 
@@ -157,29 +173,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                               ),
                                             ),
                                             if (isPhilhealthVerified)
-                                              Container(
-                                                margin: const EdgeInsets.only(left: 8),
-                                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                                                decoration: BoxDecoration(
-                                                  color: Colors.white,
-                                                  borderRadius: BorderRadius.circular(12),
-                                                ),
-                                                child: Row(
-                                                  mainAxisSize: MainAxisSize.min,
-                                                  children: [
-                                                    const Icon(Icons.verified, color: Colors.blue, size: 14),
-                                                    const SizedBox(width: 4),
-                                                    Text(
-                                                      "PhilHealth Verified",
-                                                      style: AppTextStyles.bodySmall.copyWith(
-                                                        color: Colors.blue,
-                                                        fontWeight: FontWeight.bold,
-                                                        fontSize: 10,
-                                                      ),
-                                                    ),
-                                                  ],
-                                                ),
-                                              ),
+                                              _buildVerifiedBadge(),
                                           ],
                                         ),
                                         const SizedBox(height: 4),
@@ -205,27 +199,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                               ),
                               const SizedBox(height: 10),
                               if (user != null)
-                                Align(
-                                  alignment: Alignment.centerRight,
-                                  child: TextButton.icon(
-                                    onPressed: () {
-                                      Navigator.push(
-                                        context,
-                                        MaterialPageRoute(
-                                          builder: (context) => EditProfileScreen(user: user),
-                                        ),
-                                      ).then((value) {
-                                        if (value == true) _loadProfile();
-                                      });
-                                    },
-                                    icon: const Icon(Icons.edit, color: Colors.white, size: 12),
-                                    label: const Text("Edit Profile", style: TextStyle(color: Colors.white)),
-                                    style: TextButton.styleFrom(
-                                      backgroundColor: Colors.white.withOpacity(0.2),
-                                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-                                    ),
-                                  ),
-                                ),
+                                _buildEditProfileButton(context, user),
                             ],
                           ),
                         ),
@@ -281,104 +255,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
                               const SizedBox(height: AppSizes.p16),
 
-                              Container(
-                                decoration: BoxDecoration(
-                                  color: AppColors.surface,
-                                  borderRadius: BorderRadius.circular(AppSizes.radiusLarge),
-                                  boxShadow: [
-                                    BoxShadow(
-                                      color: Colors.black.withOpacity(0.04),
-                                      blurRadius: 10,
-                                      offset: const Offset(0, 4),
-                                    ),
-                                  ],
-                                ),
-                                child: Column(
-                                  children: [
-                                    ProfileListTile(
-                                      title: "Active Referrals",
-                                      icon: Icons.assignment_turned_in_rounded,
-                                      onTap: () {
-                                        Navigator.pushNamed(context, AppRoutes.referrals);
-                                      },
-                                    ),
-                                    const Divider(height: 1, indent: 60, endIndent: 20),
-                                    ProfileListTile(
-                                      title: "Digital Medical ID",
-                                      icon: Icons.qr_code_scanner_rounded,
-                                      onTap: () {
-                                        if (user != null) {
-                                          Navigator.push(
-                                            context,
-                                            MaterialPageRoute(
-                                              builder: (context) => MedicalIdScreen(user: user),
-                                            ),
-                                          );
-                                        }
-                                      },
-                                    ),
-                                    const Divider(height: 1, indent: 60, endIndent: 20),
-                                    ProfileListTile(
-                                      title: "PhilHealth Verification",
-                                      icon: Icons.badge_outlined,
-                                      onTap: () {
-                                        if (user != null) _showPhilHealthStatus(user);
-                                      },
-                                    ),
-                                  ],
-                                ),
-                              ),
+                              _buildRecordsSection(context, user),
                               
                               const SizedBox(height: AppSizes.p16),
                               
-                              Container(
-                                decoration: BoxDecoration(
-                                  color: AppColors.surface,
-                                  borderRadius: BorderRadius.circular(AppSizes.radiusLarge),
-                                  boxShadow: [
-                                    BoxShadow(
-                                      color: Colors.black.withOpacity(0.04),
-                                      blurRadius: 10,
-                                      offset: const Offset(0, 4),
-                                    ),
-                                  ],
-                                ),
-                                child: Column(
-                                  children: [
-                                    ProfileListTile(
-                                      title: "Settings",
-                                      icon: Icons.settings_outlined,
-                                      onTap: () {
-                                        Navigator.pushNamed(context, AppRoutes.settings);
-                                      },
-                                    ),
-                                    const Divider(height: 1, indent: 60, endIndent: 20),
-                                    ProfileListTile(
-                                      title: "Privacy Policy",
-                                      icon: Icons.privacy_tip_outlined,
-                                      onTap: () {
-                                        // TODO: Navigate to Privacy Policy screen/webview
-                                      },
-                                    ),
-                                    const Divider(height: 1, indent: 60, endIndent: 20),
-                                    ProfileListTile(
-                                      title: "Terms & Conditions",
-                                      icon: Icons.description_outlined,
-                                      onTap: () {
-                                        // TODO: Navigate to Terms screen/webview
-                                      },
-                                    ),
-                                    const Divider(height: 1, indent: 60, endIndent: 20),
-                                    ProfileListTile(
-                                      title: "Help & Support",
-                                      icon: Icons.help_outline_rounded,
-                                      onTap: () {
-                                        // TODO: Navigate to Help screen/webview
-                                      },
-                                    ),
-                                  ],
-                                ),
-                              ),
+                              _buildSettingsSection(context),
 
                               const SizedBox(height: AppSizes.p40),
                               AtamanButton(
@@ -399,6 +280,155 @@ class _ProfileScreenState extends State<ProfileScreen> {
             },
           );
         },
+      ),
+    );
+  }
+
+  /// Builds the PhilHealth verification badge for the header.
+  Widget _buildVerifiedBadge() {
+    return Container(
+      margin: const EdgeInsets.only(left: 8),
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const Icon(Icons.verified, color: Colors.blue, size: 14),
+          const SizedBox(width: 4),
+          Text(
+            "PhilHealth Verified",
+            style: AppTextStyles.bodySmall.copyWith(
+              color: Colors.blue,
+              fontWeight: FontWeight.bold,
+              fontSize: 10,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// Builds the button to navigate to the profile editing screen.
+  Widget _buildEditProfileButton(BuildContext context, UserModel user) {
+    return Align(
+      alignment: Alignment.centerRight,
+      child: TextButton.icon(
+        onPressed: () {
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => EditProfileScreen(user: user),
+            ),
+          ).then((value) {
+            if (value == true) _loadProfile();
+          });
+        },
+        icon: const Icon(Icons.edit, color: Colors.white, size: 12),
+        label: const Text("Edit Profile", style: TextStyle(color: Colors.white)),
+        style: TextButton.styleFrom(
+          backgroundColor: Colors.white.withOpacity(0.2),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        ),
+      ),
+    );
+  }
+
+  /// Groups medical record links (Referrals, Triage History, Digital ID, PhilHealth).
+  Widget _buildRecordsSection(BuildContext context, UserModel? user) {
+    return Container(
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(AppSizes.radiusLarge),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.04),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Column(
+        children: [
+          ProfileListTile(
+            title: "Active Referrals",
+            icon: Icons.assignment_turned_in_rounded,
+            onTap: () => Navigator.pushNamed(context, AppRoutes.referrals),
+          ),
+          const Divider(height: 1, indent: 60, endIndent: 20),
+          ProfileListTile(
+            title: "Medical Assessments",
+            icon: Icons.history_edu_rounded,
+            onTap: () => Navigator.pushNamed(context, AppRoutes.triageHistory),
+          ),
+          const Divider(height: 1, indent: 60, endIndent: 20),
+          ProfileListTile(
+            title: "Digital Medical ID",
+            icon: Icons.qr_code_scanner_rounded,
+            onTap: () {
+              if (user != null) {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (context) => MedicalIdScreen(user: user)),
+                );
+              }
+            },
+          ),
+          const Divider(height: 1, indent: 60, endIndent: 20),
+          ProfileListTile(
+            title: "PhilHealth Verification",
+            icon: Icons.badge_outlined,
+            onTap: () {
+              if (user != null) _showPhilHealthStatus(user);
+            },
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// Groups app-wide settings and support links.
+  Widget _buildSettingsSection(BuildContext context) {
+    return Container(
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(AppSizes.radiusLarge),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.04),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Column(
+        children: [
+          ProfileListTile(
+            title: "Settings",
+            icon: Icons.settings_outlined,
+            onTap: () => Navigator.pushNamed(context, AppRoutes.settings),
+          ),
+          const Divider(height: 1, indent: 60, endIndent: 20),
+          ProfileListTile(
+            title: "Privacy Policy",
+            icon: Icons.privacy_tip_outlined,
+            onTap: () {},
+          ),
+          const Divider(height: 1, indent: 60, endIndent: 20),
+          ProfileListTile(
+            title: "Terms & Conditions",
+            icon: Icons.description_outlined,
+            onTap: () {},
+          ),
+          const Divider(height: 1, indent: 60, endIndent: 20),
+          ProfileListTile(
+            title: "Help & Support",
+            icon: Icons.help_outline_rounded,
+            onTap: () {},
+          ),
+        ],
       ),
     );
   }
