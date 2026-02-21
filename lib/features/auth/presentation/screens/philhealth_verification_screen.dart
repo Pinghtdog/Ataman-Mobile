@@ -268,7 +268,9 @@ class _PhilHealthVerificationScreenState extends State<PhilHealthVerificationScr
           children: [
             Icon(Icons.verified, color: Colors.green),
             SizedBox(width: 8),
-            Text("Verification Success"),
+            Expanded(
+              child: Text("Verification Success"),
+            ),
           ],
         ),
         content: Column(
