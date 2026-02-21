@@ -1,137 +1,142 @@
-# Ataman Mobile (Android)
+# ATAMAN Mobile
 
-Ataman Mobile is the Android companion application for the ATAMAN healthcare coordination system designed for Naga City. It extends core hospital and patient-side workflows to mobile devices, enabling faster data capture, real-time updates, and accessible care coordination in both urgent and routine healthcare scenarios.
+ATAMAN Mobile is a comprehensive healthcare coordination application designed for Naga City, serving as a vital component of the ATAMAN ecosystem. Built with Flutter, it provides a seamless and accessible experience for patients and healthcare providers, ensuring continuity of care from emergency response to routine consultations.
 
-The mobile app supports first responders, patients, and healthcare workers by providing guided access to patient information, facility routing, and follow-up care, ensuring continuity beyond hospital walls.
-
----
-
-## Core Features
-
-### Mobile Patient Identification
-
-* QR code scanning for rapid patient lookup
-* Secure access to essential patient details and linked profiles
-* Reduced manual data entry during time-sensitive situations
-
-### Care Navigation & Status Updates
-
-* Guided flow for patients and responders based on medical needs
-* Real-time status indicators for referrals and care progression
-* Seamless synchronization with the Ataman hospital command center
-
-### Telemedicine Access
-
-* Mobile-friendly teleconsultation entry points
-* Follow-up check-ins for patients after discharge
-* Continuous communication with assigned healthcare providers
-
-### Incident & Case Capture
-
-* On-site data capture by bystanders or responders
-* Structured input for symptoms, location, and basic context
-* Automatic preparation of patient data before facility arrival
-
-### Secure Authentication
-
-* Supabase-powered authentication
-* Role-aware access for patients, responders, and staff
-* Encrypted session handling for sensitive medical data
+The application empowers users with real-time health alerts, digital medical records, and direct access to telemedicine, bridging the gap between citizens and healthcare facilities.
 
 ---
 
-## Tech Stack
+## 🚀 Core Features
 
-| Layer            | Technology                    |
-| ---------------- | ----------------------------- |
-| Platform         | Android (Kotlin)              |
-| UI               | Jetpack Compose / XML Layouts |
-| Architecture     | MVVM                          |
-| Backend & Auth   | Supabase                      |
-| Realtime Data    | Supabase Realtime             |
-| QR Scanning      | ML Kit / CameraX              |
-| Networking       | Retrofit                      |
-| State Management | ViewModel, Flow / LiveData    |
+### 🩺 Smart Triage & Emergency
+* **AI-Powered Triage**: Guided symptom checking using Google Gemini AI to determine care urgency.
+* **Emergency Request**: One-tap emergency assistance with real-time coordination and location tracking.
+* **Incident Capture**: Rapid data entry for first responders and bystanders to report medical incidents.
+
+### 📅 Care Management
+* **Appointment Booking**: Schedule visits for general check-ups, specialized consultations, or vaccinations.
+* **Telemedicine**: High-quality video consultations powered by ZegoCloud for remote care.
+* **Referral Tracking**: Real-time status updates on medical referrals between primary care and specialized facilities.
+
+### 📋 Medical Records & ID
+* **Digital Medical ID**: Quick access to essential patient information (allergies, blood type) via QR codes.
+* **Medical History**: Secure access to past diagnoses, treatments, prescriptions, and vaccination records.
+* **Family Management**: Manage health profiles for family members within a single centralized account.
+
+### 💊 Resource Access
+* **Medicine Availability**: Real-time tracking of medicine stock levels across city hospitals and facilities.
+* **Health Alerts**: Stay informed with localized health advisories, outbreak notifications, and public health news.
 
 ---
 
-## Getting Started
+## 🛠 Tech Stack
+
+| Layer                | Technology                                     |
+|----------------------|------------------------------------------------|
+| **Framework**        | Flutter (Dart)                                 |
+| **State Management** | BLoC (flutter_bloc)                            |
+| **Dependency Injection** | GetIt                                      |
+| **Backend & Auth**   | Supabase (Database, Auth, Realtime)            |
+| **Push Notifications** | Firebase Cloud Messaging (FCM)               |
+| **Video Communication** | ZegoCloud UIKit                             |
+| **AI Integration**   | Google Gemini AI                               |
+| **Local Storage**    | Hive (Offline Sync Support)                    |
+| **Maps & Location**  | Google Maps Flutter, Geolocator                |
+| **PDF & Printing**   | PDF, Printing, PDFX                            |
+
+---
+
+## 🏁 Getting Started
 
 ### Prerequisites
 
-* Android Studio (latest stable version)
-* JDK 17 or later
-* Android SDK (API level as specified in the project)
-* Supabase project credentials
-
----
+* [Flutter SDK](https://docs.flutter.dev/get-started/install) (v3.6.2 or later)
+* [Dart SDK](https://dart.dev/get-started/sdk)
+* Android Studio / VS Code
+* Supabase & Firebase project credentials
 
 ### Installation & Setup
 
-1. **Clone the repository**
+1.  **Clone the repository**
+    ```bash
+    git clone https://github.com/Pinghtdog/Ataman-Mobile.git
+    cd Ataman-Mobile
+    ```
 
-   ```
-   git clone https://github.com/Pinghtdog/Ataman-Mobile.git
-   cd Ataman-Mobile/android
-   ```
+2.  **Install dependencies**
+    ```bash
+    flutter pub get
+    ```
 
-2. **Open in Android Studio**
+3.  **Environment Configuration**
+    Create a `.env` file in the root directory and add your credentials:
+    ```env
+    SUPABASE_URL=your_supabase_url
+    SUPABASE_ANON_KEY=your_supabase_anon_key
+    GEMINI_API_KEY=your_gemini_api_key
+    ZEGO_APP_ID=your_zego_app_id
+    ZEGO_APP_SIGN=your_zego_app_sign
+    ```
 
-   * Select **Open an existing project**
-   * Choose the `android` directory
+4.  **Database Setup**
+    The project includes SQL scripts in the root directory for setting up the Supabase backend:
+    * `database_setup.sql`: Main schema initialization.
+    * `database_setup_vaccines.sql`: Vaccine-specific tables.
+    * `database_seed_medicine.sql` & `database_seed_facility_medicines.sql`: Reference data.
 
-3. **Set up environment variables**
-
-   Add your credentials in `local.properties` or the appropriate config file:
-
-   ```
-   SUPABASE_URL= Please ask developers
-   SUPABASE_ANON_KEY= Please ask developers
-   ```
-
-4. **Sync Gradle**
-
-   * Allow Android Studio to download dependencies
-   * Resolve any missing SDK versions if prompted
-
----
-
-### Run the App
-
-* Connect a physical device or start an emulator
-* Click **Run ▶** in Android Studio
-
-The app will launch on the selected device.
+5.  **Run the application**
+    ```bash
+    flutter run
+    ```
 
 ---
 
-## Project Structure
+## 📂 Project Structure
+
+The project follows a **Feature-First Architecture**, promoting modularity and scalability.
 
 ```
-android/
-├── app/
-│   ├── src/
-│   │   ├── main/
-│   │   │   ├── java/com/ataman/
-│   │   │   │   ├── ui/            # Screens and UI components
-│   │   │   │   ├── viewmodel/     # ViewModels
-│   │   │   │   ├── data/          # Repositories and models
-│   │   │   │   ├── network/       # API and Supabase clients
-│   │   │   │   └── utils/         # Helpers and utilities
-│   │   │   └── res/               # Layouts, drawables, values
-│   └── build.gradle
-├── gradle/
-└── settings.gradle
+lib/
+├── core/              # Shared logic, themes, routes, and services
+│   ├── services/      # Initialization, Sync, and Local Storage
+│   ├── theme/         # App styling and constants
+│   ├── utils/         # Helpers (formatting, validators, etc.)
+│   └── widgets/       # Reusable UI components
+├── features/          # Feature-based modules
+│   ├── auth/          # Login, Registration, ID Verification
+│   ├── booking/       # Appointment management
+│   ├── emergency/     # Emergency requests and coordination
+│   ├── facility/      # Facility information and discovery
+│   ├── health_alerts/ # Real-time health notifications
+│   ├── medical_records/# History, Referrals, and Medical ID
+│   ├── medicine_access/# Hospital medicine stock tracking
+│   ├── notification/  # In-app and push notification logic
+│   ├── profile/       # User settings and family management
+│   ├── telemedicine/  # Video calls and consultations
+│   ├── triage/        # Symptom checking and history
+│   └── vaccination/   # Vaccine scheduling and records
+├── l10n/              # Localization (Multilingual support)
+├── main.dart          # Application entry point
+└── injector.dart      # Dependency injection setup
 ```
 
 ---
 
-## System Role
+## ⚙️ Background Services
 
-Ataman Mobile works in tandem with **Ataman Web**, ensuring:
+*   **Sync Service**: Handles background synchronization of local data (Hive) with the Supabase backend.
+*   **Referral Status Service**: Monitors and updates the status of medical referrals in real-time.
 
-* Hospitals receive prepared, structured information
-* Patients and responders are guided instead of guessing
-* Care continues beyond admission through mobile follow-ups
+---
 
-Together, the web and mobile platforms form a unified healthcare coordination infrastructure for Naga City.
+## 🤝 System Integration
+
+ATAMAN Mobile works in tandem with the **ATAMAN Web** platform, ensuring:
+* **Data Continuity**: Synchronized medical records between mobile and hospital systems.
+* **Real-time Coordination**: Instant notification to hospitals for incoming emergency cases.
+* **Localized Care**: Tailored healthcare services specifically for Naga City residents.
+
+---
+Developed for the **Naga City Healthcare System**.
+
+* **RUN dart doc to get the full documentation on each file and open the generated index.html locally 
