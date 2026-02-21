@@ -143,7 +143,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     child: Column(
                       children: [
                         AtamanHeader(
-                          height: 240,
+                          height: 200,
                           padding: const EdgeInsets.only(top: 60, left: 24, right: 24, bottom: 20),
                           child: Column(
                             children: [
@@ -156,7 +156,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                       shape: BoxShape.circle,
                                       border: Border.all(color: Colors.white30, width: 2),
                                     ),
-                                    child: const AtamanAvatar(radius: 35),
+                                    child: const AtamanAvatar(radius: 25),
                                   ),
                                   const SizedBox(width: AppSizes.p20),
                                   Expanded(

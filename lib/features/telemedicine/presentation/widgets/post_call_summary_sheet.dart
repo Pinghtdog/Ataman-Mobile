@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import '../../../../core/constants/constants.dart';
 import '../../../../core/services/gemini_service.dart';
 import '../../../../injector.dart';
 import '../../../auth/logic/auth_cubit.dart';
@@ -35,34 +36,44 @@ class _PostCallSummarySheetState extends State<PostCallSummarySheet> {
   Widget build(BuildContext context) {
     return Padding(
       padding: EdgeInsets.only(
-        bottom: MediaQuery.of(context).viewInsets.bottom,
-        top: 24,
-        left: 24,
-        right: 24,
+        bottom: MediaQuery.of(context).viewInsets.bottom + AppSizes.p24,
+        top: AppSizes.p24,
+        left: AppSizes.p24,
+        right: AppSizes.p24,
       ),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
+          Text(
             "Consultation Ended",
-            style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+            style: AppTextStyles.h3,
           ),
-          const SizedBox(height: 12),
-          const Text(
+          const SizedBox(height: AppSizes.p12),
+          Text(
             "Please provide brief notes from your call to generate an AI Medical Record.",
-            style: TextStyle(color: Colors.grey),
+            style: AppTextStyles.bodyMedium,
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: AppSizes.p16),
           TextField(
             controller: _notesController,
             maxLines: 4,
+            style: AppTextStyles.bodyLarge,
             decoration: InputDecoration(
               hintText: "e.g., Discussed back pain, doctor advised rest and paracetamol...",
-              border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+              hintStyle: AppTextStyles.bodyMedium.copyWith(color: Colors.grey.shade400),
+              border: OutlineInputBorder(borderRadius: BorderRadius.circular(AppSizes.radiusMedium)),
+              enabledBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(AppSizes.radiusMedium),
+                borderSide: BorderSide(color: Colors.grey.shade300),
+              ),
+              focusedBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(AppSizes.radiusMedium),
+                borderSide: const BorderSide(color: AppColors.primary, width: 2),
+              ),
             ),
           ),
-          const SizedBox(height: 24),
+          const SizedBox(height: AppSizes.p24),
           SizedBox(
             width: double.infinity,
             height: 56,
@@ -79,13 +90,16 @@ class _PostCallSummarySheetState extends State<PostCallSummarySheet> {
                   : const Icon(Icons.auto_awesome, color: Colors.white),
               label: Text(_isSummarizing ? "Summarizing..." : "Generate AI Medical Record"),
               style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFF2D3238),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                backgroundColor: AppColors.primary,
+                foregroundColor: Colors.white,
+                textStyle: AppTextStyles.button,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppSizes.radiusMedium)),
+                elevation: 0,
               ),
               onPressed: _isSummarizing || _isSchedulingFollowUp ? null : _handleGenerateSummary,
             ),
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: AppSizes.p12),
           SizedBox(
             width: double.infinity,
             height: 56,
@@ -95,19 +109,22 @@ class _PostCallSummarySheetState extends State<PostCallSummarySheet> {
                       width: 20,
                       height: 20,
                       child: CircularProgressIndicator(
-                        color: Colors.blue,
+                        color: AppColors.accent,
                         strokeWidth: 2,
                       ),
                     )
-                  : const Icon(Icons.calendar_today),
+                  : const Icon(Icons.calendar_today, color: AppColors.accent),
               label: Text(_isSchedulingFollowUp ? "Scheduling..." : "Auto-Schedule Follow-up"),
               style: OutlinedButton.styleFrom(
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                foregroundColor: AppColors.accent,
+                side: const BorderSide(color: AppColors.accent),
+                textStyle: AppTextStyles.button.copyWith(color: AppColors.accent),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppSizes.radiusMedium)),
               ),
               onPressed: _isSummarizing || _isSchedulingFollowUp ? null : _handleAutoScheduleFollowUp,
             ),
           ),
-          const SizedBox(height: 24),
+          const SizedBox(height: AppSizes.p24),
         ],
       ),
     );
@@ -121,7 +138,10 @@ class _PostCallSummarySheetState extends State<PostCallSummarySheet> {
     if (patientProfile == null) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text("Error: Patient profile not found.")),
+          const SnackBar(
+            content: Text("Error: Patient profile not found."),
+            backgroundColor: AppColors.danger,
+          ),
         );
       }
       return;
@@ -166,14 +186,20 @@ class _PostCallSummarySheetState extends State<PostCallSummarySheet> {
       if (mounted) {
         Navigator.pop(context); // Close sheet
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text("Medical record generated and saved successfully.")),
+          const SnackBar(
+            content: Text("Medical record generated and saved successfully."),
+            backgroundColor: AppColors.success,
+          ),
         );
       }
     } catch (e) {
       debugPrint("Summary Error: $e");
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text("Error saving record: $e")),
+          SnackBar(
+            content: Text("Error saving record: $e"),
+            backgroundColor: AppColors.danger,
+          ),
         );
       }
     } finally {
@@ -187,7 +213,10 @@ class _PostCallSummarySheetState extends State<PostCallSummarySheet> {
 
     if (_notesController.text.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Please provide consultation notes first.")),
+        const SnackBar(
+          content: Text("Please provide consultation notes first."),
+          backgroundColor: AppColors.warning,
+        ),
       );
       return;
     }
@@ -232,7 +261,7 @@ class _PostCallSummarySheetState extends State<PostCallSummarySheet> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text("Follow-up scheduled for ${scheduledTime.day}/${scheduledTime.month} regarding: $reason"),
-            backgroundColor: Colors.green,
+            backgroundColor: AppColors.success,
           ),
         );
         // Also trigger the summary save
@@ -242,7 +271,10 @@ class _PostCallSummarySheetState extends State<PostCallSummarySheet> {
       debugPrint("Scheduling Error: $e");
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text("Failed to schedule: $e")),
+          SnackBar(
+            content: Text("Failed to schedule: $e"),
+            backgroundColor: AppColors.danger,
+          ),
         );
       }
     } finally {

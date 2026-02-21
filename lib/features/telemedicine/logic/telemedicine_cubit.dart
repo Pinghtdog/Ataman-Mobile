@@ -10,16 +10,6 @@ import '../domain/repositories/i_telemedicine_repository.dart';
 part 'telemedicine_state.dart';
 
 /// [TelemedicineCubit] manages the state and logic for tele-consultation features.
-///
-/// **Responsibilities:**
-/// 1. **Real-time Monitoring**: Subscribes to live updates for doctor availability and 
-///    active/scheduled sessions using [ITelemedicineRepository].
-/// 2. **Proactive Reminders**: Automatically schedules local notifications 5 minutes 
-///    before a scheduled consultation begins.
-/// 3. **Conflict Management**: Validates booking requests against existing appointments 
-///    to prevent scheduling overlaps.
-/// 4. **Session Initiation**: Orchestrates the process of starting new video calls 
-///    and managing their lifecycle status (e.g., active, completed).
 class TelemedicineCubit extends Cubit<TelemedicineState> {
   final ITelemedicineRepository _repository;
   StreamSubscription? _doctorsSubscription;
@@ -28,21 +18,19 @@ class TelemedicineCubit extends Cubit<TelemedicineState> {
   /// In-memory storage for active timers used to trigger pre-session reminders.
   final Map<String, Timer> _sessionReminders = {};
 
+  // Internal cache to handle race conditions between streams
+  List<DoctorModel> _cachedDoctors = [];
+  List<Map<String, dynamic>> _cachedSessions = [];
+
   TelemedicineCubit(this._repository) : super(TelemedicineInitial());
 
   /// Begins a real-time subscription to the doctors list.
-  /// Updates the [TelemedicineLoaded] state whenever a doctor's availability changes.
   void startWatchingDoctors() {
-    emit(TelemedicineLoading());
     _doctorsSubscription?.cancel();
     _doctorsSubscription = _repository.watchDoctors().listen(
       (doctors) {
-        if (state is TelemedicineLoaded) {
-          final currentState = state as TelemedicineLoaded;
-          emit(currentState.copyWith(doctors: doctors));
-        } else {
-          emit(TelemedicineLoaded(doctors));
-        }
+        _cachedDoctors = doctors;
+        _emitLoadedState();
       },
       onError: (error) {
         emit(TelemedicineError(error.toString()));
@@ -51,26 +39,31 @@ class TelemedicineCubit extends Cubit<TelemedicineState> {
   }
 
   /// Begins a real-time subscription to the user's active/scheduled consultations.
-  /// Automatically calls [_scheduleNotificationReminder] for any upcoming appointments.
   void startWatchingSessions(String patientId) {
     _sessionsSubscription?.cancel();
     _sessionsSubscription = _repository.watchUserSessions(patientId).listen(
       (sessions) {
-        if (state is TelemedicineLoaded) {
-          final currentState = state as TelemedicineLoaded;
-          emit(currentState.copyWith(activeSessions: sessions));
-          
-          for (var session in sessions) {
-            if (session['status'] == 'scheduled' && session['scheduled_time'] != null) {
-              _scheduleNotificationReminder(session);
-            }
+        _cachedSessions = sessions;
+        
+        for (var session in sessions) {
+          if (session['status'] == 'scheduled' && session['scheduled_time'] != null) {
+            _scheduleNotificationReminder(session);
           }
         }
+        _emitLoadedState();
       },
       onError: (error) {
         print("Error watching sessions: $error");
       }
     );
+  }
+
+  void _emitLoadedState() {
+    // We emit Loaded state if we have doctors or sessions, maintaining both in the state
+    emit(TelemedicineLoaded(
+      _cachedDoctors,
+      activeSessions: _cachedSessions,
+    ));
   }
 
   /// Sets a [Timer] to show a push notification 5 minutes before the session's start time.
@@ -91,7 +84,6 @@ class TelemedicineCubit extends Cubit<TelemedicineState> {
           payload: sessionId,
         );
       });
-      print("Scheduled reminder for session $sessionId in ${delay.inMinutes} mins");
     }
   }
 
@@ -100,7 +92,6 @@ class TelemedicineCubit extends Cubit<TelemedicineState> {
     try {
       return await _repository.getDoctorAvailability(doctorId);
     } catch (e) {
-      print("Error fetching availability: $e");
       return [];
     }
   }
@@ -112,7 +103,6 @@ class TelemedicineCubit extends Cubit<TelemedicineState> {
       final endOfDay = DateTime(date.year, date.month, date.day, 23, 59, 59);
       return await _repository.checkBookingConflict(patientId, doctorId, startOfDay, endOfDay);
     } catch (e) {
-      print("Error checking conflict: $e");
       return true;
     }
   }

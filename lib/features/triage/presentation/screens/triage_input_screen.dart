@@ -9,18 +9,18 @@ import 'triage_result_screen.dart';
 
 /// [TriageInputScreen] is the interactive interface for the Ataman Smart Triage system.
 ///
-/// This screen facilitates a dynamic, AI-driven conversation where users describe 
-/// their symptoms and answer follow-up questions to determine the urgency and 
+/// This screen facilitates a dynamic, AI-driven conversation where users describe
+/// their symptoms and answer follow-up questions to determine the urgency and
 /// type of medical care required.
 ///
 /// **Functionality:**
 /// 1. **Dynamic Questioning**: Loads steps sequentially from the [TriageCubit].
-/// 2. **Hybrid Input**: Supports predefined AI options (buttons) for quick selection 
+/// 2. **Hybrid Input**: Supports predefined AI options (buttons) for quick selection
 ///    and manual text input for detailed descriptions.
 /// 3. **Progress Tracking**: Displays a visual indicator of the triage progress.
-/// 4. **Resiliency**: Includes specialized error handling for AI service quotas, 
+/// 4. **Resiliency**: Includes specialized error handling for AI service quotas,
 ///    network interruptions, and server timeouts.
-/// 5. **Navigation**: Automatically transitions to the [TriageResultScreen] once 
+/// 5. **Navigation**: Automatically transitions to the [TriageResultScreen] once
 ///     the AI determines a final assessment.
 class TriageInputScreen extends StatefulWidget {
   const TriageInputScreen({super.key});
@@ -40,7 +40,6 @@ class _TriageInputScreenState extends State<TriageInputScreen> {
   void initState() {
     super.initState();
     final cubit = context.read<TriageCubit>();
-    // Automatically start the triage session if it's in the initial state.
     if (cubit.state is TriageInitial) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         cubit.startTriage();
@@ -63,7 +62,6 @@ class _TriageInputScreenState extends State<TriageInputScreen> {
         listener: (context, state) {
           if (state is TriageSuccess) {
             final cubit = context.read<TriageCubit>();
-            // Replace input screen with results to prevent navigating back into an active session.
             Navigator.pushReplacement(
               context,
               MaterialPageRoute(
@@ -75,8 +73,6 @@ class _TriageInputScreenState extends State<TriageInputScreen> {
             );
           }
           if (state is TriageStepLoaded) {
-            // Always clear the text controller when a new step is loaded
-            // to prevent old responses from persisting and reset input mode.
             setState(() {
               _textController.clear();
               _forceManualInput = false;
@@ -86,33 +82,30 @@ class _TriageInputScreenState extends State<TriageInputScreen> {
         builder: (context, state) {
           return Stack(
             children: [
-              // MAIN CONTENT
               Column(
                 children: [
                   AtamanHeader(
                     isSimple: true,
-                    height: 120,
-                    child: Stack(
-                      children: [
-                        Align(
-                          alignment: Alignment.centerLeft,
-                          child: IconButton(
+                    padding: const EdgeInsets.symmetric(horizontal: AppSizes.p16),
+                    child: SafeArea(
+                      bottom: false,
+                      child: Row(
+                        children: [
+                          IconButton(
                             icon: const Icon(Icons.arrow_back_ios_new, color: Colors.white, size: 20),
                             onPressed: () {
                               context.read<TriageCubit>().reset();
                               Navigator.pop(context);
                             },
                           ),
-                        ),
-                        const Center(
-                          child: Text(
-                            "Smart Triage",
-                            style: TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold),
+                          const Expanded(
+                            child: Text(
+                              "Smart Triage",
+                              style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold),
+                              textAlign: TextAlign.center,
+                            ),
                           ),
-                        ),
-                        Align(
-                          alignment: Alignment.centerRight,
-                          child: IconButton(
+                          IconButton(
                             icon: const Icon(Icons.refresh, color: Colors.white, size: 20),
                             onPressed: () {
                               _textController.clear();
@@ -120,8 +113,8 @@ class _TriageInputScreenState extends State<TriageInputScreen> {
                               context.read<TriageCubit>().startTriage();
                             },
                           ),
-                        ),
-                      ],
+                        ],
+                      ),
                     ),
                   ),
                   Expanded(
@@ -129,8 +122,6 @@ class _TriageInputScreenState extends State<TriageInputScreen> {
                   ),
                 ],
               ),
-
-              // LOADING OVERLAY - Shows during AI processing or initialization.
               AtamanLoader(isOpen: state is TriageLoading),
             ],
           );
@@ -139,7 +130,6 @@ class _TriageInputScreenState extends State<TriageInputScreen> {
     );
   }
 
-  /// Builds the primary content of the triage screen based on the current [TriageState].
   Widget _buildBody(TriageState state) {
     if (state is TriageError) {
       final errorDetail = _getErrorDetail(state.message);
@@ -154,8 +144,6 @@ class _TriageInputScreenState extends State<TriageInputScreen> {
 
     if (state is TriageStepLoaded) {
       final step = state.step;
-
-      // Determine if we should show buttons or the manual text field.
       final bool showButtons = step.inputType == TriageInputType.buttons &&
           !_forceManualInput &&
           step.options.isNotEmpty;
@@ -164,7 +152,6 @@ class _TriageInputScreenState extends State<TriageInputScreen> {
         onTap: () => FocusManager.instance.primaryFocus?.unfocus(),
         child: Column(
           children: [
-            // Progress Bar
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: AppSizes.p24, vertical: AppSizes.p16),
               child: ClipRRect(
@@ -194,7 +181,6 @@ class _TriageInputScreenState extends State<TriageInputScreen> {
                     const SizedBox(height: AppSizes.p32),
 
                     if (showButtons) ...[
-                      // 1. Show AI Options as tappable cards.
                       ...step.options.map((option) => Padding(
                         padding: const EdgeInsets.only(bottom: AppSizes.p16),
                         child: AtamanCard(
@@ -217,7 +203,6 @@ class _TriageInputScreenState extends State<TriageInputScreen> {
                         ),
                       )),
                     ] else ...[
-                      // 2. Manual Input Mode for descriptive answers.
                       AtamanTextField(
                         label: "Your Response",
                         hintText: "Describe your symptoms or answer the question...",
@@ -238,8 +223,6 @@ class _TriageInputScreenState extends State<TriageInputScreen> {
                           }
                         },
                       ),
-                      
-                      // Allows users to return to button options if they manually triggered text mode.
                       if (step.inputType == TriageInputType.buttons)
                         TextButton(
                           onPressed: () => setState(() => _forceManualInput = false),
@@ -258,11 +241,8 @@ class _TriageInputScreenState extends State<TriageInputScreen> {
     return const Center(child: Text("Preparing triage..."));
   }
 
-  /// Maps raw error strings to user-friendly [_TriageErrorDetail] objects.
-  /// Handles AI rate limiting, connectivity issues, and generic failures.
   _TriageErrorDetail _getErrorDetail(String rawError) {
     final String error = rawError.toLowerCase();
-
     if (error.contains("429") || error.contains("quota")) {
       return const _TriageErrorDetail(
         title: "AI is Overloaded",
@@ -270,7 +250,6 @@ class _TriageInputScreenState extends State<TriageInputScreen> {
         icon: Icons.hourglass_top_rounded,
       );
     }
-
     if (error.contains("socket") || error.contains("network") || error.contains("connection")) {
       return const _TriageErrorDetail(
         title: "Connection Lost",
@@ -278,7 +257,6 @@ class _TriageInputScreenState extends State<TriageInputScreen> {
         icon: Icons.wifi_off_rounded,
       );
     }
-
     return const _TriageErrorDetail(
       title: "Triage Interrupted",
       description: "Unexpected error. If this is an emergency, go to the nearest hospital.",
@@ -287,12 +265,10 @@ class _TriageInputScreenState extends State<TriageInputScreen> {
   }
 }
 
-/// Private helper class to store localized error information for the UI.
 class _TriageErrorDetail {
   final String title;
   final String description;
   final IconData icon;
-
   const _TriageErrorDetail({
     required this.title,
     required this.description,

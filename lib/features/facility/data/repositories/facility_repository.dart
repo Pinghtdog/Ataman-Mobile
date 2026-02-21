@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../models/facility_model.dart';
@@ -8,7 +9,6 @@ class FacilityRepository {
   final SupabaseClient _supabase = Supabase.instance.client;
   static const String _cacheKey = 'cached_facilities';
 
-  /// Fetches all facilities. Tries network first, falls back to cache if offline.
   Future<List<Facility>> getFacilities() async {
     try {
       final response = await _supabase
@@ -16,18 +16,13 @@ class FacilityRepository {
           .select('*, facility_services(*)');
       
       final facilities = (response as List).map((json) => Facility.fromJson(json)).toList();
-      
-      // Save to cache asynchronously
       _saveToCache(response);
-      
       return facilities;
     } catch (e) {
-      // Return cached data if network fails
       return _loadFromCache();
     }
   }
 
-  /// Internal helper to save raw JSON to local storage
   Future<void> _saveToCache(dynamic data) async {
     try {
       final prefs = await SharedPreferences.getInstance();
@@ -35,7 +30,6 @@ class FacilityRepository {
     } catch (_) {}
   }
 
-  /// Internal helper to load and parse cached data
   Future<List<Facility>> _loadFromCache() async {
     try {
       final prefs = await SharedPreferences.getInstance();
@@ -48,6 +42,32 @@ class FacilityRepository {
     return [];
   }
 
+  Stream<List<Facility>> watchFacilities() async* {
+    final cached = await _loadFromCache();
+    if (cached.isNotEmpty) yield cached;
+
+    final networkStream = _supabase
+        .from('facilities')
+        .stream(primaryKey: ['id'])
+        .asyncMap((data) async {
+          try {
+            final fullData = await _supabase
+                .from('facilities')
+                .select('*, facility_services(*)');
+            _saveToCache(fullData);
+            return (fullData as List).map((json) => Facility.fromJson(json)).toList();
+          } catch (_) {
+            return _loadFromCache();
+          }
+        })
+        .handleError((error) {
+          debugPrint('Facility Stream Network Error (Suppressed): $error');
+        });
+
+    yield* networkStream;
+  }
+  
+  // ... rest of the existing methods (getFacilityById, findRecommendedFacility, etc.)
   Future<Facility?> getFacilityById(String id) async {
     try {
       final response = await _supabase
@@ -59,7 +79,6 @@ class FacilityRepository {
       if (response == null) return null;
       return Facility.fromJson(response);
     } catch (e) {
-      // Try to find in cache if specific ID fetch fails
       final cached = await _loadFromCache();
       try {
         return cached.firstWhere((f) => f.id == id);
@@ -89,44 +108,7 @@ class FacilityRepository {
     });
 
     if (viableFacilities.isNotEmpty) return viableFacilities.first;
-
-    if (requiredCapability.contains('HOSPITAL') || requiredCapability.contains('TRAUMA')) {
-      try {
-        return allFacilities.firstWhere(
-          (f) => (f.capability == FacilityCapability.hospitalLevel2 || 
-                  f.capability == FacilityCapability.hospitalLevel3)
-        );
-      } catch (_) {
-        try { return allFacilities.firstWhere((f) => f.type == FacilityType.hospital); } catch (_) {}
-      }
-    }
-
-    if (requiredCapability.contains('PRIMARY_CARE')) {
-       try {
-         return allFacilities.firstWhere((f) => f.capability == FacilityCapability.ruralHealthUnit);
-       } catch (_) {
-         if (allFacilities.isNotEmpty) return allFacilities.first;
-       }
-    }
-
     return null;
-  }
-
-  Stream<List<Facility>> watchFacilities() {
-    return _supabase
-        .from('facilities')
-        .stream(primaryKey: ['id'])
-        .asyncMap((data) async {
-          try {
-            final fullData = await _supabase
-                .from('facilities')
-                .select('*, facility_services(*)');
-            _saveToCache(fullData);
-            return (fullData as List).map((json) => Facility.fromJson(json)).toList();
-          } catch (_) {
-            return _loadFromCache();
-          }
-        });
   }
 
   Future<List<FacilityService>> getFacilityServices(String facilityId) async {
@@ -135,7 +117,6 @@ class FacilityRepository {
           .from('facility_services')
           .select()
           .eq('facility_id', facilityId);
-      
       return (response as List).map((json) => FacilityService.fromJson(json)).toList();
     } catch (e) {
       return [];

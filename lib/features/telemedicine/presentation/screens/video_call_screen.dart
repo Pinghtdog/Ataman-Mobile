@@ -26,7 +26,6 @@ class VideoCallScreen extends StatefulWidget {
 class _VideoCallScreenState extends State<VideoCallScreen> {
   final _supabase = Supabase.instance.client;
   StreamSubscription? _callSubscription;
-  Map<String, dynamic>? _sessionData;
 
   // CREDENTIALS (Dynamic from .env)
   final int appID = int.parse(dotenv.env['ZEGO_APP_ID'] ?? '0');
@@ -35,9 +34,8 @@ class _VideoCallScreenState extends State<VideoCallScreen> {
   @override
   void initState() {
     super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      _initializeSession();
-    });  }
+    _initializeSession();
+  }
 
   Future<void> _initializeSession() async {
     // Verify credentials
@@ -69,13 +67,10 @@ class _VideoCallScreenState extends State<VideoCallScreen> {
           (data) {
             if (data.isNotEmpty) {
               final session = data.first;
-              setState(() {
-                _sessionData = session;
-              });
 
-              // End call if session is completed
+              // End call if session is completed remotely (e.g., by the other user)
               if (session['status'] == 'completed' && mounted) {
-                _endCall(updateDb: false);
+                _onCallEnded(updateDb: false);
               }
             }
           },
@@ -92,27 +87,29 @@ class _VideoCallScreenState extends State<VideoCallScreen> {
           .update({
             'status': 'active',
             'meeting_link': widget.callId,
-            'started_at': DateTime.now().toIso8601String(),
+            'started_at': DateTime.now().toUtc().toIso8601String(),
           })
-          .eq('id', widget.callId)
-          .select()
-          .single();
+          .eq('id', widget.callId);
     } catch (e) {
       debugPrint("Error updating session to active: $e");
     }
   }
 
-  void _endCall({bool updateDb = true}) async {
+  /// Handles call cleanup logic
+  void _onCallEnded({bool updateDb = true}) async {
     if (updateDb) {
       try {
         await _supabase.from('telemed_sessions').update({
           'status': 'completed',
-          'ended_at': DateTime.now().toIso8601String(),
+          'ended_at': DateTime.now().toUtc().toIso8601String(),
         }).eq('id', widget.callId);
       } catch (e) {
         debugPrint("Error updating session to completed: $e");
       }
     }
+
+    // Explicitly uninit Zego to prevent lifecycle transition crashes
+    ZegoUIKitPrebuiltCallController().hangUp(context);
 
     if (mounted) {
       _showPostCallSummary();
@@ -129,7 +126,9 @@ class _VideoCallScreenState extends State<VideoCallScreen> {
       ),
       builder: (context) => PostCallSummarySheet(callId: widget.callId),
     ).then((_) {
-      if (mounted) Navigator.pop(context);
+      if (mounted) {
+        Navigator.of(context).pop(); // Exit VideoCallScreen back to TelemedicineScreen
+      }
     });
   }
 
@@ -139,7 +138,6 @@ class _VideoCallScreenState extends State<VideoCallScreen> {
     super.dispose();
   }
 
-  @override
   @override
   Widget build(BuildContext context) {
     if (appID == 0 || appSign.isEmpty) {
@@ -154,17 +152,11 @@ class _VideoCallScreenState extends State<VideoCallScreen> {
       userID: widget.userId,
       userName: widget.userName,
       callID: widget.callId,
-
-      // 1. Move the events parameter out of config and into the main constructor
       events: ZegoUIKitPrebuiltCallEvents(
         onCallEnd: (ZegoCallEndEvent event, VoidCallback defaultAction) {
-          // 2. Updated the callback signature to use ZegoCallEndEvent
-          _endCall();
-          // If you want the default behavior (navigation back), call defaultAction()
-          // defaultAction();
+          _onCallEnded();
         },
       ),
-
       config: ZegoUIKitPrebuiltCallConfig.oneOnOneVideoCall()
         ..bottomMenuBarConfig = ZegoBottomMenuBarConfig(
           buttons: [
@@ -179,7 +171,6 @@ class _VideoCallScreenState extends State<VideoCallScreen> {
           title: '${widget.isCaller ? "Patient" : "Doctor"} - Ataman Telemedicine',
           isVisible: true,
         )
-      // 3. Renamed confirmDialogInfo to hangUpConfirmDialogInfo
         ..hangUpConfirmDialogInfo = null,
     );
   }

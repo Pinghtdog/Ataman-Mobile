@@ -17,8 +17,6 @@ import '../../../../core/utils/validator_utils.dart';
 import '../../../../injector.dart';
 import '../widgets/section_header.dart';
 
-/// [EditProfileScreen] provides a secure interface for users to update their personal, 
-/// contact, and medical information.
 class EditProfileScreen extends StatefulWidget {
   final UserModel user;
   
@@ -123,24 +121,26 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
 
   void _saveProfile() {
     if (!_formKey.currentState!.validate()) return;
-    
+
     final String cleanPIN = _philhealthController.text.replaceAll(RegExp(r'[^0-9]'), '');
 
     final updatedUser = widget.user.copyWith(
       firstName: _firstNameController.text.trim(),
       middleName: _middleNameController.text.trim(),
       lastName: _lastNameController.text.trim(),
+      philhealthId: cleanPIN,
+      gender: _selectedGender,
+
       phoneNumber: _phoneController.text.trim(),
       barangay: _barangayController.text.trim(),
-      philhealthId: cleanPIN,
       allergies: _allergiesController.text.trim(),
       medicalConditions: _conditionsController.text.trim(),
       emergencyContactName: _emergencyNameController.text.trim(),
       emergencyContactPhone: _emergencyPhoneController.text.trim(),
       bloodType: _selectedBloodType,
-      gender: _selectedGender,
       isProfileComplete: true,
     );
+
     context.read<ProfileCubit>().updateProfile(updatedUser);
   }
 
@@ -212,9 +212,10 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                                 prefixIcon: Icons.badge_outlined,
                                 keyboardType: TextInputType.number,
                                 readOnly: _isVerified,
-                                suffixIcon: _isPhilhealthValid 
-                                  ? const Icon(Icons.check_circle, color: Colors.green) 
-                                  : null,
+                                enabled: !_isVerified,
+                                suffixIcon: _isPhilhealthValid
+                                    ? const Icon(Icons.check_circle, color: Colors.green)
+                                    : null,
                               ),
                             ),
                             if (!_isVerified && _isPhilhealthValid) ...[
@@ -231,6 +232,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                           prefixIcon: Icons.person_outline,
                           validator: ValidatorUtils.validateFirstName,
                           readOnly: _isVerified,
+                          enabled: !_isVerified,
                         ),
                         const SizedBox(height: AppSizes.p16),
                         AtamanTextField(
@@ -238,6 +240,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                           controller: _middleNameController,
                           prefixIcon: Icons.person_outline,
                           readOnly: _isVerified,
+                          enabled: !_isVerified,
                         ),
                         const SizedBox(height: AppSizes.p16),
                         AtamanTextField(
@@ -246,6 +249,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                           prefixIcon: Icons.person_outline,
                           validator: ValidatorUtils.validateLastName,
                           readOnly: _isVerified,
+                          enabled: !_isVerified,
                         ),
                         
                         const SizedBox(height: AppSizes.p32),
@@ -425,11 +429,10 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
               builder: (context) => PhilHealthVerificationScreen(user: widget.user),
             ),
           );
-          
+
           if (result != null) {
-            // Immediately lock fields and prefill if result is data map
             setState(() {
-              _isVerified = true; // Lock fields immediately
+              _isVerified = true;
               if (result is Map<String, dynamic>) {
                 if (result['pin'] != null) _philhealthController.text = result['pin'];
                 if (result['firstName'] != null) _firstNameController.text = result['firstName'];
@@ -439,19 +442,9 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
               }
             });
 
-            await Future.delayed(const Duration(milliseconds: 500));
-            await context.read<AuthCubit>().getProfile();
-            final authState = context.read<AuthCubit>().state;
-            
-            if (authState is Authenticated && authState.profile != null) {
-              setState(() {
-                _firstNameController.text = authState.profile!.firstName;
-                _lastNameController.text = authState.profile!.lastName;
-                _middleNameController.text = authState.profile!.middleName ?? "";
-                _philhealthController.text = authState.profile!.philhealthId ?? "";
-                _selectedGender = _normalizeGender(authState.profile!.gender);
-              });
-            }
+            // Tell the app to quietly refresh the background state
+            // (Notice we removed the Future.delayed and the second setState that was overwriting your fields!)
+            context.read<AuthCubit>().getProfile();
           }
         },
       ),

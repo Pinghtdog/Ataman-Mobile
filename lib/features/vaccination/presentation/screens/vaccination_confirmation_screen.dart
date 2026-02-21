@@ -5,6 +5,7 @@ import 'package:qr_flutter/qr_flutter.dart';
 import '../../../../core/constants/constants.dart';
 import '../../data/models/vaccine_model.dart';
 
+//not used
 class VaccinationConfirmationScreen extends StatelessWidget {
   final Map<String, dynamic> bookingData;
 

@@ -48,7 +48,7 @@ class _ReferralsScreenState extends State<ReferralsScreen> {
         children: [
           AtamanHeader(
             isSimple: true,
-            height: 120,
+            height: 130,
             child: Row(
               children: [
                 IconButton(
@@ -62,7 +62,7 @@ class _ReferralsScreenState extends State<ReferralsScreen> {
                     textAlign: TextAlign.center,
                   ),
                 ),
-                const SizedBox(width: 48),
+                // const SizedBox(width: 20),
               ],
             ),
           ),

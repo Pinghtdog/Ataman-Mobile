@@ -13,6 +13,7 @@ class AtamanTextField extends StatefulWidget {
   final String? Function(String?)? validator;
   final void Function(String)? onChanged;
   final bool readOnly;
+  final bool enabled;
   final bool autoFocus;
   final int? maxLines;
   final int? minLines;
@@ -30,6 +31,7 @@ class AtamanTextField extends StatefulWidget {
     this.validator,
     this.onChanged,
     this.readOnly = false,
+    this.enabled = true,
     this.autoFocus = false,
     this.maxLines = 1,
     this.minLines,
@@ -50,6 +52,8 @@ class _AtamanTextFieldState extends State<AtamanTextField> {
 
   @override
   Widget build(BuildContext context) {
+    final bool isInactive = !widget.enabled || widget.readOnly;
+
     return TextFormField(
       controller: widget.controller,
       obscureText: widget.isPassword ? _obscureText : false,
@@ -57,6 +61,7 @@ class _AtamanTextFieldState extends State<AtamanTextField> {
       validator: widget.validator,
       onChanged: widget.onChanged,
       readOnly: widget.readOnly,
+      enabled: widget.enabled,
       autofocus: widget.autoFocus,
       maxLines: widget.isPassword ? 1 : widget.maxLines,
       minLines: widget.minLines,
@@ -65,8 +70,8 @@ class _AtamanTextFieldState extends State<AtamanTextField> {
         hintText: widget.hintText,
         helperText: widget.helperText,
         alignLabelWithHint: true,
-        filled: widget.readOnly,
-        fillColor: widget.readOnly ? Colors.grey.shade100 : null,
+        filled: isInactive,
+        fillColor: isInactive ? Colors.grey.shade100 : null,
         prefixIcon: widget.prefixIcon != null
             ? Icon(widget.prefixIcon, color: AppColors.primary.withOpacity(0.7))
             : null,
@@ -93,6 +98,10 @@ class _AtamanTextFieldState extends State<AtamanTextField> {
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
           borderSide: const BorderSide(color: AppColors.primary, width: 2),
+        ),
+        disabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: BorderSide(color: Colors.grey.shade200),
         ),
       ),
     );

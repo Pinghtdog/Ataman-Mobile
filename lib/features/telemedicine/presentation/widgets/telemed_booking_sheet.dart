@@ -22,10 +22,10 @@ class TelemedBookingSheet extends StatefulWidget {
 }
 
 class _TelemedBookingSheetState extends State<TelemedBookingSheet> {
-  DateTime _selectedDate = DateTime.now();
   String? _selectedSlot;
   List<Map<String, dynamic>> _availability = [];
   bool _isLoading = true;
+  bool _isSubmitting = false;
 
   @override
   void initState() {
@@ -45,65 +45,77 @@ class _TelemedBookingSheetState extends State<TelemedBookingSheet> {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(24),
-      decoration: const BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.vertical(top: Radius.circular(32)),
-      ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+    return DraggableScrollableSheet(
+      initialChildSize: 0.7,
+      minChildSize: 0.5,
+      maxChildSize: 0.9,
+      expand: false,
+      builder: (context, scrollController) {
+        return Container(
+          padding: const EdgeInsets.all(AppSizes.p24),
+          decoration: const BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.vertical(top: Radius.circular(AppSizes.radiusLarge)),
+          ),
+          child: ListView(
+            controller: scrollController,
             children: [
-              Expanded(
-                child: Text(
-                  "Schedule with ${widget.doctor.fullName}", 
-                  style: AppTextStyles.h3,
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                ),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Expanded(
+                    child: Text(
+                      "Schedule with ${widget.doctor.fullName}",
+                      style: AppTextStyles.h3,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                  IconButton(icon: const Icon(Icons.close), onPressed: () => Navigator.pop(context)),
+                ],
               ),
-              IconButton(icon: const Icon(Icons.close), onPressed: () => Navigator.pop(context)),
+              const SizedBox(height: AppSizes.p24),
+              if (_isLoading)
+                const Center(child: CircularProgressIndicator())
+              else if (_availability.isEmpty)
+                const Center(child: Padding(
+                  padding: EdgeInsets.symmetric(vertical: 40.0),
+                  child: Text("No available shifts found for this doctor."),
+                ))
+              else ...[
+                const Text("Available Shifts", style: TextStyle(fontWeight: FontWeight.bold)),
+                const SizedBox(height: AppSizes.p12),
+                Wrap(
+                  spacing: AppSizes.p8,
+                  runSpacing: AppSizes.p8,
+                  children: _availability.map((slot) {
+                    final dayName = _getDayName(slot['day_of_week']);
+                    final timeRange = "${slot['start_time']} - ${slot['end_time']}";
+                    final isSelected = _selectedSlot == "${slot['id']}";
+
+                    return ChoiceChip(
+                      label: Text("$dayName ($timeRange)"),
+                      selected: isSelected,
+                      onSelected: (val) {
+                        if (!_isSubmitting) {
+                          setState(() => _selectedSlot = val ? "${slot['id']}" : null);
+                        }
+                      },
+                    );
+                  }).toList(),
+                ),
+                const SizedBox(height: AppSizes.p32),
+                AtamanButton(
+                  text: "Confirm Booking",
+                  isLoading: _isSubmitting,
+                  onPressed: _selectedSlot == null || _isSubmitting ? null : _handleBooking,
+                ),
+              ],
+              const SizedBox(height: AppSizes.p24),
             ],
           ),
-          const SizedBox(height: 24),
-          
-          if (_isLoading)
-            const Center(child: CircularProgressIndicator())
-          else if (_availability.isEmpty)
-            const Center(child: Text("No available shifts found for this doctor."))
-          else ...[
-            const Text("Available Shifts", style: TextStyle(fontWeight: FontWeight.bold)),
-            const SizedBox(height: 12),
-            Wrap(
-              spacing: 8,
-              runSpacing: 8,
-              children: _availability.map((slot) {
-                final dayName = _getDayName(slot['day_of_week']);
-                final timeRange = "${slot['start_time']} - ${slot['end_time']}";
-                final isSelected = _selectedSlot == "${slot['id']}";
-
-                return ChoiceChip(
-                  label: Text("$dayName ($timeRange)"),
-                  selected: isSelected,
-                  onSelected: (val) {
-                    setState(() => _selectedSlot = val ? "${slot['id']}" : null);
-                  },
-                );
-              }).toList(),
-            ),
-            const SizedBox(height: 32),
-            AtamanButton(
-              text: "Confirm Booking",
-              onPressed: _selectedSlot == null ? null : _handleBooking,
-            ),
-          ],
-          const SizedBox(height: 24),
-        ],
-      ),
+        );
+      },
     );
   }
 
@@ -113,11 +125,17 @@ class _TelemedBookingSheetState extends State<TelemedBookingSheet> {
   }
 
   Future<void> _handleBooking() async {
+    if (_isSubmitting) return;
+
+    setState(() => _isSubmitting = true);
+
     final slot = _availability.firstWhere((s) => "${s['id']}" == _selectedSlot);
     final int targetDay = slot['day_of_week'];
     
     DateTime bookingTime = DateTime.now();
-    while (bookingTime.weekday % 7 != targetDay) {
+    final int adjustedTargetDay = targetDay == 0 ? 7 : targetDay;
+    
+    while (bookingTime.weekday != adjustedTargetDay) {
       bookingTime = bookingTime.add(const Duration(days: 1));
     }
     
@@ -125,7 +143,6 @@ class _TelemedBookingSheetState extends State<TelemedBookingSheet> {
     bookingTime = DateTime(bookingTime.year, bookingTime.month, bookingTime.day, int.parse(parts[0]), int.parse(parts[1]));
 
     try {
-      // Prevent double booking on the same day for the same doctor
       final canBook = await context.read<TelemedicineCubit>().checkBookingConflict(
         widget.userId,
         widget.doctor.id,
@@ -141,6 +158,7 @@ class _TelemedBookingSheetState extends State<TelemedBookingSheet> {
             ),
           );
         }
+        setState(() => _isSubmitting = false);
         return;
       }
 
@@ -151,7 +169,6 @@ class _TelemedBookingSheetState extends State<TelemedBookingSheet> {
       );
       
       if (mounted) {
-        // Trigger local notification via NotificationCubit
         context.read<NotificationCubit>().addNotification(
           title: "Consultation Confirmed",
           body: "Your session with ${widget.doctor.fullName} is scheduled for ${DateFormat('MMM dd, h:mm a').format(bookingTime)}",
@@ -167,7 +184,10 @@ class _TelemedBookingSheetState extends State<TelemedBookingSheet> {
         );
       }
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Error: $e")));
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Error: $e")));
+        setState(() => _isSubmitting = false);
+      }
     }
   }
 }

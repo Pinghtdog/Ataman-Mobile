@@ -49,7 +49,7 @@ class _TriageHistoryScreenState extends State<TriageHistoryScreen> {
         children: [
           AtamanHeader(
             isSimple: true,
-            height: 120,
+            height: 130,
             child: Row(
               children: [
                 IconButton(
@@ -63,7 +63,7 @@ class _TriageHistoryScreenState extends State<TriageHistoryScreen> {
                     textAlign: TextAlign.center,
                   ),
                 ),
-                const SizedBox(width: 48),
+                // const SizedBox(width: 48),
               ],
             ),
           ),

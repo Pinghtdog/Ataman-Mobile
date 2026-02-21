@@ -15,15 +15,6 @@ import 'video_call_screen.dart';
 import '../../data/models/doctor_model.dart';
 
 /// [TelemedicineScreen] (Tele-Ataman) serves as the central hub for virtual medical consultations.
-///
-/// This screen provides users with access to:
-/// 1. **Live & Upcoming Sessions**: Real-time status of scheduled video consultations.
-/// 2. **Doctor Discovery**: A list of available medical specialists for booking or immediate consult.
-/// 3. **Service Specialized Care**: Direct access to General and Reproductive health consultations.
-/// 4. **Digital Prescriptions**: A history of prescriptions issued during telemedicine sessions.
-///
-/// It utilizes [TelemedicineCubit] for session and doctor management, and [PrescriptionCubit] 
-/// for real-time tracking of medical prescriptions.
 class TelemedicineScreen extends StatefulWidget {
   const TelemedicineScreen({super.key});
 
@@ -35,7 +26,10 @@ class _TelemedicineScreenState extends State<TelemedicineScreen> {
   @override
   void initState() {
     super.initState();
-    // Initialize real-time listeners for prescriptions, doctors, and active sessions.
+    _loadInitialData();
+  }
+
+  void _loadInitialData() {
     final authState = context.read<AuthCubit>().state;
     if (authState is Authenticated) {
       context.read<PrescriptionCubit>().startWatchingPrescriptions(authState.user.id);
@@ -43,6 +37,12 @@ class _TelemedicineScreenState extends State<TelemedicineScreen> {
       telemedCubit.startWatchingDoctors();
       telemedCubit.startWatchingSessions(authState.user.id);
     }
+  }
+
+  Future<void> _handleRefresh() async {
+    _loadInitialData();
+    // Allow the refresh indicator to be visible for a short duration
+    await Future.delayed(const Duration(milliseconds: 800));
   }
 
   @override
@@ -94,71 +94,75 @@ class _TelemedicineScreenState extends State<TelemedicineScreen> {
                 builder: (context, prescriptionState) {
                   return BlocBuilder<TelemedicineCubit, TelemedicineState>(
                     builder: (context, telemedState) {
-                      return ListView(
-                        padding: const EdgeInsets.all(AppSizes.p24),
-                        children: [
-                          // 1. ACTIVE SESSION CARD (REAL DATA)
-                          if (telemedState is TelemedicineLoaded && telemedState.activeSessions.isNotEmpty)
-                            _buildActiveSessionSection(context, telemedState, userId, userName)
-                          else if (telemedState is TelemedicineLoaded && telemedState.activeSessions.isEmpty)
-                            _buildNoActiveSessionPlaceholder(),
-                          
-                          const SizedBox(height: AppSizes.p24),
-                          
-                          TelemedDoctorSection(
-                            state: telemedState,
-                          ),
-                          
-                          const SizedBox(height: AppSizes.p32),
-                          
-                          Text(
-                            "Choose Service",
-                            style: AppTextStyles.h3.copyWith(color: AppColors.textPrimary),
-                          ),
-                          const SizedBox(height: AppSizes.p16),
-                          
-                          AtamanServiceGrid(
-                            services: const [
-                              {
-                                'title': 'General',
-                                'icon': Icons.medical_services_rounded,
-                                'color': AppColors.accent,
+                      return RefreshIndicator(
+                        onRefresh: _handleRefresh,
+                        color: AppColors.primary,
+                        child: ListView(
+                          padding: const EdgeInsets.all(AppSizes.p24),
+                          physics: const AlwaysScrollableScrollPhysics(),
+                          children: [
+                            if (telemedState is TelemedicineLoaded && telemedState.activeSessions.isNotEmpty)
+                              _buildActiveSessionSection(context, telemedState, userId, userName)
+                            else if (telemedState is TelemedicineLoaded && telemedState.activeSessions.isEmpty)
+                              _buildNoActiveSessionPlaceholder(),
+                            
+                            const SizedBox(height: AppSizes.p24),
+                            
+                            TelemedDoctorSection(
+                              state: telemedState,
+                            ),
+                            
+                            const SizedBox(height: AppSizes.p32),
+                            
+                            Text(
+                              "Choose Service",
+                              style: AppTextStyles.h3.copyWith(color: AppColors.textPrimary),
+                            ),
+                            const SizedBox(height: AppSizes.p16),
+                            
+                            AtamanServiceGrid(
+                              services: const [
+                                {
+                                  'title': 'General',
+                                  'icon': Icons.medical_services_rounded,
+                                  'color': AppColors.accent,
+                                },
+                                {
+                                  'title': 'Reproductive',
+                                  'icon': Icons.favorite_rounded,
+                                  'color': Color(0xFFAD1457),
+                                },
+                              ],
+                              onServiceTap: (index) {
+                                if (index == 0) {
+                                  Navigator.pushNamed(context, AppRoutes.generalConsult);
+                                } else if (index == 1) {
+                                  Navigator.pushNamed(context, AppRoutes.reproductiveHealth);
+                                }
                               },
-                              {
-                                'title': 'Reproductive',
-                                'icon': Icons.favorite_rounded,
-                                'color': Color(0xFFAD1457),
+                            ),
+                            
+                            const SizedBox(height: AppSizes.p32),
+                            
+                            Text(
+                              "Digital Prescriptions",
+                              style: AppTextStyles.h3.copyWith(color: AppColors.textPrimary),
+                            ),
+                            const SizedBox(height: AppSizes.p16),
+      
+                            TelemedPrescriptionSection(
+                              state: prescriptionState,
+                              onPrescriptionTap: (prescription) {
+                                showModalBottomSheet(
+                                  context: context,
+                                  isScrollControlled: true,
+                                  backgroundColor: Colors.transparent,
+                                  builder: (context) => PrescriptionDetailsModal(prescription: prescription),
+                                );
                               },
-                            ],
-                            onServiceTap: (index) {
-                              if (index == 0) {
-                                Navigator.pushNamed(context, AppRoutes.generalConsult);
-                              } else if (index == 1) {
-                                Navigator.pushNamed(context, AppRoutes.reproductiveHealth);
-                              }
-                            },
-                          ),
-                          
-                          const SizedBox(height: AppSizes.p32),
-                          
-                          Text(
-                            "Digital Prescriptions",
-                            style: AppTextStyles.h3.copyWith(color: AppColors.textPrimary),
-                          ),
-                          const SizedBox(height: AppSizes.p16),
-
-                          TelemedPrescriptionSection(
-                            state: prescriptionState,
-                            onPrescriptionTap: (prescription) {
-                              showModalBottomSheet(
-                                context: context,
-                                isScrollControlled: true,
-                                backgroundColor: Colors.transparent,
-                                builder: (context) => PrescriptionDetailsModal(prescription: prescription),
-                              );
-                            },
-                          ),
-                        ],
+                            ),
+                          ],
+                        ),
                       );
                     },
                   );
@@ -171,17 +175,10 @@ class _TelemedicineScreenState extends State<TelemedicineScreen> {
     );
   }
 
-  /// Builds the section for active or upcoming consultations.
-  /// 
-  /// Logic:
-  /// - Finds the doctor's details associated with the session.
-  /// - Determines if the session is "Live" or "Upcoming" based on its status and time.
-  /// - Enables the "Join" button only if the status is active or within a 10-minute window of start.
   Widget _buildActiveSessionSection(BuildContext context, TelemedicineLoaded state, String userId, String userName) {
     final session = state.activeSessions.first;
     final doctorId = session['doctor_id'];
     
-    // Find doctor info from the loaded doctors list
     final doctor = state.doctors.cast<DoctorModel?>().firstWhere(
       (d) => d?.id == doctorId,
       orElse: () => null,
@@ -189,8 +186,10 @@ class _TelemedicineScreenState extends State<TelemedicineScreen> {
 
     final String doctorName = doctor?.fullName ?? "Doctor";
     final String specialty = doctor?.specialty ?? "Medical Specialist";
+    
+    // FIX: Parse as Local time to ensure UI matches user's timezone
     final DateTime? scheduledTime = session['scheduled_time'] != null 
-        ? DateTime.parse(session['scheduled_time']) 
+        ? DateTime.parse(session['scheduled_time']).toLocal() 
         : null;
     
     String timeStr = "Now";
@@ -203,13 +202,13 @@ class _TelemedicineScreenState extends State<TelemedicineScreen> {
       // Allow joining 10 minutes before OR if status is active
       canJoin = session['status'] == 'active' || difference.inMinutes <= 10;
 
-      if (scheduledTime.day == now.day) {
+      if (scheduledTime.year == now.year && scheduledTime.month == now.month && scheduledTime.day == now.day) {
         timeStr = "Today, ${DateFormat('hh:mm a').format(scheduledTime)}";
       } else {
         timeStr = DateFormat('MMM dd, hh:mm a').format(scheduledTime);
       }
 
-      if (!canJoin) {
+      if (!canJoin && session['status'] != 'active') {
         final joinTime = scheduledTime.subtract(const Duration(minutes: 10));
         timeStr = "Joinable at ${DateFormat('hh:mm a').format(joinTime)}";
       }
@@ -237,13 +236,12 @@ class _TelemedicineScreenState extends State<TelemedicineScreen> {
     );
   }
 
-  /// Placeholder widget displayed when there are no active telemedicine sessions.
   Widget _buildNoActiveSessionPlaceholder() {
     return AtamanKonsultaCard(
       title: "Tele-Consult",
       subtitle: "Speak with a doctor from home",
       nextAvailable: "Book a slot below",
-      onJoinTap: null, // Join disabled if no session
+      onJoinTap: null,
     );
   }
 }
